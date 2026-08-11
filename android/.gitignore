@@ -1,0 +1,22 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Build outputs
+app/build/
+build/
+
+# Keystore / signing secrets, NEVER commit these
+*.jks
+*.keystore
+keystore.properties
+
+# Local logo asset generator (masters are committed, the script is not)
+design/generate_logo_assets.py

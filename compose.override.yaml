@@ -1,0 +1,12 @@
+services:
+  app:
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/bin:/app/bin
+      - ./backend/tests:/app/tests
+      - ./backend/migrations:/app/migrations
+      - ./backend/config:/app/config
+      - ./backend/public:/app/public
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: "1"

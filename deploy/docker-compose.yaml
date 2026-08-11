@@ -1,0 +1,71 @@
+name: jetlag
+
+services:
+  app:
+    # Pin a version instead of :latest for production.
+    image: ghcr.io/gilleshz/hide-and-seek:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      OVERPASS_MIRRORS: ${OVERPASS_MIRRORS:?set OVERPASS_MIRRORS in your stack env (deploy/README.md)}
+      OVERPASS_MIRRORS_RANDOMIZE: ${OVERPASS_MIRRORS_RANDOMIZE:-true}
+      MAX_BOUNDARY_SPAN_DEG: ${MAX_BOUNDARY_SPAN_DEG:-4.0}
+      STADIA_API_KEY: ${STADIA_API_KEY:-}
+      THUNDERFOREST_API_KEY: ${THUNDERFOREST_API_KEY:-}
+      MAPTILER_API_KEY: ${MAPTILER_API_KEY:-}
+      APP_API_KEY: ${APP_API_KEY:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-jetlag}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your stack env (deploy/README.md)}@db:5432/${POSTGRES_DB:-jetlag}?serverVersion=16&charset=utf8
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8080}:80"
+    volumes:
+      - uploads:/app/var/uploads
+      - tiles:/app/var/tiles
+      - secrets:/app/config/secrets
+      # App logs (Symfony var/log) survive container recreates.
+      - logs:/app/var/log
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/healthz\") === false ? 1 : 0);'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+    # Resource caps, adjust to your hardware; the LOOM transit pipeline is CPU/memory-heavy.
+    mem_limit: 4g
+    cpus: "4.0"
+
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      POSTGRES_DB: jetlag
+      POSTGRES_USER: jetlag
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your stack env (deploy/README.md)}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jetlag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  uploads:
+  tiles:
+  secrets:
+  # App logs (Symfony var/log) survive container recreates.
+  logs:

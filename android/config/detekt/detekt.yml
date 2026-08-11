@@ -1,0 +1,43 @@
+# detekt configuration. `buildUponDefaultConfig = true` in build.gradle.kts means
+# these entries only OVERRIDE the sensible defaults; you don't restate every rule.
+# Run with: ./gradlew detekt   (report in app/build/reports/detekt/)
+#
+# It is intentionally tuned for idiomatic Jetpack Compose (dp/sp literals,
+# PascalCase @Composable functions, @Preview functions). Loosen or tighten to taste.
+
+build:
+  maxIssues: 0            # fail the build on any finding, a strict gate
+
+complexity:
+  LargeClass:
+    # Table-driven tests (e.g. the 194-entry MessageResolver key table) legitimately exceed 600 lines.
+    excludes: ['**/test/**', '**/androidTest/**']
+  LongMethod:
+    threshold: 50
+  LongParameterList:
+    functionThreshold: 7
+    constructorThreshold: 7   # DI constructors legitimately take several deps
+  TooManyFunctions:
+    thresholdInFiles: 15
+    thresholdInClasses: 20
+    thresholdInInterfaces: 35
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreNamedArgument: true
+    # Compose layouts are full of dp/sp literals; don't flag numbers inside UI.
+    ignoreAnnotated: ['Composable', 'Preview']
+  MaxLineLength:
+    maxLineLength: 120
+  UnusedPrivateMember:
+    # @Preview composables are called by tooling, not code.
+    ignoreAnnotated: ['Preview']
+  ForbiddenComment:
+    comments: ['FIXME:', 'STOPSHIP:']
+
+naming:
+  FunctionNaming:
+    # Jetpack Compose @Composable functions are PascalCase by convention.
+    ignoreAnnotated: ['Composable']

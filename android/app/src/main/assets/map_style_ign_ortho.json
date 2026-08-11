@@ -1,0 +1,25 @@
+{
+  "version": 8,
+  "name": "Geoportail Satellite",
+  "glyphs": "asset://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "geoportail-ortho": {
+      "type": "raster",
+      "tiles": [
+        "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg"
+      ],
+      "tileSize": 256,
+      "attribution": "© IGN-F/Géoportail",
+      "maxzoom": 19
+    }
+  },
+  "layers": [
+    {
+      "id": "geoportail-ortho-layer",
+      "type": "raster",
+      "source": "geoportail-ortho",
+      "minzoom": 0,
+      "maxzoom": 19
+    }
+  ]
+}

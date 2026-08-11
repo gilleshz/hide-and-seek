@@ -1,0 +1,58 @@
+# Hide + Seek companion, local dev stack (builds from source).
+# For production/Portainer deployment, use deploy/docker-compose.yaml instead.
+# Copy .env.example -> .env, set OVERPASS_MIRRORS, and you're done.
+name: jetlag
+
+services:
+  app:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      # Blank: generated at first boot, persisted in the secrets volume (docker compose exec app cat /app/config/secrets/app_api_key).
+      APP_API_KEY: ${APP_API_KEY:-}
+      OVERPASS_MIRRORS: ${OVERPASS_MIRRORS}
+      OVERPASS_MIRRORS_RANDOMIZE: ${OVERPASS_MIRRORS_RANDOMIZE:-true}
+      MAX_BOUNDARY_SPAN_DEG: ${MAX_BOUNDARY_SPAN_DEG:-4.0}
+      STADIA_API_KEY: ${STADIA_API_KEY:-}
+      THUNDERFOREST_API_KEY: ${THUNDERFOREST_API_KEY:-}
+      MAPTILER_API_KEY: ${MAPTILER_API_KEY:-}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - uploads:/app/var/uploads
+      - tiles:/app/var/tiles
+      - secrets:/app/config/secrets
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/healthz\") === false ? 1 : 0);'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jetlag
+      POSTGRES_USER: jetlag
+      POSTGRES_PASSWORD: jetlag
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jetlag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
+  uploads:
+  tiles:
+  secrets:

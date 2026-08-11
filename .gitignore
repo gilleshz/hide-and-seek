@@ -1,0 +1,30 @@
+# Secrets / env
+.env
+*.env.local
+
+# PHP / Symfony (backend)
+/backend/vendor/
+/backend/var/
+/backend/.phpunit.cache/
+/backend/.phpunit.result.cache
+
+# Android / Gradle
+/android/.gradle/
+/android/build/
+/android/**/build/
+/android/local.properties
+/android/.kotlin/
+*.iml
+
+# Node (any tooling)
+node_modules/
+
+# IDE / OS
+/.idea/
+.DS_Store
+
+# Logs
+*.log
+
+# Large map/data artifacts
+*.pmtiles

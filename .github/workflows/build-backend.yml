@@ -1,0 +1,134 @@
+name: Build and push backend image
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+# A new push to the same tag cancels the in-progress run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, iconv, intl, pdo_pgsql, opcache, zip, pcntl, gd, exif
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - run: composer install --no-progress --prefer-dist --no-scripts
+        working-directory: backend
+
+      # backend/.env is gitignored but Symfony bootEnv() needs the file
+      - run: touch .env
+        working-directory: backend
+
+      - run: vendor/bin/phpstan analyse --no-progress
+        working-directory: backend
+
+      - run: vendor/bin/phpcs --warning-severity=0
+        working-directory: backend
+
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: jetlag
+          POSTGRES_USER: jetlag
+          POSTGRES_PASSWORD: jetlag
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U jetlag"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://jetlag:jetlag@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8
+      TILES_DIR: /tmp/jetlag-test-tiles
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, iconv, intl, pdo_pgsql, opcache, zip, pcntl, gd, exif
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - run: composer install --no-progress --prefer-dist --no-scripts
+        working-directory: backend
+
+      - run: touch .env
+        working-directory: backend
+
+      - name: Provision test database (app_test_test)
+        working-directory: backend
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists
+          php -r '$p = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=app_test_test", "jetlag", "jetlag"); $p->exec("CREATE EXTENSION IF NOT EXISTS postgis"); $p->exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");'
+          php bin/console doctrine:migrations:migrate --env=test --no-interaction
+
+      - run: vendor/bin/phpunit
+        working-directory: backend
+
+      - name: composer audit
+        run: composer audit --no-interaction
+        working-directory: backend
+        continue-on-error: true
+
+  build:
+    needs: [static, tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+            type=sha,prefix=,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

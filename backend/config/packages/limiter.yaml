@@ -1,0 +1,48 @@
+framework:
+    rate_limiter:
+        join:
+            policy: 'sliding_window'
+            # A household of 6 players plus name-collision retries must fit in one window.
+            limit: 30
+            interval: '10 minutes'
+            cache_pool: 'rate_limiter.cache'
+        account_connect:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '10 minutes'
+            cache_pool: 'rate_limiter.cache'
+        account_password_change:
+            policy: 'sliding_window'
+            limit: 10
+            interval: '10 minutes'
+            cache_pool: 'rate_limiter.cache'
+        game_create:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '10 minutes'
+            cache_pool: 'rate_limiter.cache'
+        token_mint:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '10 minutes'
+            cache_pool: 'rate_limiter.cache'
+        location_ingest_player:
+            policy: 'sliding_window'
+            limit: 40
+            interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'
+        location_ingest_ip:
+            policy: 'sliding_window'
+            limit: 150
+            interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'
+        chat_send:
+            policy: 'sliding_window'
+            limit: 60
+            interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'
+        api_global:
+            policy: 'sliding_window'
+            limit: 1800
+            interval: '1 minute'
+            cache_pool: 'rate_limiter.cache'

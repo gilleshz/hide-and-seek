@@ -1,0 +1,16 @@
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+    phpVersion: 80400
+    level: max
+    paths:
+        - src
+        - tests
+    tmpDir: var/cache/phpstan
+    treatPhpDocTypesAsCertain: true
+    excludePaths:
+        - tests/bootstrap.php
+        - src/Kernel.php

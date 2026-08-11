@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<ruleset name="API Boilerplate Coding Standard">
+    <description>PSR-12 + strict types + selected Slevomat sniffs. 120-char lines.</description>
+
+    <arg name="basepath" value="."/>
+    <arg name="cache" value=".phpcs-cache"/>
+    <arg name="colors"/>
+    <arg name="extensions" value="php"/>
+    <arg value="sp"/><!-- show sniff codes and progress -->
+
+    <file>src</file>
+    <file>tests</file>
+
+    <exclude-pattern>*/var/*</exclude-pattern>
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>src/Kernel.php</exclude-pattern>
+    <exclude-pattern>tests/bootstrap.php</exclude-pattern>
+
+    <!-- Base standard -->
+    <rule ref="PSR12">
+        <!-- Allow Codeception/PHPUnit-style _before / _after lifecycle methods if used -->
+        <exclude name="PSR2.Methods.MethodDeclaration.Underscore"/>
+    </rule>
+
+    <!-- Require declare(strict_types=1) in every file -->
+    <rule ref="Generic.PHP.RequireStrictTypes"/>
+
+    <!-- Short array syntax [] only -->
+    <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
+
+    <!-- 120-char line limit (hard) -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="0"/>
+        </properties>
+    </rule>
+
+    <!--
+        Slevomat sniffs. Provided by slevomat/coding-standard (a dev dependency);
+        the phpcodesniffer-composer-installer plugin registers its sniff path.
+    -->
+    <rule ref="SlevomatCodingStandard.TypeHints.NullableTypeForNullDefaultValue"/>
+    <rule ref="SlevomatCodingStandard.PHP.UselessParentheses"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">
+        <properties>
+            <property name="searchAnnotations" value="true"/>
+        </properties>
+    </rule>
+    <rule ref="SlevomatCodingStandard.Namespaces.AlphabeticallySortedUses"/>
+</ruleset>

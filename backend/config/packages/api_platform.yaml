@@ -1,0 +1,17 @@
+api_platform:
+    title: 'Jet Lag: Hide + Seek API'
+    version: 1.0.0
+    # First format wins content negotiation by default; the Android client sends no Accept header and expects bare JSON arrays, not hydra:member.
+    formats:
+        json: ['application/json']
+        jsonld: ['application/ld+json']
+    defaults:
+        stateless: true
+        pagination_enabled: true
+        pagination_items_per_page: 30
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']
+    # Belt-and-braces: both exceptions extend HttpException and already carry these statuses (BUG-7).
+    exception_to_status:
+        App\Exception\EntityNotFoundException: 404
+        App\Exception\FunctionalException: 400

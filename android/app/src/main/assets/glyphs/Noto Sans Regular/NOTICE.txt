@@ -1,0 +1,1 @@
+Glyph PBFs from maplibre/demotiles (font/Noto Sans Regular), built from Noto Sans (SIL OFL 1.1, see OFL.txt).

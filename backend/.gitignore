@@ -1,0 +1,32 @@
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> squizlabs/php_codesniffer ###
+/.phpcs-cache
+/phpcs.xml
+###< squizlabs/php_codesniffer ###
+
+###> phpstan/phpstan ###
+###< phpstan/phpstan ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> local backups ###
+*.bak
+###< local backups ###
+
+# Symfony config reference stub (regenerable, drifts from the installed version)
+/config/reference.php
+
+# Entrypoint-generated secrets landed on the host by the dev config bind mount (regenerated at boot)
+/config/secrets/

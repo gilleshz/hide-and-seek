@@ -1,0 +1,38 @@
+{
+	skip_install_trust
+	{$CADDY_GLOBAL_OPTIONS}
+	frankenphp {
+		{$FRANKENPHP_CONFIG}
+	}
+}
+
+{$CADDY_EXTRA_CONFIG}
+
+{$SERVER_NAME:localhost} {
+	root {$SERVER_ROOT:public/}
+	encode zstd br gzip
+
+	mercure {
+		publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}
+		subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}
+		# Without it a carrier dropping an idle stream without a FIN is invisible to the app: it would
+		# neither fail nor close, so the reconnect never arms. Must stay under the client's readTimeout.
+		heartbeat 30s
+	}
+
+	# Everything writable at runtime lives outside public/ now; a stray PHP file under the
+	# docroot must never execute. Only the front controller may run.
+	@blocked-php {
+		path *.php
+		not path /index.php
+	}
+	handle @blocked-php {
+		respond "Not found" 404
+	}
+
+	{$CADDY_SERVER_EXTRA_DIRECTIVES}
+
+	php_server
+}
+
+import Caddyfile.d/*.caddyfile

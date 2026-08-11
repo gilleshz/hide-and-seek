@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  API 24-30 devices: same exclusions as data_extraction_rules.xml, which governs
+  API 31+. The settings DataStore (locale/theme) stays backed up; the Room chat
+  cache (hideandseek.db) does not.
+-->
+<full-backup-content>
+    <exclude domain="file" path="datastore/connection.preferences_pb" />
+    <exclude domain="file" path="datastore/session.preferences_pb" />
+    <exclude domain="database" path="hideandseek.db" />
+    <exclude domain="database" path="hideandseek.db-wal" />
+    <exclude domain="database" path="hideandseek.db-shm" />
+</full-backup-content>

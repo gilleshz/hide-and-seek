@@ -1,0 +1,25 @@
+{
+  "version": 8,
+  "name": "Geoportail Plan",
+  "glyphs": "asset://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "geoportail-plan": {
+      "type": "raster",
+      "tiles": [
+        "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png"
+      ],
+      "tileSize": 256,
+      "attribution": "© IGN-F/Géoportail",
+      "maxzoom": 19
+    }
+  },
+  "layers": [
+    {
+      "id": "geoportail-plan-layer",
+      "type": "raster",
+      "source": "geoportail-plan",
+      "minzoom": 0,
+      "maxzoom": 19
+    }
+  ]
+}

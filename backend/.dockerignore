@@ -1,0 +1,10 @@
+.env
+vendor/
+var/
+config/secrets/
+.git/
+.gitignore
+.php-cs-fixer.cache
+.phpcs-cache
+.phpunit.cache
+.phpunit.result.cache

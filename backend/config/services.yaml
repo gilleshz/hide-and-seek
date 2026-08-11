@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    app.nominatim_user_agent: '%env(NOMINATIM_USER_AGENT)%'
+    app.nominatim_base_url: '%env(NOMINATIM_BASE_URL)%'
+    app.max_boundary_span_deg: '%env(MAX_BOUNDARY_SPAN_DEG)%'
+    app.overpass_mirrors: '%env(OVERPASS_MIRRORS)%'
+    app.overpass_mirrors_randomize: '%env(bool:OVERPASS_MIRRORS_RANDOMIZE)%'
+    app.transit_max_response_bytes: '%env(TRANSIT_MAX_RESPONSE_BYTES)%'
+    app.map_provider_keys:
+        stadia: '%env(default::STADIA_API_KEY)%'
+        thunderforest: '%env(default::THUNDERFOREST_API_KEY)%'
+        maptiler: '%env(default::MAPTILER_API_KEY)%'
+    app.gtfs_storage_dir: '%env(GTFS_STORAGE_DIR)%'
+    app.tiles_dir: '%env(TILES_DIR)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    App\Storage\ImageStorageInterface: '@App\Storage\LocalVolumeStorage'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+
+when@test:
+    services:
+        App\Tests\Fake\FakeMercureHub:
+            public: true
+        Symfony\Component\Mercure\HubInterface: '@App\Tests\Fake\FakeMercureHub'

@@ -1,0 +1,12 @@
+--- a/src/topo/mapconstructor/MapConstructor.cpp
++++ b/src/topo/mapconstructor/MapConstructor.cpp
+@@ -199,6 +199,9 @@
+ // _____________________________________________________________________________
+ int MapConstructor::collapseShrdSegs(double dCut, size_t MAX_ITERS,
+                                      double SEGL) {
++  // nodes sit SEGL apart but only merge within dCut, so finer costs without gain
++  SEGL = std::max(SEGL, dCut);
++
+   size_t ITER = 0;
+   for (; ITER < MAX_ITERS; ITER++) {
+     shared::linegraph::LineGraph tgNew;

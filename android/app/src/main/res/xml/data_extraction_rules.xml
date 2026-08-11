@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The connection (API URL + API key) and session (Mercure token + topics) DataStores
+  and the Room chat cache (hideandseek.db) are never copied to another device or restored
+  after a wipe: the API key is the server perimeter, the session token is a live
+  credential, and chat messages hold sender names and bodies.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/connection.preferences_pb" />
+        <exclude domain="file" path="datastore/session.preferences_pb" />
+        <exclude domain="database" path="hideandseek.db" />
+        <exclude domain="database" path="hideandseek.db-wal" />
+        <exclude domain="database" path="hideandseek.db-shm" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/connection.preferences_pb" />
+        <exclude domain="file" path="datastore/session.preferences_pb" />
+        <exclude domain="database" path="hideandseek.db" />
+        <exclude domain="database" path="hideandseek.db-wal" />
+        <exclude domain="database" path="hideandseek.db-shm" />
+    </device-transfer>
+</data-extraction-rules>

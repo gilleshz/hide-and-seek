@@ -1,0 +1,61 @@
+when@dev:
+    monolog:
+        handlers:
+            file:
+                type: rotating_file
+                path: '%kernel.logs_dir%/app.log'
+                max_files: 7
+                level: debug
+                channels: ['!event', '!doctrine', '!cache']
+                formatter: monolog.formatter.json
+            stderr:
+                type: stream
+                path: 'php://stderr'
+                level: warning
+                channels: ['!event', '!doctrine', '!cache']
+                formatter: monolog.formatter.json
+
+when@test:
+    monolog:
+        handlers:
+            file:
+                type: rotating_file
+                path: '%kernel.logs_dir%/app.log'
+                max_files: 7
+                level: debug
+                channels: ['!event', '!doctrine', '!cache']
+                formatter: monolog.formatter.json
+            # Expected 4xx/5xx exceptions in tests must not dump JSON onto the runner's stderr.
+            stderr:
+                type: null
+
+when@prod:
+    monolog:
+        handlers:
+            # Expected 4xx (FunctionalException → 400, EntityNotFoundException → 404) must not flood prod logs (BUG-7).
+            file:
+                type: fingers_crossed
+                action_level: warning
+                excluded_http_codes: [400, 404]
+                handler: file_nested
+                buffer_size: 50
+                channels: ['!event', '!doctrine', '!cache']
+            file_nested:
+                type: rotating_file
+                path: '%kernel.logs_dir%/app.log'
+                max_files: 7
+                level: debug
+                formatter: monolog.formatter.json
+            # stderr is what `docker compose logs` shows; the file handler keeps the debug trail.
+            stderr:
+                type: fingers_crossed
+                action_level: warning
+                excluded_http_codes: [400, 404]
+                handler: stderr_nested
+                buffer_size: 50
+                channels: ['!event', '!doctrine', '!cache']
+            stderr_nested:
+                type: stream
+                path: 'php://stderr'
+                level: debug
+                formatter: monolog.formatter.json
