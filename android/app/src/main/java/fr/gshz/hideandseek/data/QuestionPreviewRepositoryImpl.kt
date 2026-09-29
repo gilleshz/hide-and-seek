@@ -9,9 +9,11 @@ import fr.gshz.hideandseek.domain.repository.QuestionPreviewRepository
 import fr.gshz.hideandseek.domain.repository.QuestionPreviewRequest
 import fr.gshz.hideandseek.domain.repository.QuestionPreviewResult
 import javax.inject.Inject
+import javax.inject.Named
 
 class QuestionPreviewRepositoryImpl @Inject constructor(
     private val api: HideAndSeekApi,
+    @Named("longTimeout") private val longTimeoutApi: HideAndSeekApi,
     private val connectionStore: ConnectionStore,
 ) : QuestionPreviewRepository {
 
@@ -41,7 +43,8 @@ class QuestionPreviewRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getFeatures(url: String): List<FeatureDto> = api.getFeatures(url)
+    // The server ingests a type's POIs inside this very request, so it can outlast the default read timeout.
+    override suspend fun getFeatures(url: String): List<FeatureDto> = longTimeoutApi.getFeatures(url)
 
     private suspend fun urlFor(path: String): String =
         (connectionStore.current() ?: throw NotConnectedException()).apiUrl.trimEnd('/') + path

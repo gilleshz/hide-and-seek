@@ -67,6 +67,7 @@ private val ERROR_KEY_MAP: Map<String, Int> = mapOf(
     "settings.account_password_short" to R.string.settings_account_short_password,
     "connect.server_too_old" to R.string.error_server_too_old,
     "rate_limit.exceeded" to R.string.error_rate_limit,
+    "heavy_work.busy" to R.string.error_heavy_work_busy,
 )
 
 /**

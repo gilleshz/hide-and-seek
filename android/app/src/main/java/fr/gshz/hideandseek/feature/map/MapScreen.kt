@@ -292,9 +292,13 @@ private fun simulationActionsFor(
     onCancelQuestion = viewModel::cancelQuestion,
 )
 
-private fun SimulationState.selectFeatureType(featureType: String?) = copy(
+internal fun SimulationState.selectFeatureType(featureType: String?) = copy(
     featureType = featureType,
     chosenFeatureId = null,
+    candidateFeatures = emptyList(),
+    error = null,
+    errorKey = null,
+    errorArgs = null,
     transitLineSelected = false,
     stationNameLengthSelected = false,
     seaLevelSelected = false,

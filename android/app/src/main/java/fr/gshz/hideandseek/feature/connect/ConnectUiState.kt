@@ -13,4 +13,6 @@ data class ConnectUiState(
     val errorKey: String? = null,
     val connected: Boolean = false,
     val scannedGameCode: String? = null,
+    /** Join code from a scanned QR, held until the user submits the rest of the form. */
+    val pendingJoinCode: String? = null,
 )

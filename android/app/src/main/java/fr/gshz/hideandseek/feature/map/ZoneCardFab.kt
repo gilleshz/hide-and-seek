@@ -20,12 +20,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.ImageSourceDialog
-import fr.gshz.hideandseek.core.ui.newCameraOutputUri
+import fr.gshz.hideandseek.core.ui.rememberCameraCapture
 import fr.gshz.hideandseek.domain.model.ZoneCard
 
 /**
@@ -148,28 +147,18 @@ private fun TinyHomeWarningDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) 
 @Composable
 internal fun rememberCardPhotoPicker(onPicked: (String) -> Unit, onCancelled: () -> Unit): () -> Unit {
     val showSource = rememberSaveable { mutableStateOf(false) }
-    val pendingCameraUri = rememberSaveable { mutableStateOf<Uri?>(null) }
-    val context = LocalContext.current
     val consume: (Uri?) -> Unit = { uri -> if (uri == null) onCancelled() else onPicked(uri.toString()) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri -> consume(uri) }
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-    ) { isSuccess ->
-        val uri = pendingCameraUri.value
-        pendingCameraUri.value = null
-        consume(if (isSuccess) uri else null)
-    }
+    val capturePhoto = rememberCameraCapture(consume)
 
     if (showSource.value) {
         ImageSourceDialog(
             onCameraClick = {
                 showSource.value = false
-                val uri = newCameraOutputUri(context)
-                pendingCameraUri.value = uri
-                cameraLauncher.launch(uri)
+                capturePhoto()
             },
             onGalleryClick = {
                 showSource.value = false

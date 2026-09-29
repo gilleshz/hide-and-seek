@@ -217,6 +217,8 @@
     <string name="chat_image_source_title">Bild anhängen</string>
     <string name="chat_image_source_camera">Foto aufnehmen</string>
     <string name="chat_image_source_gallery">Aus Galerie auswählen</string>
+    <string name="camera_permission_denied">Kameraberechtigung ist erforderlich, um ein Foto aufzunehmen</string>
+    <string name="camera_unavailable">Kamera-App konnte nicht geöffnet werden</string>
     <string name="chat_image_source_draw">Auf der Karte zeichnen</string>
     <string name="chat_image_send_failed">Bild konnte nicht gesendet werden. Bitte erneut versuchen.</string>
     <string name="chat_send_failed">Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.</string>
@@ -705,6 +707,7 @@
     <string name="error_join_password_invalid">Falsches Passwort für diesen Namen. Wenn es nicht dein Name ist, wähle einen anderen Namen.</string>
     <string name="error_account_name_taken">Dieser Name wird bereits verwendet. Wenn es deiner ist, prüfe das Passwort. Sonst wähle einen anderen Namen.</string>
     <string name="error_rate_limit">Zu viele Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.</string>
+    <string name="error_heavy_work_busy">Der Server ist beschäftigt. Warten Sie einen Moment und versuchen Sie es erneut.</string>
 <string name="lobby_remove_player_action">Aus dem Spiel entfernen</string>
     <string name="lobby_remove_player_dialog_title">%1$s aus dem Spiel entfernen?</string>
     <string name="lobby_remove_player_dialog_body">Sie können später mit ihrem Passwort zurückkehren.</string>

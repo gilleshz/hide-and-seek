@@ -217,6 +217,8 @@
     <string name="chat_image_source_title">Joindre une image</string>
     <string name="chat_image_source_camera">Prendre une photo</string>
     <string name="chat_image_source_gallery">Choisir dans la galerie</string>
+    <string name="camera_permission_denied">L\'autorisation de la caméra est requise pour prendre une photo</string>
+    <string name="camera_unavailable">Impossible d\'ouvrir l\'appareil photo</string>
     <string name="chat_image_source_draw">Dessiner sur la carte</string>
     <string name="chat_image_send_failed">Impossible d\'envoyer l\'image. Veuillez réessayer.</string>
     <string name="chat_send_failed">Échec de l\'envoi du message. Veuillez réessayer.</string>
@@ -705,6 +707,7 @@
     <string name="error_join_password_invalid">Mot de passe incorrect pour ce nom. Si ce n\'est pas le vôtre, choisissez un autre nom.</string>
     <string name="error_account_name_taken">Ce nom est déjà utilisé par une autre personne. Si c\'est le vôtre, vérifiez le mot de passe. Sinon, choisissez un autre nom.</string>
     <string name="error_rate_limit">Trop de demandes. Attendez un moment avant de réessayer.</string>
+    <string name="error_heavy_work_busy">Le serveur est occupé. Attendez un instant avant de réessayer.</string>
 <string name="lobby_remove_player_action">Retirer de la partie</string>
     <string name="lobby_remove_player_dialog_title">Retirer %1$s de la partie ?</string>
     <string name="lobby_remove_player_dialog_body">Cette personne pourra revenir avec son mot de passe.</string>

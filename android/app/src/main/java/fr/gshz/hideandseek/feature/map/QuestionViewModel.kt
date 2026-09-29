@@ -8,6 +8,7 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.util.serverErrorArgs
+import fr.gshz.hideandseek.core.util.isSessionExpired
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
 import fr.gshz.hideandseek.domain.model.AskedQuestion
@@ -449,8 +450,12 @@ class QuestionViewModel @Inject constructor(
                 }
                 simulationState.value?.let { updateSimulationGeometry(it) }
             } catch (_: IOException) {
+                simulationState.failCandidateFetch(featureType, null)
             } catch (e: HttpException) {
                 sessionEvents.handleSessionExpiry(e)
+                if (!e.isSessionExpired()) {
+                    simulationState.failCandidateFetch(featureType, e.serverErrorKey())
+                }
             }
         }
     }
@@ -809,6 +814,25 @@ private suspend fun askRealPhoto(
         photoTarget = photoTarget,
     )
     return true
+}
+
+/**
+ * A failed candidate fetch used to leave the previous type's markers on the map, or an empty one
+ * with no explanation: the list is dropped and the seeker told, so re-picking the type retries.
+ */
+private fun MutableStateFlow<SimulationState?>.failCandidateFetch(featureType: String, errorKey: String?) {
+    update { prev ->
+        if (prev?.featureType != featureType) {
+            prev
+        } else {
+            prev.copy(
+                candidateFeatures = emptyList(),
+                chosenFeatureId = null,
+                error = ErrorType.Network,
+                errorKey = errorKey,
+            )
+        }
+    }
 }
 
 private fun parseCustomRadius(text: String, edition: Edition): Int? {

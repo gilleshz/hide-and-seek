@@ -175,7 +175,7 @@ final class ChatApiTest extends ApiTestCase
         ]);
 
         self::assertResponseStatusCodeSame(400);
-        self::assertJsonContains(['detail' => 'Image exceeds maximum size of 8 MB.']);
+        self::assertJsonContains(['detail' => 'Image exceeds maximum size of 25 MB.']);
     }
 
     #[Test]

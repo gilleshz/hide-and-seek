@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  */
 final readonly class UploadedImageReader
 {
-    private const int MAX_SIZE_BYTES = 8_388_608;
+    private const int MAX_SIZE_BYTES = 26_214_400;
 
     private const array ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -58,7 +58,7 @@ final readonly class UploadedImageReader
             || $file->getSize() > self::MAX_SIZE_BYTES;
         if ($sizeExceeded) {
             throw new FunctionalException(
-                message: 'Image exceeds maximum size of 8 MB.',
+                message: 'Image exceeds maximum size of 25 MB.',
                 errorKey: 'chat_image.size_exceeded',
             );
         }

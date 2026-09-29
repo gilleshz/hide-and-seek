@@ -199,7 +199,7 @@ class ConnectViewModel @Inject constructor(
             return
         }
 
-        performConnect(url, key, name, password, scannedGameCode = null)
+        performConnect(url, key, name, password, scannedGameCode = state.pendingJoinCode)
     }
 
     fun onQrScanned(raw: String) {
@@ -215,10 +215,11 @@ class ConnectViewModel @Inject constructor(
         val name = state.displayName.trim()
         val password = state.passwordInput
         val code = payload.joinCode?.trim()?.uppercase()?.ifBlank { null }
-        if (listOf(url, key, name, password).any { it.isBlank() }) {
-            _uiState.update { it.copy(error = ErrorType.Validation, errorKey = null) }
-            return
+        // A QR only carries the server and the game; the account fields are the user's to type.
+        _uiState.update {
+            it.copy(apiUrl = url, apiKey = key, pendingJoinCode = code, error = null, errorKey = null)
         }
+        if (name.isBlank() || password.isBlank()) return
 
         performConnect(url, key, name, password, scannedGameCode = code)
     }

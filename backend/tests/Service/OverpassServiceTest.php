@@ -54,6 +54,21 @@ final class OverpassServiceTest extends TestCase
 }
 JSON;
 
+    private const string HEALTHCARE_RESPONSE = <<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "relation", "id": 228591, "bounds": {"minlat": 48.57, "minlon": 7.74, "maxlat": 48.58, "maxlon": 7.75},
+         "tags": {"building": "hospital", "healthcare": "hospital", "name": "Nouvel Hopital Civil"}},
+        {"type": "node", "id": 2, "lat": 48.60, "lon": 7.76,
+         "tags": {"amenity": "hospital", "healthcare": "hospital", "name": "Clinique Sainte Anne"}},
+        {"type": "node", "id": 3, "lat": 48.61, "lon": 7.77,
+         "tags": {"amenity": "clinic", "healthcare": "hospital", "name": "Centre de sante"}},
+        {"type": "node", "id": 4, "lat": 48.62, "lon": 7.78, "tags": {"amenity": "hospital", "name": "Hopital Civil"}}
+    ]
+}
+JSON;
+
     #[Test]
     public function itIngestsFeaturesAndMapsTagsCorrectly(): void
     {
@@ -558,6 +573,88 @@ JSON;
         self::assertStringContainsString('way["leisure"="golf_course"]', $decoded);
         self::assertStringContainsString('relation["leisure"="golf_course"]', $decoded);
         self::assertStringNotContainsString('"amenity"="golf_course"', $decoded);
+    }
+
+    #[Test]
+    public function itIngestsHealthcareOnlyHospitalsAndSkipsConflictingAmenities(): void
+    {
+        $game = $this->createGameWithBoundary();
+        $httpClient = new MockHttpClient(new MockResponse(self::HEALTHCARE_RESPONSE));
+
+        $captured = [];
+        $features = $this->createStub(FeatureRepository::class);
+        $features->method('save')->willReturnCallback(
+            function ($entity) use (&$captured): void {
+                $captured[] = $entity;
+            },
+        );
+
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('flush');
+
+        $service = new OverpassService(new OverpassHttpClient($httpClient, 'https://test.example/api/', false), $features, $em);
+        $count = $service->ingestFeatures($game);
+
+        self::assertSame(3, $count);
+        self::assertCount(3, $captured);
+
+        $expected = [
+            ['Nouvel Hopital Civil', FeatureType::Hospital],
+            ['Clinique Sainte Anne', FeatureType::Hospital],
+            ['Hopital Civil', FeatureType::Hospital],
+        ];
+
+        $idx = 0;
+        foreach ($expected as [$expectedName, $expectedType]) {
+            $feature = $captured[$idx];
+            self::assertInstanceOf(\App\Entity\Feature::class, $feature);
+            self::assertSame($expectedType, $feature->getFeatureType(), "Item {$idx}: wrong type");
+            self::assertSame($expectedName, $feature->getName(), "Item {$idx}: wrong name");
+            ++$idx;
+        }
+    }
+
+    #[Test]
+    public function itSkipsHospitalsWithAConflictingAmenityOnTheLazyTypePath(): void
+    {
+        $game = $this->createGameWithBoundary();
+
+        $capturedBody = '';
+        $httpClient = new MockHttpClient(
+            function (string $method, string $url, array $options) use (&$capturedBody): MockResponse {
+                $body = $options['body'] ?? null;
+                $capturedBody = is_string($body) ? $body : '';
+
+                return new MockResponse(self::HEALTHCARE_RESPONSE);
+            },
+        );
+
+        $captured = [];
+        $features = $this->createStub(FeatureRepository::class);
+        $features->method('countByGameAndType')->willReturn(0);
+        $features->method('save')->willReturnCallback(
+            function ($entity) use (&$captured): void {
+                $captured[] = $entity;
+            },
+        );
+
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('flush');
+
+        $service = new OverpassService(new OverpassHttpClient($httpClient, 'https://test.example/api/', false), $features, $em);
+        $count = $service->ingestFeatureType($game, FeatureType::Hospital);
+
+        self::assertSame(3, $count);
+        self::assertStringContainsString('relation["healthcare"="hospital"]', urldecode($capturedBody));
+        self::assertStringContainsString('way["healthcare"="hospital"]', urldecode($capturedBody));
+
+        $names = [];
+        foreach ($captured as $feature) {
+            self::assertInstanceOf(\App\Entity\Feature::class, $feature);
+            self::assertSame(FeatureType::Hospital, $feature->getFeatureType());
+            $names[] = $feature->getName();
+        }
+        self::assertSame(['Nouvel Hopital Civil', 'Clinique Sainte Anne', 'Hopital Civil'], $names);
     }
 
     private function createGameWithBoundary(): Game

@@ -1,7 +1,13 @@
 package fr.gshz.hideandseek.core.ui
 
+import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,8 +19,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.theme.Spacing
@@ -60,6 +70,63 @@ fun ImageSourceDialog(
             }
         },
     )
+}
+
+/**
+ * Camera capture that asks for the CAMERA grant first. Declaring the permission without holding it
+ * makes ACTION_IMAGE_CAPTURE throw SecurityException, which reaches the main thread and stops the
+ * app, so the grant is checked (and requested) before the intent goes out. A denied grant, a device
+ * with no camera app and a cancelled capture all report null.
+ */
+@Composable
+fun rememberCameraCapture(onResult: (Uri?) -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val deniedText = stringResource(R.string.camera_permission_denied)
+    val unavailableText = stringResource(R.string.camera_unavailable)
+    val pendingUri = rememberSaveable { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+    ) { isSuccess ->
+        val uri = pendingUri.value
+        pendingUri.value = null
+        onResult(if (isSuccess) uri else null)
+    }
+
+    val reportUnavailable = {
+        pendingUri.value = null
+        Toast.makeText(context, unavailableText, Toast.LENGTH_LONG).show()
+        onResult(null)
+    }
+
+    fun launchCamera() {
+        val uri = newCameraOutputUri(context)
+        pendingUri.value = uri
+        // A camera-less device has no handler, and a grant can be revoked between check and launch.
+        try {
+            cameraLauncher.launch(uri)
+        } catch (_: ActivityNotFoundException) {
+            reportUnavailable()
+        } catch (_: SecurityException) {
+            reportUnavailable()
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            Toast.makeText(context, deniedText, Toast.LENGTH_LONG).show()
+            onResult(null)
+        }
+    }
+
+    return {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) launchCamera() else permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
 }
 
 fun newCameraOutputUri(context: Context): Uri {

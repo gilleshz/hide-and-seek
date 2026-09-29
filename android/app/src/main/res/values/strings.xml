@@ -217,6 +217,8 @@
     <string name="chat_image_source_title">Attach image</string>
     <string name="chat_image_source_camera">Take photo</string>
     <string name="chat_image_source_gallery">Choose from gallery</string>
+    <string name="camera_permission_denied">Camera permission is required to take a photo</string>
+    <string name="camera_unavailable">Could not open the camera app</string>
     <string name="chat_image_source_draw">Draw on the map</string>
     <string name="chat_date_today">Today</string>
     <string name="chat_date_yesterday">Yesterday</string>
@@ -705,6 +707,7 @@
     <string name="error_join_password_invalid">Wrong password for this name. If it\'s not your name, pick a different one.</string>
     <string name="error_account_name_taken">This name is already in use. If it\'s yours, check the password. Otherwise, pick a different name.</string>
     <string name="error_rate_limit">Too many requests. Wait a moment and try again.</string>
+    <string name="error_heavy_work_busy">The server is busy. Wait a moment and try again.</string>
 <string name="lobby_remove_player_action">Remove from game</string>
     <string name="lobby_remove_player_dialog_title">Remove %1$s from the game?</string>
     <string name="lobby_remove_player_dialog_body">They can rejoin later with their password.</string>

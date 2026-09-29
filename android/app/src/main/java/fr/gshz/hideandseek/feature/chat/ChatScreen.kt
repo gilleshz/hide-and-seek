@@ -7,7 +7,6 @@ import android.os.Build
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.core.content.FileProvider
 import java.io.File
 
@@ -83,7 +82,7 @@ import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.i18n.resolveError
 import fr.gshz.hideandseek.core.ui.theme.AppTheme
 import fr.gshz.hideandseek.core.ui.ImageSourceDialog
-import fr.gshz.hideandseek.core.ui.newCameraOutputUri
+import fr.gshz.hideandseek.core.ui.rememberCameraCapture
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.AskedQuestion
 import fr.gshz.hideandseek.domain.model.ChatMessage
@@ -230,9 +229,7 @@ internal fun ChatContent(
     var pendingPhotoAnswerUuid by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingPowerup by remember { mutableStateOf<PendingPowerup?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var stagedAttachment by remember { mutableStateOf<Uri?>(null) }
-    val context = LocalContext.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val consumePhoto: (Uri?) -> Unit = { uri ->
@@ -254,13 +251,7 @@ internal fun ChatContent(
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri -> consumePhoto(uri) }
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-    ) { isSuccess ->
-        val uri = pendingCameraUri
-        pendingCameraUri = null
-        consumePhoto(if (isSuccess) uri else null)
-    }
+    val capturePhoto = rememberCameraCapture(consumePhoto)
     val sendPending = {
         val text = composeText.trim()
         if (stagedAttachment != null || text.isNotEmpty()) {
@@ -335,9 +326,7 @@ internal fun ChatContent(
         ImageSourceDialog(
             onCameraClick = {
                 showImageSourceDialog = false
-                val uri = newCameraOutputUri(context)
-                pendingCameraUri = uri
-                cameraLauncher.launch(uri)
+                capturePhoto()
             },
             onGalleryClick = {
                 showImageSourceDialog = false

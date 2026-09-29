@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.feature.map
 
 import app.cash.turbine.test
+import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.domain.model.AskedQuestion
 import fr.gshz.hideandseek.domain.model.DeviceLocation
@@ -54,6 +55,26 @@ class QuestionViewModelSimulationTest {
         fixture.sessionRepository.seed(
             PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
         )
+    }
+
+    @Test
+    fun `picking a feature type drops the previous type's markers and its error`() {
+        val previous = SimulationState(
+            category = QuestionCategory.Measuring,
+            featureType = FeatureType.Hospital.wireValue,
+            candidateFeatures = listOf(FeatureSummary("hospital-1", "Clinique", 48.58, 7.75)),
+            chosenFeatureId = "hospital-1",
+            error = ErrorType.Network,
+            errorKey = "heavy_work.busy",
+        )
+
+        val next = previous.selectFeatureType(FeatureType.Library.wireValue)
+
+        assertEquals(FeatureType.Library.wireValue, next.featureType)
+        assertTrue(next.candidateFeatures.isEmpty())
+        assertNull(next.chosenFeatureId)
+        assertNull(next.error)
+        assertNull(next.errorKey)
     }
 
     @Test

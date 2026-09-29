@@ -55,6 +55,7 @@ readonly class OverpassService
             'river' => FeatureType::BodyOfWater,
             'canal' => FeatureType::BodyOfWater,
         ],
+        'healthcare' => ['hospital' => FeatureType::Hospital],
     ];
 
     /**
@@ -65,6 +66,9 @@ readonly class OverpassService
             ['node', 'amenity', 'hospital'],
             ['way', 'amenity', 'hospital'],
             ['relation', 'amenity', 'hospital'],
+            ['node', 'healthcare', 'hospital'],
+            ['way', 'healthcare', 'hospital'],
+            ['relation', 'healthcare', 'hospital'],
         ],
         FeatureType::Library->value => [
             ['node', 'amenity', 'library'],
@@ -391,6 +395,16 @@ readonly class OverpassService
 
             $featureType = $forceType ?? $this->matchFeatureType($tags);
             if ($featureType === null) {
+                continue;
+            }
+
+            // healthcare=hospital is a hospital only when no other amenity claims the element as something else.
+            if (
+                $featureType === FeatureType::Hospital
+                && ($tags['healthcare'] ?? null) === 'hospital'
+                && isset($tags['amenity'])
+                && $tags['amenity'] !== 'hospital'
+            ) {
                 continue;
             }
 

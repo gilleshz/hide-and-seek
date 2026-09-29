@@ -234,6 +234,39 @@ class ConnectViewModelTest {
     }
 
     @Test
+    fun `qr scan on an empty form fills the server and leaves the account fields to the user`() = runTest {
+        val viewModel = createViewModel { _, _, _, _ -> ConnectAttemptResult.Connected }
+        viewModel.onQrScanned(
+            """{"apiUrl":"https://api.example.com","apiKey":"secret","joinCode":"ABC123"}""",
+        )
+
+        val state = viewModel.uiState.value
+        assertEquals("https://api.example.com", state.apiUrl)
+        assertEquals("secret", state.apiKey)
+        assertEquals("ABC123", state.pendingJoinCode)
+        assertNull(state.error)
+        assertFalse(state.connected)
+        assertNull(state.scannedGameCode)
+        coVerify(exactly = 0) { connectionRepository.connect(any()) }
+    }
+
+    @Test
+    fun `submitting after a qr scan keeps the scanned join code`() = runTest {
+        val viewModel = createViewModel { _, _, _, _ -> ConnectAttemptResult.Connected }
+        viewModel.onQrScanned(
+            """{"apiUrl":"https://api.example.com","apiKey":"secret","joinCode":"ABC123"}""",
+        )
+        viewModel.onDisplayNameChange("Alice")
+        viewModel.onPasswordChange("hunter2")
+        viewModel.connect()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.connected)
+        assertEquals("ABC123", state.scannedGameCode)
+        coVerify { connectionRepository.saveAccount(AccountCredential("Alice", "hunter2")) }
+    }
+
+    @Test
     fun `stored connection and account prefill the fields`() = runTest {
         val viewModel = createViewModel(
             attempt = { _, _, _, _ -> ConnectAttemptResult.Connected },
