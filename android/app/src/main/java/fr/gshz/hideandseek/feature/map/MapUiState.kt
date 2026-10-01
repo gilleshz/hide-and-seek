@@ -401,6 +401,7 @@ private fun sessionAndZoneUiState(session: MapSessionUiState, zone: MapZoneUiSta
  * covered and whether asking is legal: all three derive from flows the sheet ViewModel does not own.
  */
 internal fun enrichSimulation(question: MapQuestionUiState, session: MapSessionUiState): SimulationState? {
+    val sim = question.simulation ?: return null
     val outstanding = question.outstandingQuestion
     val traveling = outstanding?.takeIf { it.isTravelingThermometer }
     val traveled = traveling?.let { t ->
@@ -410,11 +411,21 @@ internal fun enrichSimulation(question: MapQuestionUiState, session: MapSessionU
         haversineMeters(slat, slng, g.latitude, g.longitude)
     }
     val askingBlocked = session.roundStatus != null && !session.seekersAreHunting
-    return question.simulation?.copy(
+    return sim.copy(
         outstandingQuestion = outstanding,
         thermometerTraveledMeters = traveled,
         askingBlocked = askingBlocked,
+        previewGeoJson = if (traveling == null) sim.previewGeoJson else travelingCircle(traveling),
     )
+}
+
+/** The travel owed is a radius around the start the server recorded, never around the live fix. */
+private fun travelingCircle(traveling: AskedQuestion): String? {
+    val startLat = traveling.startLat
+    val startLng = traveling.startLng
+    val distanceMeters = traveling.distanceMeters
+    if (startLat == null || startLng == null || distanceMeters == null) return null
+    return circlePolygonGeoJson(startLat, startLng, distanceMeters)
 }
 
 internal fun buildMarkers(

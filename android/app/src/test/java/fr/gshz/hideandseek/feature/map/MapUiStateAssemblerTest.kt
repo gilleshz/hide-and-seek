@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test
  */
 class MapUiStateAssemblerTest {
 
+    // GeoJSON writes small coordinates in exponent form ("1.5E-5"), so the number pattern needs it.
+    private val ringVertex = Regex("""\[(-?[\d.]+(?:E[+-]?\d+)?),(-?[\d.]+(?:E[+-]?\d+)?)]""")
+
     @Test
     fun `the current zone radius falls back to the round's seeded radius`() {
         val session = MapSessionUiState(hidingRadiusMeters = 800.0)
@@ -163,6 +166,46 @@ class MapUiStateAssemblerTest {
     }
 
     @Test
+    fun `a traveling thermometer's circle stays on the start the seeker left, not on the seeker`() {
+        val question = MapQuestionUiState(
+            outstandingQuestion = travelingThermometer(distanceMeters = 1000.0),
+            simulation = SimulationState(category = QuestionCategory.Thermometer),
+        )
+        val session = MapSessionUiState(selfGps = ZonePin(0.05, 0.05))
+
+        val state = assembleMapUiState(
+            session, MapZoneUiState(), MapDrawingUiState(), MapTimeTrapUiState(), emptyList(), question,
+        )
+
+        val (lng, lat) = ringCentre(requireNotNull(state.simulation?.previewGeoJson))
+        assertTrue(haversineMeters(lat, lng, 0.0, 0.0) < 1.0)
+        assertTrue(haversineMeters(lat, lng, 0.05, 0.05) > 1000.0)
+    }
+
+    @Test
+    fun `without a traveling thermometer the sheet's own preview geometry is left alone`() {
+        val question = MapQuestionUiState(
+            simulation = SimulationState(category = QuestionCategory.Radar, previewGeoJson = "geo-radar"),
+        )
+
+        val state = assembleMapUiState(
+            MapSessionUiState(), MapZoneUiState(), MapDrawingUiState(), MapTimeTrapUiState(), emptyList(), question,
+        )
+
+        assertEquals("geo-radar", state.simulation?.previewGeoJson)
+    }
+
+    /** The mean of the ring's vertices is its centre; org.json is a stub in unit tests. */
+    private fun ringCentre(geoJson: String): Pair<Double, Double> {
+        // The ring repeats its first vertex to close itself; counting it twice biases the centre.
+        val vertices = ringVertex.findAll(geoJson)
+            .map { it.groupValues[1].toDouble() to it.groupValues[2].toDouble() }
+            .toList()
+            .dropLast(1)
+        return vertices.map { it.first }.average() to vertices.map { it.second }.average()
+    }
+
+    @Test
     fun `the drawing state carries the game's edition for the trace minimum`() {
         val session = MapSessionUiState(edition = Edition.Imperial)
         val drawing = MapDrawingUiState(
@@ -227,7 +270,7 @@ class MapUiStateAssemblerTest {
         assertFalse(outside.trapTargetsOwnZone)
     }
 
-    private fun travelingThermometer() = AskedQuestion(
+    private fun travelingThermometer(distanceMeters: Double? = null) = AskedQuestion(
         uuid = "q-1",
         roundUuid = "round-1",
         category = QuestionCategory.Thermometer,
@@ -238,5 +281,6 @@ class MapUiStateAssemblerTest {
         thermometerResult = null,
         startLat = 0.0,
         startLng = 0.0,
+        distanceMeters = distanceMeters,
     )
 }
