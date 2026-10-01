@@ -84,7 +84,7 @@ final class LocationServiceTest extends TestCase
         $result = $service->record($round, $player, new Point(13.4, 52.5));
 
         self::assertSame($player, $result->location->getPlayer());
-        self::assertFalse($result->endgameTriggered);
+        self::assertFalse($result->endgame);
     }
 
     #[Test]
@@ -155,7 +155,7 @@ final class LocationServiceTest extends TestCase
     }
 
     #[Test]
-    public function itStartsTheEndgameWhenSeekerEntersZoneAndFlagsTheTriggeringPing(): void
+    public function itStartsTheEndgameWhenSeekerEntersZoneWithoutFlaggingTheSeekerPing(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
@@ -191,7 +191,39 @@ final class LocationServiceTest extends TestCase
             $this->timeTraps(),
         ))->record($round, $seeker, new Point(13.4, 52.5));
 
-        self::assertTrue($result->endgameTriggered);
+        self::assertFalse($result->endgame);
+    }
+
+    #[Test]
+    public function itFlagsTheHiderPingOnceTheEndgameIsOn(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setEndgameStartedAt(new \DateTimeImmutable());
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $membership = new RoundMembership($round, $hider, Side::Hider);
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);
+
+        $endgameService = $this->createMock(EndgameService::class);
+        $endgameService->expects(self::never())->method('check');
+        $endgameService->expects(self::never())->method('start');
+
+        $hub = $this->createMock(HubInterface::class);
+        $hub->expects(self::once())->method('publish'); // only the location publish
+
+        $result = (new LocationService(
+            $this->createStub(PlayerLocationRepository::class),
+            $memberships,
+            new MercureJwtService(self::SECRET),
+            $hub,
+            $endgameService,
+            new RoundClock(),
+            $this->timeTraps(),
+        ))->record($round, $hider, new Point(13.4, 52.5));
+
+        self::assertTrue($result->endgame);
     }
 
     #[Test]
@@ -223,7 +255,7 @@ final class LocationServiceTest extends TestCase
             $this->timeTraps(),
         ))->record($round, $seeker, new Point(13.4, 52.5));
 
-        self::assertFalse($result->endgameTriggered);
+        self::assertFalse($result->endgame);
     }
 
     #[Test]

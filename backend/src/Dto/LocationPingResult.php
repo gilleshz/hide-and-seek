@@ -10,7 +10,7 @@ final readonly class LocationPingResult
 {
     public function __construct(
         public PlayerLocation $location,
-        public bool $endgameTriggered,
+        public bool $endgame,
     ) {
     }
 }

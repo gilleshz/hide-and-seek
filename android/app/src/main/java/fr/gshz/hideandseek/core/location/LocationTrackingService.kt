@@ -468,8 +468,8 @@ class LocationTrackingService : Service() {
                 lastPostedLng = lng
                 pingErrorGate.reset()
                 pingBackoff.reset()
-                if (endgame && !endgameProximity) {
-                    // Fail-safe for a dead SSE stream: the ping ack tells the triggering seeker directly.
+                if (endgame && currentSide == Side.Hider && !endgameProximity) {
+                    // Fail-safe for a dead SSE stream: this hider's own ack repeats the endgame signal.
                     showEndgameNotification()
                     endgameProximity = true
                     cadenceSelector.reset()

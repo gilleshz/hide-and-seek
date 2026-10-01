@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface LocationRepository {
     val lastKnownLocation: StateFlow<DeviceLocation?>
-    /** Returns true when this ingest started the round's endgame (the ping-ack fail-safe when SSE is down). */
+    /** Returns true for a hider once the round's endgame is on (the ping-ack fail-safe when SSE is down). */
     suspend fun postLocationPing(
         roundUuid: String,
         playerUuid: String,

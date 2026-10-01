@@ -109,7 +109,7 @@ final class LocationProcessorTest extends TestCase
     }
 
     #[Test]
-    public function thePingAckCarriesTheEndgameFlagOnlyWhenThisIngestStartedIt(): void
+    public function thePingAckNeverSignalsTheEndgameToASeeker(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
@@ -126,6 +126,29 @@ final class LocationProcessorTest extends TestCase
             $membership,
             $this->createStub(PlayerLocationRepository::class),
             $endgame,
+            $this->limiter(100),
+        );
+
+        $resource = $processor->process($this->input(), new Post(), ['roundUuid' => $round->getUuid()]);
+
+        self::assertFalse($resource->endgame);
+    }
+
+    #[Test]
+    public function thePingAckSignalsTheEndgameToAHiderOnceItIsOn(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setEndgameStartedAt(new \DateTimeImmutable());
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $membership = new RoundMembership($round, $hider, Side::Hider);
+
+        $processor = $this->processor(
+            $round,
+            $hider,
+            $membership,
+            $this->createStub(PlayerLocationRepository::class),
+            $this->endgameServiceNeverTriggering(),
             $this->limiter(100),
         );
 

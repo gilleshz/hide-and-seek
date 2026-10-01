@@ -525,7 +525,7 @@ final class IdentityGuardApiTest extends ApiTestCase
     }
 
     #[Test]
-    public function theLocationAckReportsOnlyTheIngestThatStartedTheEndgame(): void
+    public function theLocationAckSignalsTheEndgameOnlyToHiders(): void
     {
         $client = static::createClient();
         $game = $this->createGame();
@@ -541,7 +541,8 @@ final class IdentityGuardApiTest extends ApiTestCase
         $inside = $client->request('POST', "/api/rounds/{$roundUuid}/location", $this->headersWithToken($seeker['token']) + [
             'json' => ['lat' => 52.52, 'lng' => 13.405],
         ])->toArray();
-        self::assertTrue($inside['endgame']);
+        self::assertNotNull($this->storedRound($roundUuid)->getEndgameStartedAt());
+        self::assertFalse($inside['endgame']);
 
         $again = $client->request('POST', "/api/rounds/{$roundUuid}/location", $this->headersWithToken($seeker['token']) + [
             'json' => ['lat' => 52.52, 'lng' => 13.405],
@@ -551,7 +552,7 @@ final class IdentityGuardApiTest extends ApiTestCase
         $hiderPing = $client->request('POST', "/api/rounds/{$roundUuid}/location", $this->headersWithToken($hider['token']) + [
             'json' => ['lat' => 52.52, 'lng' => 13.405],
         ])->toArray();
-        self::assertFalse($hiderPing['endgame']);
+        self::assertTrue($hiderPing['endgame']);
     }
 
     #[Test]

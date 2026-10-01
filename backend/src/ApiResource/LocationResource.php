@@ -40,7 +40,7 @@ final class LocationResource
     #[Groups([Group::LOCATION_READ])]
     public \DateTimeImmutable $recordedAt;
 
-    /** True only when this very ingest started the round's endgame; false otherwise. */
+    /** True for a hider ping once the round's endgame is on; never true for a seeker (END-2). */
     #[Groups([Group::LOCATION_READ])]
     public bool $endgame = false;
 
@@ -51,7 +51,7 @@ final class LocationResource
         $self->playerUuid = $location->getPlayer()->getUuid();
         $self->roundUuid = $location->getRound()->getUuid();
         $self->recordedAt = $location->getRecordedAt();
-        $self->endgame = $result->endgameTriggered;
+        $self->endgame = $result->endgame;
 
         return $self;
     }

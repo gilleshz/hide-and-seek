@@ -51,7 +51,6 @@ final readonly class LocationService
 
         $this->publish($round, $membership->getSide(), $location);
 
-        $endgameTriggered = false;
         // A frozen seeker cannot capture: during a move window the stored zone is the one being abandoned.
         if (
             $membership->getSide() === Side::Seeker
@@ -60,14 +59,16 @@ final readonly class LocationService
             && $this->endgameService->check($round) !== null
         ) {
             $this->endgameService->start($round);
-            $endgameTriggered = true;
         }
 
         if ($membership->getSide() === Side::Seeker) {
             $this->timeTrapService->checkTrip($round, $player, $point);
         }
 
-        return new LocationPingResult($location, $endgameTriggered);
+        // Hider-only: naming the seeker whose own ping opened the endgame would hand them the zone boundary (END-2).
+        $endgame = $membership->getSide() === Side::Hider && $round->getEndgameStartedAt() !== null;
+
+        return new LocationPingResult($location, $endgame);
     }
 
     private function publish(Round $round, Side $side, PlayerLocation $location): void

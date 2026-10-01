@@ -15,7 +15,7 @@ data class LocationPingResponse(
     val playerUuid: String,
     val roundUuid: String,
     val recordedAt: String,
-    // True only when this very ingest started the round's endgame (seeker pings only).
+    // True for a hider once the round's endgame is on; never set for a seeker (END-2).
     val endgame: Boolean? = null,
 )
 
