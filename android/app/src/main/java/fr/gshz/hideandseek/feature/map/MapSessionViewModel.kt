@@ -76,6 +76,7 @@ class MapSessionViewModel @Inject constructor(
     private val roundState = MutableStateFlow<Round?>(null)
     private val roundInteraction = MutableStateFlow(RoundInteraction())
     private val selectedMapStyle = MutableStateFlow(MapStyle.Standard)
+    private val focusedTransitRef = MutableStateFlow<String?>(null)
 
     private var loadGameInfoJob: Job? = null
 
@@ -137,7 +138,8 @@ class MapSessionViewModel @Inject constructor(
             RoundPart(round, nowMillis, interaction)
         },
         selectedMapStyle,
-    ) { players, roundPart, style ->
+        focusedTransitRef,
+    ) { players, roundPart, style, focusedRef ->
         val info = players.info
         val currentRound = roundPart.round
         val nowMillis = roundPart.nowMillis
@@ -151,6 +153,7 @@ class MapSessionViewModel @Inject constructor(
             boundary = info.boundary,
             boundaryGeoJson = info.boundaryGeoJson,
             transitOverlayGeoJson = info.transitOverlayGeoJson,
+            focusedTransitRef = focusedRef,
             stadiaApiKey = info.stadiaApiKey,
             thunderforestApiKey = info.thunderforestApiKey,
             maptilerApiKey = info.maptilerApiKey,
@@ -375,6 +378,14 @@ class MapSessionViewModel @Inject constructor(
         }
     }
 
+    fun setTransitFocus(ref: String?) {
+        focusedTransitRef.value = ref
+    }
+
+    fun toggleTransitFocus(ref: String) {
+        setTransitFocus(ref.takeIf { it != focusedTransitRef.value })
+    }
+
     fun setMapStyle(style: MapStyle) {
         selectedMapStyle.value = style
         viewModelScope.launch {
@@ -439,6 +450,7 @@ data class MapSessionUiState(
     val boundary: MapBounds? = null,
     val boundaryGeoJson: String? = null,
     val transitOverlayGeoJson: String? = null,
+    val focusedTransitRef: String? = null,
     val stadiaApiKey: String? = null,
     val thunderforestApiKey: String? = null,
     val maptilerApiKey: String? = null,

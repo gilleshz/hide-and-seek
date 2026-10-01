@@ -38,6 +38,7 @@ internal fun StationTooltip(
     lines: List<LineRef>,
     screenX: Float,
     screenY: Float,
+    onLineTap: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var heightPx by remember { mutableStateOf(0) }
@@ -67,7 +68,7 @@ internal fun StationTooltip(
             Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             if (lines.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                LineBadges(lines)
+                LineBadges(lines, onLineTap)
             }
         }
     }
@@ -75,13 +76,14 @@ internal fun StationTooltip(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LineBadges(lines: List<LineRef>) {
+private fun LineBadges(lines: List<LineRef>, onLineTap: (String) -> Unit) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         lines.forEach { line ->
             Surface(
+                onClick = { onLineTap(line.ref) },
                 shape = RoundedCornerShape(4.dp),
                 color = remember(line.color) { toLineColor(line.color) },
             ) {

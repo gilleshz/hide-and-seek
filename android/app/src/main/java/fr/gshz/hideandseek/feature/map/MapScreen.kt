@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
@@ -115,6 +117,7 @@ private class TooltipHost(
     val data: StationTooltipData?,
     val onTapped: (StationTooltipData) -> Unit,
     val onDismiss: () -> Unit,
+    val onLineTapped: (String) -> Unit,
 )
 
 internal data class SeekerActionData(
@@ -196,15 +199,7 @@ fun MapScreen(
         uiState = uiState,
         navigation = MapNavigation(onOpenChatClick = onOpenChatClick),
         onEndRound = sessionViewModel::endRound,
-        actions = ZoneActions(
-            onEnterZonePlacement = zoneViewModel::enterZonePlacementMode,
-            onCancelZonePlacement = zoneViewModel::cancelZonePlacement,
-            onPlaceZonePin = zoneViewModel::placeZonePin,
-            onSelectZoneRadius = zoneViewModel::selectZoneRadius,
-            onConfirmZone = zoneViewModel::confirmZone,
-            onCustomZoneRadiusChange = zoneViewModel::onCustomZoneRadiusChange,
-            onPlayZoneCard = zoneViewModel::playZoneCard,
-        ),
+        actions = zoneActionsFor(zoneViewModel),
         trapActions = TimeTrapActions(
             onEnterPlacement = timeTrapViewModel::enterTimeTrapPlacement,
             onCancelPlacement = timeTrapViewModel::cancelTimeTrapPlacement,
@@ -212,7 +207,10 @@ fun MapScreen(
             onConfirm = timeTrapViewModel::confirmTimeTrap,
             onResolve = timeTrapViewModel::resolveTimeTrap,
         ),
-        simActions = simulationActionsFor(questionViewModel, sessionState.edition, sessionState.selectedTransitLines),
+        simActions = simulationActionsFor(
+            questionViewModel, sessionState.edition, sessionState.selectedTransitLines,
+            sessionViewModel::setTransitFocus,
+        ),
         drawingActions = drawingActionsFor(drawingViewModel, sessionState.edition),
         onEnterSimulation = { category ->
             questionViewModel.enterSimulation(category, sessionState.selectedTransitLines)
@@ -220,7 +218,27 @@ fun MapScreen(
         onStyleSelected = sessionViewModel::setMapStyle,
         onMarkSuspectedStation = seekerMarkersViewModel::markSuspectedStation,
         onUnmarkStation = seekerMarkersViewModel::unmarkStation,
+        onTransitLineTapped = sessionViewModel::toggleTransitFocus,
     )
+}
+
+private fun zoneActionsFor(viewModel: ZoneViewModel) = ZoneActions(
+    onEnterZonePlacement = viewModel::enterZonePlacementMode,
+    onCancelZonePlacement = viewModel::cancelZonePlacement,
+    onPlaceZonePin = viewModel::placeZonePin,
+    onSelectZoneRadius = viewModel::selectZoneRadius,
+    onConfirmZone = viewModel::confirmZone,
+    onCustomZoneRadiusChange = viewModel::onCustomZoneRadiusChange,
+    onPlayZoneCard = viewModel::playZoneCard,
+)
+
+private fun selectTransitLine(
+    viewModel: QuestionViewModel,
+    line: TransitLine,
+    onLineFocused: (String) -> Unit,
+) {
+    viewModel.updateSimulation(refreshGeometry = false) { it.copy(selectedTransitLine = line) }
+    onLineFocused(line.ref)
 }
 
 @Composable
@@ -242,6 +260,7 @@ private fun simulationActionsFor(
     viewModel: QuestionViewModel,
     edition: Edition,
     selectedTransitLines: List<TransitLine>,
+    onLineFocused: (String) -> Unit = {},
 ) = SimulationActions(
     onSetSeekerPin = { lat, lng -> viewModel.updateSimulation { it.copy(seeker = ZonePin(lat, lng)) } },
     onSetEndPin = { lat, lng -> viewModel.updateSimulation { it.copy(end = ZonePin(lat, lng)) } },
@@ -275,9 +294,7 @@ private fun simulationActionsFor(
     onSelectSeaLevelOption = {
         viewModel.updateSimulation(refreshGeometry = false) { it.selectSeaLevelOption() }
     },
-    onSetTransitLine = { line ->
-        viewModel.updateSimulation(refreshGeometry = false) { it.copy(selectedTransitLine = line) }
-    },
+    onSetTransitLine = { line -> selectTransitLine(viewModel, line, onLineFocused) },
     onSetCategory = { category -> viewModel.setSimCategory(category, selectedTransitLines) },
     onSetPhotoTarget = { photoTarget ->
         viewModel.updateSimulation(refreshGeometry = false) { it.copy(photoTarget = photoTarget) }
@@ -420,6 +437,7 @@ internal fun MapContent(
     onStyleSelected: (MapStyle) -> Unit = {},
     onMarkSuspectedStation: (Double, Double) -> Unit = { _, _ -> },
     onUnmarkStation: (String) -> Unit = {},
+    onTransitLineTapped: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val recenterCounter = remember { mutableStateOf(0) }
@@ -473,6 +491,7 @@ internal fun MapContent(
                 recenterCounter = recenterCounter,
                 styleSource = uiState.currentStyleSource,
                 navigation = navigation,
+                onTransitLineTapped = onTransitLineTapped,
                 seekerOverlay = SeekerMarkerOverlay(
                     markers = uiState.seekerMarkers,
                     radiusMeters = uiState.currentZoneRadiusMeters,
@@ -522,6 +541,7 @@ private fun BoxScope.MapContentLayout(
     styleSource: StyleSource,
     navigation: MapNavigation,
     seekerOverlay: SeekerMarkerOverlay = SeekerMarkerOverlay(),
+    onTransitLineTapped: (String) -> Unit = {},
 ) {
     val isPreviewMode = uiState.simulation?.mode == QuestionSheetMode.Preview
     MapLibreMapView(
@@ -529,6 +549,8 @@ private fun BoxScope.MapContentLayout(
         possibleAreaGeoJson = uiState.possibleAreaGeoJson,
         boundary = uiState.boundary,
         transitOverlayGeoJson = uiState.transitOverlayGeoJson,
+        focusedTransitRef = uiState.focusedTransitRef,
+        onTransitLineTapped = onTransitLineTapped,
         boundaryGeoJson = uiState.boundaryGeoJson,
         recenterCounter = recenterCounter,
         simulationGeoJson = uiState.simulation?.previewGeoJson,
@@ -546,6 +568,7 @@ private fun BoxScope.MapContentLayout(
         overlayActions = MapOverlayActions(actions, trapActions, simActions, drawingActions),
         onEnterSimulation = onEnterSimulation,
         navigation = navigation,
+        onTransitLineTapped = onTransitLineTapped,
     )
 }
 
@@ -635,6 +658,7 @@ private fun BoxScope.MapOverlays(
     overlayActions: MapOverlayActions,
     onEnterSimulation: (QuestionCategory) -> Unit = {},
     navigation: MapNavigation = MapNavigation(onOpenChatClick = {}),
+    onTransitLineTapped: (String) -> Unit = {},
 ) {
     val actions = overlayActions.zone
     val simActions = overlayActions.sim
@@ -656,6 +680,13 @@ private fun BoxScope.MapOverlays(
         HiderQuestionChip(
             onClick = { navigation.onOpenChatClick(uiState.gameUuid) },
             modifier = Modifier.align(Alignment.TopCenter).padding(top = Spacing.sm),
+        )
+    }
+    uiState.focusedTransitRef?.let { ref ->
+        FocusedLineChip(
+            ref = ref,
+            onClick = { onTransitLineTapped(ref) },
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp),
         )
     }
     // A frozen seeker must not travel or ask, and the app cannot stop them walking: say so.
@@ -715,6 +746,34 @@ private fun BoxScope.MapOverlays(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             askedQuestions = uiState.askedQuestions,
         )
+    }
+}
+
+@Composable
+private fun FocusedLineChip(ref: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = PENDING_CHIP_ALPHA),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Text(
+                text = stringResource(R.string.transit_line_focus_chip, ref),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = stringResource(R.string.transit_line_focus_clear),
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -1090,6 +1149,8 @@ private fun MapLibreMapView(
     boundary: MapBounds?,
     zoneOverlay: ZoneOverlayState,
     transitOverlayGeoJson: String? = null,
+    focusedTransitRef: String? = null,
+    onTransitLineTapped: (String) -> Unit = {},
     boundaryGeoJson: String? = null,
     simulationGeoJson: String? = null,
     candidatePoiGeoJson: String? = null,
@@ -1133,6 +1194,10 @@ private fun MapLibreMapView(
                 data = stationTooltip.value,
                 onTapped = { stationTooltip.value = it },
                 onDismiss = { stationTooltip.value = null },
+                onLineTapped = { ref ->
+                    onTransitLineTapped(ref)
+                    stationTooltip.value = null
+                },
             ),
             seekerHost = seekerOverlay,
             seekerAction = seekerAction,
@@ -1157,14 +1222,14 @@ private fun MapLibreMapView(
         zoneOverlay.pin, transitOverlayGeoJson, zoneOverlay.radiusMeters,
         boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
         seekerCircles, seekerOverlay.radiusMeters,
-        drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins,
+        drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, focusedTransitRef,
     ) {
         state.syncSources(
             markers, possibleAreaGeoJson, boundary,
             zoneOverlay.pin, transitOverlayGeoJson, zoneOverlay.radiusMeters,
             boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
             seekerCircles, seekerOverlay.radiusMeters,
-            drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins,
+            drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, focusedTransitRef,
         )
     }
 
@@ -1245,12 +1310,14 @@ private class MapViewState {
         drawing: DrawingUiState = DrawingUiState(),
         manualConstraints: List<ManualConstraint> = emptyList(),
         trapPins: List<TrapPin> = emptyList(),
+        focusedTransitRef: String? = null,
     ) {
         val map = mapRef.value?.takeIf { styleReady.value } ?: return
         val style = map.style ?: return
         if (transitOverlayGeoJson != null) {
-            style.ensureTransitOverlayLayer(transitOverlayGeoJson)
+            style.ensureTransitOverlayLayer(transitOverlayGeoJson, focusedTransitRef)
         }
+        style.applyTransitFocus(focusedTransitRef)
         style.updateMarkerSources(markers)
         style.updateZoneSource(zonePin, zoneRadiusMeters ?: DEFAULT_ZONE_RADIUS_METERS)
         style.updateSeekerMarkerSource(seekerCircles, seekerRadiusMeters ?: DEFAULT_ZONE_RADIUS_METERS)
@@ -1455,6 +1522,7 @@ private fun MapWithTooltipOverlay(
             lines = td.lines,
             screenX = td.screenX,
             screenY = td.screenY,
+            onLineTap = tooltip.onLineTapped,
             onDismiss = tooltip.onDismiss,
         )
     }

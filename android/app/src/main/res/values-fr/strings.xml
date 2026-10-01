@@ -37,6 +37,8 @@
     <string name="create_game_edition_label">Édition</string>
     <string name="create_game_button">Créer</string>
     <string name="transit_lines_header">Lignes de transport</string>
+    <string name="transit_line_focus_chip">Ligne <xliff:g>%1$s</xliff:g> mise en avant</string>
+    <string name="transit_line_focus_clear">Ne plus mettre cette ligne en avant</string>
     <string name="transit_route_metro">Métro</string>
     <string name="transit_route_light_rail">Train léger</string>
     <string name="transit_route_tram">Tramway</string>

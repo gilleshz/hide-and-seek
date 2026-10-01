@@ -37,6 +37,8 @@
     <string name="create_game_edition_label">Edition</string>
     <string name="create_game_button">Create</string>
     <string name="transit_lines_header">Transit lines</string>
+    <string name="transit_line_focus_chip">Line <xliff:g>%1$s</xliff:g> highlighted</string>
+    <string name="transit_line_focus_clear">Stop highlighting this line</string>
     <string name="transit_route_metro">Metro</string>
     <string name="transit_route_light_rail">Light Rail</string>
     <string name="transit_route_tram">Tram</string>

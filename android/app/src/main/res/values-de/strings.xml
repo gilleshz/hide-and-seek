@@ -37,6 +37,8 @@
     <string name="create_game_edition_label">Edition</string>
     <string name="create_game_button">Erstellen</string>
     <string name="transit_lines_header">Verkehrslinien</string>
+    <string name="transit_line_focus_chip">Linie <xliff:g>%1$s</xliff:g> hervorgehoben</string>
+    <string name="transit_line_focus_clear">Hervorhebung dieser Linie aufheben</string>
     <string name="transit_route_metro">U-Bahn</string>
     <string name="transit_route_light_rail">Stadtbahn</string>
     <string name="transit_route_tram">Straßenbahn</string>

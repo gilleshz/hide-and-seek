@@ -32,6 +32,17 @@ class MapUiStateAssemblerTest {
     }
 
     @Test
+    fun `the focused transit line reaches the map state`() {
+        val session = MapSessionUiState(focusedTransitRef = "12")
+
+        val state = assembleMapUiState(
+            session, MapZoneUiState(), MapDrawingUiState(), MapTimeTrapUiState(), emptyList(), MapQuestionUiState(),
+        )
+
+        assertEquals("12", state.focusedTransitRef)
+    }
+
+    @Test
     fun `a live zone radius wins over the round's seeded radius`() {
         val session = MapSessionUiState(hidingRadiusMeters = 800.0)
         val zone = MapZoneUiState(currentZoneRadiusMeters = 1234.0)

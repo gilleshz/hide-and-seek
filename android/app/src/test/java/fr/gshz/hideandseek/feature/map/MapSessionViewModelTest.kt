@@ -584,6 +584,42 @@ class MapSessionViewModelTest {
         }
     }
 
+    @Test
+    fun `focuses a transit line on a badge tap and clears it on the next tap`() = runTest(testDispatcher) {
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            viewModel.toggleTransitFocus("12")
+            while (state.focusedTransitRef == null) state = awaitItem()
+            assertEquals("12", state.focusedTransitRef)
+
+            viewModel.toggleTransitFocus("12")
+            while (state.focusedTransitRef != null) state = awaitItem()
+            assertNull(state.focusedTransitRef)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `choosing the focused line in the question keeps it focused instead of clearing it`() =
+        runTest(testDispatcher) {
+            val viewModel = fixture.createSessionViewModel()
+
+            viewModel.uiState.test {
+                var state = awaitItem()
+                viewModel.setTransitFocus("12")
+                while (state.focusedTransitRef == null) state = awaitItem()
+
+                viewModel.setTransitFocus("12")
+                assertEquals("12", viewModel.uiState.value.focusedTransitRef)
+
+                viewModel.setTransitFocus("7")
+                while (state.focusedTransitRef != "7") state = awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
     private companion object {
         const val ONE_MINUTE_MS = 60_000L
         const val FIVE_MINUTES_MS = 300_000L
