@@ -6,7 +6,9 @@ namespace App\Tests\Api;
 
 use ApiPlatform\Symfony\Bundle\Test\Client;
 use App\Entity\Game;
+use App\Entity\GameGtfsLine;
 use App\Entity\GameTransitLine;
+use App\Entity\GtfsSource;
 use App\Repository\RoundRepository;
 use App\Service\RoundService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -463,12 +465,51 @@ final class GameApiTest extends ApiTestCase
         self::assertCount(1, $lines);
         $line = $lines[0];
         self::assertIsArray($line);
+        self::assertIsString($line['uuid']);
         self::assertSame('relation', $line['osmType']);
         self::assertSame(12345, $line['osmId']);
         self::assertSame('A', $line['ref']);
         self::assertSame('Ligne A', $line['name']);
         self::assertSame('tram', $line['routeType']);
         self::assertSame('#ff0000', $line['colour']);
+        self::assertSame([], $fetched['selectedGtfsLines']);
+    }
+
+    #[Test]
+    public function itReturnsTheGamesFeedSourcedTransitLines(): void
+    {
+        $client = static::createClient();
+
+        $created = $client->request('POST', '/api/games', self::AUTH + [
+            'json' => ['name' => 'Bâle', 'size' => 'M', 'edition' => 'metric'],
+        ])->toArray();
+        $uuid = $created['uuid'];
+        self::assertIsString($uuid);
+
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+        self::assertInstanceOf(EntityManagerInterface::class, $em);
+        $game = $em->getRepository(Game::class)->findOneBy(['uuid' => $uuid]);
+        self::assertInstanceOf(Game::class, $game);
+        $source = new GtfsSource('feed', '/tmp/feed.zip');
+        $source->setGame($game);
+        $em->persist($source);
+        $em->persist(new GameGtfsLine($game, $source, 'route-1', 'RE 1', 'Basel - Mulhouse', 'train', 'SBB', '#e30613', null));
+        $em->flush();
+
+        $fetched = $client->request('GET', "/api/games/{$uuid}", self::AUTH)->toArray();
+
+        self::assertSame([], $fetched['selectedTransitLines']);
+        $lines = $fetched['selectedGtfsLines'];
+        self::assertIsArray($lines);
+        self::assertCount(1, $lines);
+        $line = $lines[0];
+        self::assertIsArray($line);
+        self::assertIsString($line['uuid']);
+        self::assertSame('RE 1', $line['ref']);
+        self::assertSame('Basel - Mulhouse', $line['name']);
+        self::assertSame('train', $line['routeType']);
+        self::assertSame('SBB', $line['network']);
+        self::assertSame('#e30613', $line['colour']);
     }
 
     #[Test]

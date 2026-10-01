@@ -12,6 +12,7 @@ use ApiPlatform\Metadata\Post;
 use App\Dto\GameConfigInput;
 use App\Dto\GameInput;
 use App\Entity\Game;
+use App\Entity\GameGtfsLine;
 use App\Entity\GameTransitLine;
 use App\Entity\Round;
 use App\Enum\Edition;
@@ -100,7 +101,7 @@ final class GameResource
 
     /**
      * @var list<array{
-     *     osmType: string, osmId: int, ref: string, name: string,
+     *     uuid: string, osmType: string, osmId: int, ref: string, name: string,
      *     colour: string, routeType: string, network: string, operator: string
      * }>
      */
@@ -108,9 +109,19 @@ final class GameResource
     public array $selectedTransitLines = [];
 
     /**
-     * @param list<GameTransitLine> $transitLines
+     * @var list<array{
+     *     uuid: string, ref: string, name: string, colour: string,
+     *     routeType: string, network: string, operator: string
+     * }>
      */
-    public static function fromEntity(Game $game, Round $round, array $transitLines = []): self
+    #[Groups([Group::GAME_READ])]
+    public array $selectedGtfsLines = [];
+
+    /**
+     * @param list<GameTransitLine> $transitLines
+     * @param list<GameGtfsLine>    $gtfsLines
+     */
+    public static function fromEntity(Game $game, Round $round, array $transitLines = [], array $gtfsLines = []): self
     {
         $self = new self();
         $self->uuid = $game->getUuid();
@@ -128,6 +139,7 @@ final class GameResource
         $self->boundaryGeoJson = $game->getBoundaryGeoJson();
         $self->transitTilesPath = $game->getTransitTilesPath();
         $self->selectedTransitLines = array_map(static fn (GameTransitLine $line): array => [
+            'uuid' => $line->getUuid(),
             'osmType' => $line->getOsmType(),
             'osmId' => $line->getOsmId(),
             'ref' => $line->getRef(),
@@ -137,6 +149,16 @@ final class GameResource
             'network' => $line->getNetwork(),
             'operator' => $line->getOperator() ?? '',
         ], $transitLines);
+
+        $self->selectedGtfsLines = array_map(static fn (GameGtfsLine $line): array => [
+            'uuid' => $line->getUuid(),
+            'ref' => $line->getRef(),
+            'name' => $line->getName(),
+            'colour' => $line->getColour() ?? '',
+            'routeType' => $line->getRouteType(),
+            'network' => $line->getNetwork(),
+            'operator' => $line->getOperator() ?? '',
+        ], $gtfsLines);
 
         return $self;
     }

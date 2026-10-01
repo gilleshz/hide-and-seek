@@ -10,6 +10,7 @@ data class TransitLine(
     val routeType: String,
     val network: String,
     val operator: String,
+    val uuid: String = "",
 ) {
     private val bestName: String get() = when {
         nameEn.isNotBlank() -> nameEn

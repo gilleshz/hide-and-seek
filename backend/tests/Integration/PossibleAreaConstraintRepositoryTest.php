@@ -7,7 +7,6 @@ namespace App\Tests\Integration;
 use App\Dto\ManualConstraintDraft;
 use App\Entity\Feature;
 use App\Entity\Game;
-use App\Entity\GameTransitStation;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Entity\RoundMembership;
@@ -205,42 +204,6 @@ final class PossibleAreaConstraintRepositoryTest extends KernelTestCase
         // Hider's nearest is Zoo (3 chars, different length), so it stays inside the complement.
         self::assertTrue($this->pointIsInsidePossibleArea($round, new Point(13.251, 52.62)));
         // Hider's nearest is Gamma (5 chars, same length), so it is excluded.
-        self::assertFalse($this->pointIsInsidePossibleArea($round, new Point(13.499, 52.549)));
-    }
-
-    #[Test]
-    public function transitLineServesKeepsAHiderNearAServingStationInside(): void
-    {
-        $round = $this->persistBoundedRound();
-        $game = $round->getGame();
-        $this->persistTransitStation($game, 'Alpha', 13.30, 52.50, ['S1']);
-        $this->persistTransitStation($game, 'Gamma', 13.50, 52.55, ['S1']);
-        $this->persistTransitStation($game, 'Zoo', 13.25, 52.62, ['S9']);
-
-        // The ridden line S1 stops at the hider's nearest station; keep the union of S1's cells.
-        $this->repository->insertTransitLineConstraint($round, 'S1', true, 'stops');
-
-        // Hider's nearest is Gamma (served by S1), so it stays inside.
-        self::assertTrue($this->pointIsInsidePossibleArea($round, new Point(13.499, 52.549)));
-        // A point whose nearest is Zoo (not served by S1) is excluded.
-        self::assertFalse($this->pointIsInsidePossibleArea($round, new Point(13.251, 52.62)));
-    }
-
-    #[Test]
-    public function transitLineDoesNotStopKeepsAHiderNearANonServingStationInside(): void
-    {
-        $round = $this->persistBoundedRound();
-        $game = $round->getGame();
-        $this->persistTransitStation($game, 'Alpha', 13.30, 52.50, ['S1']);
-        $this->persistTransitStation($game, 'Gamma', 13.50, 52.55, ['S1']);
-        $this->persistTransitStation($game, 'Zoo', 13.25, 52.62, ['S9']);
-
-        // The ridden line S1 does not stop at the hider's nearest station; keep the complement.
-        $this->repository->insertTransitLineConstraint($round, 'S1', false, 'does not stop');
-
-        // Hider's nearest is Zoo (not served by S1), so it stays inside the complement.
-        self::assertTrue($this->pointIsInsidePossibleArea($round, new Point(13.251, 52.62)));
-        // Hider's nearest is Gamma (served by S1) is excluded.
         self::assertFalse($this->pointIsInsidePossibleArea($round, new Point(13.499, 52.549)));
     }
 
@@ -703,13 +666,6 @@ final class PossibleAreaConstraintRepositoryTest extends KernelTestCase
     private function persistFeature(Game $game, FeatureType $type, string $name, float $lng, float $lat): void
     {
         $this->em->persist(new Feature($game, $type, $name, new Point($lng, $lat)));
-        $this->em->flush();
-    }
-
-    /** @param list<string> $lineRefs */
-    private function persistTransitStation(Game $game, string $name, float $lng, float $lat, array $lineRefs): void
-    {
-        $this->em->persist(new GameTransitStation($game, $name, $name, new Point($lng, $lat), $lineRefs));
         $this->em->flush();
     }
 

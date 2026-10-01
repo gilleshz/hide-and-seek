@@ -6,7 +6,6 @@ namespace App\Tests\Service;
 
 use App\Entity\AskedQuestion;
 use App\Entity\Game;
-use App\Entity\GameTransitLine;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Enum\Edition;
@@ -14,7 +13,6 @@ use App\Enum\FeatureType;
 use App\Enum\GameSize;
 use App\Enum\QuestionCategory;
 use App\Enum\ThermometerResult;
-use App\Repository\GameTransitLineRepository;
 use App\Repository\PossibleAreaConstraintRepository;
 use App\Service\MercureJwtService;
 use App\Service\PossibleAreaService;
@@ -53,7 +51,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('Radar'),
             );
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -81,7 +79,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('no'),
             );
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -109,7 +107,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('hotter'),
             );
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -137,25 +135,27 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('colder'),
             );
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
     #[Test]
-    public function itAddsNoConstraintForATransitLineMatching(): void
+    public function itAddsNoGeometryForATransitLineMatching(): void
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = new Round($game);
         $hider = new Player($game, AccountFactory::create('Frank', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('+5 minutes'));
-        $question->setTransitLineUuid('line-uuid')->setTransitLineLabel('S1: Airport Line')->setMatchingAnswer(true);
+        $question->setTransitLineUuid('11111111-1111-4111-8111-111111111111')
+            ->setTransitLineLabel('S1: Airport Line')
+            ->setMatchingAnswer(true);
 
+        // The answer names the hider's station, which says nothing about where they are hiding.
         $constraints = $this->createMock(PossibleAreaConstraintRepository::class);
-        $constraints->expects(self::never())->method('insertMatchingConstraint');
-        $constraints->expects(self::never())->method('insertMatchingArealConstraint');
+        $constraints->expects(self::never())->method(self::anything());
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -187,7 +187,7 @@ final class PossibleAreaServiceTest extends TestCase
                 ['result' => 'same'],
             );
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -200,7 +200,7 @@ final class PossibleAreaServiceTest extends TestCase
         $constraints = $this->createStub(PossibleAreaConstraintRepository::class);
         $constraints->method('computePossibleArea')->willReturn(null);
 
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
 
         self::assertNull($service->computeCurrent($round));
     }
@@ -209,7 +209,7 @@ final class PossibleAreaServiceTest extends TestCase
     public function itCanComputePossibleAreaForBothCategories(): void
     {
         $constraints = $this->createStub(PossibleAreaConstraintRepository::class);
-        $service = new PossibleAreaService($constraints, $this->transitLineStub(), new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
 
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
@@ -230,37 +230,5 @@ final class PossibleAreaServiceTest extends TestCase
         $service->computeAfterReveal($thermometerQuestion, new Point(0.0, 0.0));
 
         self::assertNull($service->computeCurrent($round));
-    }
-
-    #[Test]
-    public function itAddsATransitLineConstraintFromTheRiddenLineRef(): void
-    {
-        $game = new Game('Berlin', GameSize::Large, Edition::Metric);
-        $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Grace', 'test-password'));
-        $line = new GameTransitLine($game, 'relation', 42, 'S1', 'Airport Line', 'subway', 'BVG', null, null);
-
-        $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('+5 minutes'));
-        $question->setTransitLineUuid($line->getUuid())
-            ->setTransitLineLabel('S1: Airport Line')
-            ->setMatchingAnswer(true);
-
-        $constraints = $this->createMock(PossibleAreaConstraintRepository::class);
-        $constraints->expects(self::never())->method('insertMatchingConstraint');
-        $constraints->expects(self::never())->method('insertStationNameLengthConstraint');
-        $constraints->expects(self::once())
-            ->method('insertTransitLineConstraint')
-            ->with($round, 'S1', true, self::stringContains('Transit line'), 'constraint.transit_line', ['result' => 'serves']);
-
-        $transitLines = $this->createStub(GameTransitLineRepository::class);
-        $transitLines->method('findOneByGameAndUuid')->willReturn($line);
-
-        $service = new PossibleAreaService($constraints, $transitLines, new MercureJwtService(self::SECRET), new FakeMercureHub());
-        $service->computeAfterReveal($question, new Point(0.0, 0.0));
-    }
-
-    private function transitLineStub(): GameTransitLineRepository
-    {
-        return $this->createStub(GameTransitLineRepository::class);
     }
 }

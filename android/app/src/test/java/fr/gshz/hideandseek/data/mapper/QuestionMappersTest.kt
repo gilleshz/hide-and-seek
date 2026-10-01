@@ -118,6 +118,23 @@ class QuestionMappersTest {
     }
 
     @Test
+    fun `a transit-line ask request names the line it is riding`() {
+        val request = AskQuestionRequest(
+            askerPlayerUuid = "player-1",
+            category = QuestionCategory.Matching.wireValue,
+            seekerLat = 10.0,
+            seekerLng = 20.0,
+            transitLineUuid = "11111111-1111-4111-8111-111111111111",
+        )
+
+        val encoded = json.encodeToString(AskQuestionRequest.serializer(), request)
+
+        assertTrue(encoded.contains("\"transitLineUuid\":\"11111111-1111-4111-8111-111111111111\""))
+        assertNull(request.featureType)
+        assertNull(request.transitLineOsmId)
+    }
+
+    @Test
     fun `an unknown category maps to null so the question is dropped instead of crashing`() {
         val dto = AskedQuestionDto(
             uuid = "q-5",

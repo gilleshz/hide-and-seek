@@ -19,6 +19,18 @@ data class TransitLineRef(
     val routeType: String = "",
     val network: String = "",
     val operator: String = "",
+    val uuid: String = "",
+)
+
+@Serializable
+data class GtfsLineDto(
+    val uuid: String = "",
+    val ref: String = "",
+    val name: String = "",
+    val colour: String = "",
+    val routeType: String = "",
+    val network: String = "",
+    val operator: String = "",
 )
 
 @Serializable
@@ -72,6 +84,7 @@ data class GameDto(
     val boundaryGeoJson: String? = null,
     val defaultHidingPeriodMinutes: Int? = null,
     val selectedTransitLines: List<TransitLineRef> = emptyList(),
+    val selectedGtfsLines: List<GtfsLineDto> = emptyList(),
 )
 
 @Serializable

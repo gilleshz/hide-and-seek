@@ -8,8 +8,10 @@ use ApiPlatform\Symfony\Bundle\Test\Client;
 use App\Entity\AskedQuestion;
 use App\Entity\Feature;
 use App\Entity\Game;
+use App\Entity\GameGtfsLine;
 use App\Entity\GameTransitLine;
 use App\Entity\GameTransitStation;
+use App\Entity\GtfsSource;
 use App\Enum\FeatureType;
 use App\Enum\RoundStatus;
 use App\Repository\RoundRepository;
@@ -393,6 +395,61 @@ final class AskedQuestionApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function aTransitLineMatchingNamesAFeedSourcedLineByUuid(): void
+    {
+        $client = static::createClient();
+        [$roundUuid, $gameUuid, , $seekerToken, $hiderUuid, $hiderToken] = $this->setUpGameWithSides($client);
+        $lineUuid = $this->seedGtfsLine($gameUuid, 'RE 1', 'Basel - Mulhouse');
+        $this->seedTransitStation($gameUuid, 'Airport', 13.405, 52.52, ['RE 1']);
+
+        $client->request('POST', "/api/rounds/{$roundUuid}/location", $this->headersWithToken($hiderToken) + [
+            'json' => ['lat' => 52.52, 'lng' => 13.405],
+        ]);
+
+        $asked = $client->request('POST', "/api/rounds/{$roundUuid}/questions", $this->headersWithToken($seekerToken) + [
+            'json' => [
+                'category' => 'matching',
+                'transitLineUuid' => $lineUuid,
+            ],
+        ])->toArray();
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('RE 1: Basel - Mulhouse', $asked['transitLineLabel']);
+        self::assertNull($asked['featureType']);
+        $questionUuid = $asked['uuid'];
+        self::assertIsString($questionUuid);
+
+        $revealed = $client->request(
+            'POST',
+            "/api/questions/{$questionUuid}/reveal",
+            $this->headersWithToken($hiderToken),
+        )->toArray();
+
+        self::assertResponseIsSuccessful();
+        self::assertTrue($revealed['matchingAnswer']);
+        $answerMessage = $this->questionMessage($client, $gameUuid, 'answer', $questionUuid);
+        self::assertSame($hiderUuid, $answerMessage['senderUuid']);
+        self::assertSame('Yes, RE 1: Basel - Mulhouse stops at my station.', $answerMessage['body']);
+    }
+
+    #[Test]
+    public function aTransitLineMatchingWithAnUnknownLineUuidIsRejected(): void
+    {
+        $client = static::createClient();
+        [$roundUuid, , , $seekerToken] = $this->setUpGameWithSides($client);
+
+        $rejected = $client->request('POST', "/api/rounds/{$roundUuid}/questions", $this->headersWithToken($seekerToken) + [
+            'json' => [
+                'category' => 'matching',
+                'transitLineUuid' => '11111111-1111-4111-8111-111111111111',
+            ],
+        ])->toArray(false);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame('question.transit_line_not_found', $rejected['errorKey']);
+    }
+
+    #[Test]
     public function aSeekerCanAskAStationNameLengthMatchingWhichStoresTheFlag(): void
     {
         $client = static::createClient();
@@ -504,6 +561,23 @@ final class AskedQuestionApiTest extends ApiTestCase
 
         $em->persist(new GameTransitLine($game, 'relation', $osmId, $ref, $name, 'subway', 'BVG', null, null));
         $em->flush();
+    }
+
+    private function seedGtfsLine(string $gameUuid, string $ref, string $name): string
+    {
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+        self::assertInstanceOf(EntityManagerInterface::class, $em);
+        $game = $em->getRepository(Game::class)->findOneBy(['uuid' => $gameUuid]);
+        self::assertInstanceOf(Game::class, $game);
+
+        $source = new GtfsSource('feed', '/tmp/feed.zip');
+        $source->setGame($game);
+        $em->persist($source);
+        $line = new GameGtfsLine($game, $source, 'route-1', $ref, $name, 'train', 'SBB', null, null);
+        $em->persist($line);
+        $em->flush();
+
+        return $line->getUuid();
     }
 
     private function seedStation(string $gameUuid, string $name, float $lng, float $lat): void

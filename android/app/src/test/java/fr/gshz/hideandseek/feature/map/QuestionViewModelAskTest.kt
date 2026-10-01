@@ -101,7 +101,7 @@ class QuestionViewModelAskTest {
     }
 
     @Test
-    fun `asking a transit-line matching question sends the line OSM ids and no feature type`() =
+    fun `asking a transit-line matching question sends the line and no feature type`() =
         runTest(testDispatcher) {
             seedSeeker()
             fixture.locationRepository.currentLocationResult = DeviceLocation(latitude = 10.0, longitude = 20.0)
@@ -135,6 +135,7 @@ class QuestionViewModelAskTest {
                         match {
                             it.category == QuestionCategory.Matching &&
                                 it.featureType == null &&
+                                it.transitLineUuid == OSM_LINE_UUID &&
                                 it.transitLineOsmId == "123" &&
                                 it.transitLineOsmType == "relation" &&
                                 it.seekerLat == 10.0 && it.seekerLng == 20.0
@@ -144,6 +145,44 @@ class QuestionViewModelAskTest {
                 cancelAndIgnoreRemainingEvents()
             }
         }
+
+    @Test
+    fun `asking a feed-sourced transit-line question sends only its uuid`() = runTest(testDispatcher) {
+        seedSeeker()
+        fixture.locationRepository.currentLocationResult = DeviceLocation(latitude = 10.0, longitude = 20.0)
+        coEvery { fixture.questionRepository.askFeatureQuestion(any()) } returns
+            askedQuestion(QuestionCategory.Matching)
+        val viewModel = fixture.createQuestionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            viewModel.enterSimulation(QuestionCategory.Matching, listOf(gtfsLine()))
+            while (state.simulation?.availableTransitLines.isNullOrEmpty()) state = awaitItem()
+            assertEquals("RE 1", state.simulation?.availableTransitLines?.single()?.ref)
+
+            viewModel.updateSimulation(refreshGeometry = false) {
+                it.copy(transitLineSelected = true, featureType = null, candidateFeatures = emptyList())
+            }
+            viewModel.updateSimulation(refreshGeometry = false) {
+                it.copy(selectedTransitLine = state.simulation!!.availableTransitLines.single())
+            }
+            while (state.simulation?.selectedTransitLine == null) state = awaitItem()
+
+            viewModel.askSheetQuestion()
+
+            coVerify {
+                fixture.questionRepository.askFeatureQuestion(
+                    match {
+                        it.category == QuestionCategory.Matching &&
+                            it.transitLineUuid == GTFS_LINE_UUID &&
+                            it.transitLineOsmId == null &&
+                            it.transitLineOsmType == null
+                    },
+                )
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun `selecting station name length clears feature type and transit line`() = runTest(testDispatcher) {
@@ -349,5 +388,23 @@ class QuestionViewModelAskTest {
         routeType = "subway",
         network = "",
         operator = "",
+        uuid = OSM_LINE_UUID,
     )
+
+    private fun gtfsLine() = TransitLine(
+        osmId = "",
+        osmType = "",
+        ref = "RE 1",
+        name = "Basel - Mulhouse",
+        colour = "",
+        routeType = "train",
+        network = "SBB",
+        operator = "",
+        uuid = GTFS_LINE_UUID,
+    )
+
+    private companion object {
+        const val OSM_LINE_UUID = "11111111-1111-4111-8111-111111111111"
+        const val GTFS_LINE_UUID = "22222222-2222-4222-8222-222222222222"
+    }
 }

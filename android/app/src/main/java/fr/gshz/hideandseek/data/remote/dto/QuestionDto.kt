@@ -16,6 +16,7 @@ data class AskQuestionRequest(
     val withinMeters: Double? = null,
     val photoTarget: String? = null,
     val isCustomRadius: Boolean = false,
+    val transitLineUuid: String? = null,
     val transitLineOsmId: String? = null,
     val transitLineOsmType: String? = null,
     val stationNameLength: Boolean? = null,

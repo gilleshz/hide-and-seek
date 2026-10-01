@@ -33,6 +33,11 @@ class GameGtfsLineRepository extends ServiceEntityRepository
         return $this->findBy(['game' => $game]);
     }
 
+    public function findOneByGameAndUuid(Game $game, string $uuid): ?GameGtfsLine
+    {
+        return $this->findOneBy(['game' => $game, 'uuid' => $uuid]);
+    }
+
     public function deleteByGame(Game $game): void
     {
         $conn = $this->getEntityManager()->getConnection();

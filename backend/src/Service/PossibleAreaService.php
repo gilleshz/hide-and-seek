@@ -13,7 +13,6 @@ use App\Enum\ConstraintSource;
 use App\Enum\MeasuringResult;
 use App\Enum\QuestionCategory;
 use App\Enum\ThermometerResult;
-use App\Repository\GameTransitLineRepository;
 use App\Repository\PossibleAreaConstraintRepository;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use Symfony\Component\Mercure\HubInterface;
@@ -23,7 +22,6 @@ readonly class PossibleAreaService
 {
     public function __construct(
         private PossibleAreaConstraintRepository $constraints,
-        private GameTransitLineRepository $transitLines,
         private MercureJwtService $mercure,
         private HubInterface $hub,
     ) {
@@ -177,9 +175,8 @@ readonly class PossibleAreaService
 
     private function computeMatchingConstraint(AskedQuestion $question): void
     {
+        // The answer is about the hider's station, not their body, so no region follows from it.
         if ($question->getTransitLineUuid() !== null) {
-            $this->computeTransitLineConstraint($question);
-
             return;
         }
         if ($question->isStationNameLength()) {
@@ -237,29 +234,6 @@ readonly class PossibleAreaService
             label: sprintf('Station name length: %s', $answer ? 'same' : 'different'),
             labelKey: 'constraint.station_name_length',
             labelArgs: ['result' => $answer ? 'same' : 'different'],
-        );
-    }
-
-    private function computeTransitLineConstraint(AskedQuestion $question): void
-    {
-        $answer = $question->getMatchingAnswer();
-        $lineUuid = $question->getTransitLineUuid();
-        if ($answer === null || $lineUuid === null) {
-            return;
-        }
-
-        $line = $this->transitLines->findOneByGameAndUuid($question->getRound()->getGame(), $lineUuid);
-        if ($line === null) {
-            return;
-        }
-
-        $this->constraints->insertTransitLineConstraint(
-            round: $question->getRound(),
-            ref: $line->getRef(),
-            serves: $answer,
-            label: sprintf('Transit line: %s', $answer ? 'stops' : 'does not stop'),
-            labelKey: 'constraint.transit_line',
-            labelArgs: ['result' => $answer ? 'serves' : 'excludes'],
         );
     }
 

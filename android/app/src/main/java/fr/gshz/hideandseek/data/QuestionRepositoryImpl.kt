@@ -78,6 +78,7 @@ class QuestionRepositoryImpl @Inject constructor(
             seekerLng = request.seekerLng,
             featureType = request.featureType?.wireValue,
             withinMeters = request.withinMeters,
+            transitLineUuid = request.transitLineUuid,
             transitLineOsmId = request.transitLineOsmId,
             transitLineOsmType = request.transitLineOsmType,
             stationNameLength = request.stationNameLength,

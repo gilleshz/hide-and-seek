@@ -6,7 +6,6 @@ namespace App\Service;
 
 use App\Dto\AskQuestionInput;
 use App\Entity\AskedQuestion;
-use App\Entity\GameTransitLine;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Enum\Edition;
@@ -26,7 +25,6 @@ use App\QuestionCatalog\CatalogDefinition;
 use App\QuestionCatalog\CatalogOption;
 use App\Repository\AskedQuestionRepository;
 use App\Repository\FeatureRepository;
-use App\Repository\GameTransitLineRepository;
 use App\Repository\GameTransitStationRepository;
 use App\Repository\HidingZoneRepository;
 use App\Repository\PlayerLocationRepository;
@@ -45,7 +43,7 @@ final readonly class QuestionService
     public function __construct(
         private RoundMembershipRepository $memberships,
         private AskedQuestionRepository $askedQuestions,
-        private GameTransitLineRepository $transitLines,
+        private TransitLineResolver $transitLineResolver,
         private GameTransitStationRepository $transitStations,
         private HidingZoneRepository $hidingZones,
         private PlayerLocationRepository $playerLocations,
@@ -597,7 +595,12 @@ final readonly class QuestionService
             return;
         }
 
-        if ($input->transitLineOsmId === null || $input->transitLineOsmType === null) {
+        $this->applyTransitLineInputs($question, $input);
+    }
+
+    private function applyTransitLineInputs(AskedQuestion $question, AskQuestionInput $input): void
+    {
+        if ($input->transitLineUuid === null && ($input->transitLineOsmId === null || $input->transitLineOsmType === null)) {
             throw new FunctionalException(
                 message: 'This question requires a feature type or a transit line.',
                 errorKey: 'question.missing_feature_type',
@@ -605,11 +608,10 @@ final readonly class QuestionService
         }
 
         $game = $question->getRound()->getGame();
-        $line = $this->transitLines->findOneByGameAndOsm(
-            $game,
-            $input->transitLineOsmType,
-            (int) $input->transitLineOsmId,
-        );
+        $line = $input->transitLineUuid !== null
+            ? $this->transitLineResolver->resolveByUuid($game, $input->transitLineUuid)
+            : $this->transitLineResolver->resolveByOsm($game, $input->transitLineOsmType ?? '', (int) $input->transitLineOsmId);
+
         if ($line === null) {
             throw new FunctionalException(
                 message: 'The transit line you are riding was not found for this game.',
@@ -618,20 +620,8 @@ final readonly class QuestionService
         }
 
         $question
-            ->setTransitLineUuid($line->getUuid())
-            ->setTransitLineLabel($this->transitLineLabel($line));
-    }
-
-    private function transitLineLabel(GameTransitLine $line): string
-    {
-        $ref = trim($line->getRef());
-        $name = trim($line->getName());
-
-        return match (true) {
-            $ref !== '' && $name !== '' => sprintf('%s: %s', $ref, $name),
-            $ref !== '' => $ref,
-            default => $name,
-        };
+            ->setTransitLineUuid($line->uuid)
+            ->setTransitLineLabel($line->label);
     }
 
     private function applyTentaclesInputs(AskedQuestion $question, AskQuestionInput $input): void
@@ -896,13 +886,13 @@ final readonly class QuestionService
     {
         $game = $question->getRound()->getGame();
         $lineUuid = $question->getTransitLineUuid();
-        $line = $lineUuid !== null ? $this->transitLines->findOneByGameAndUuid($game, $lineUuid) : null;
+        $line = $lineUuid !== null ? $this->transitLineResolver->resolveByUuid($game, $lineUuid) : null;
         $refs = $this->transitStations->findNearestServingRefs($game, $hiderPoint);
         if ($line === null || $refs === null) {
             return;
         }
 
-        $question->setMatchingAnswer(in_array($line->getRef(), $refs, true));
+        $question->setMatchingAnswer(in_array($line->ref, $refs, true));
     }
 
     private function revealMeasuring(AskedQuestion $question, Point $hiderPoint, ?float $hiderAltitude = null): void
@@ -1271,7 +1261,7 @@ final readonly class QuestionService
             return;
         }
 
-        if ($data->transitLineOsmId === null || $data->transitLineOsmType === null) {
+        if ($data->transitLineUuid === null && ($data->transitLineOsmId === null || $data->transitLineOsmType === null)) {
             throw new FunctionalException(
                 message: 'A feature type or a transit line is required for this question category.',
                 errorKey: 'asked_question.matching_target_required',

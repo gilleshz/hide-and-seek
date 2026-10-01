@@ -38,12 +38,6 @@ class GtfsSourceRepository extends ServiceEntityRepository
         return $this->findBy(['game' => $game]);
     }
 
-    public function deleteByGame(Game $game): void
-    {
-        $conn = $this->getEntityManager()->getConnection();
-        $conn->executeStatement('DELETE FROM gtfs_source WHERE game_id = :gameId', ['gameId' => $game->getId()]);
-    }
-
     /** @return list<GtfsSource> */
     public function findOrphansCreatedBefore(\DateTimeImmutable $before): array
     {

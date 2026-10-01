@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Dto\AskQuestionInput;
+use App\Dto\ResolvedTransitLine;
 use App\Entity\AskedQuestion;
 use App\Entity\ChatMessage;
 use App\Entity\Feature;
 use App\Entity\Game;
-use App\Entity\GameTransitLine;
 use App\Entity\HidingZone;
 use App\Entity\Player;
 use App\Entity\PlayerLocation;
@@ -31,7 +31,6 @@ use App\GeoDistance;
 use App\Repository\AskedQuestionRepository;
 use App\Repository\ChatMessageRepository;
 use App\Repository\FeatureRepository;
-use App\Repository\GameTransitLineRepository;
 use App\Repository\GameTransitStationRepository;
 use App\Repository\HidingZoneRepository;
 use App\Repository\PlayerLocationRepository;
@@ -43,6 +42,7 @@ use App\Service\PossibleAreaService;
 use App\Service\QuestionMessageFormatter;
 use App\Service\QuestionService;
 use App\Service\RoundClock;
+use App\Service\TransitLineResolver;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
 use App\Tests\Support\AccountFactory;
@@ -1550,14 +1550,14 @@ final class QuestionServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
         $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $line = new GameTransitLine($game, 'relation', 42, 'S1', 'Airport Line', 'subway', 'BVG', null, null);
+        $line = new ResolvedTransitLine('11111111-1111-4111-8111-111111111111', 'S1', 'S1: Airport Line');
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
         $askedQuestions = $this->askedQuestionsStub();
         $askedQuestions->method('findOutstandingByRound')->willReturn(null);
-        $transitLines = $this->createStub(GameTransitLineRepository::class);
-        $transitLines->method('findOneByGameAndOsm')->willReturn($line);
+        $resolver = $this->createStub(TransitLineResolver::class);
+        $resolver->method('resolveByOsm')->willReturn($line);
 
         $messages = [];
         $service = $this->service(
@@ -1566,17 +1566,54 @@ final class QuestionServiceTest extends TestCase
             $this->createStub(PlayerLocationRepository::class),
             $this->chatCapturing($messages),
             null,
-            $transitLines,
+            $resolver,
         );
 
         $question = $service->ask($round, $asker, $this->transitLineInput($asker->getUuid()));
 
         self::assertSame(QuestionCategory::Matching, $question->getCategory());
         self::assertNull($question->getFeatureType());
-        self::assertSame($line->getUuid(), $question->getTransitLineUuid());
+        self::assertSame($line->uuid, $question->getTransitLineUuid());
         self::assertSame('S1: Airport Line', $question->getTransitLineLabel());
         self::assertCount(1, $messages);
         self::assertSame('I am riding S1: Airport Line. Does it stop at your station?', $messages[0]->getBody());
+    }
+
+    #[Test]
+    public function askingAMatchingTransitLineByUuidResolvesAFeedSourcedLine(): void
+    {
+        $game = new Game('Berlin', GameSize::Large, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $line = new ResolvedTransitLine('22222222-2222-4222-8222-222222222222', 'RE 1', 'RE 1: Basel - Mulhouse');
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
+        $askedQuestions = $this->askedQuestionsStub();
+        $askedQuestions->method('findOutstandingByRound')->willReturn(null);
+        $resolver = $this->createStub(TransitLineResolver::class);
+        $resolver->method('resolveByUuid')->willReturn($line);
+        $resolver->method('resolveByOsm')->willReturn(null);
+
+        $messages = [];
+        $service = $this->service(
+            $memberships,
+            $askedQuestions,
+            $this->createStub(PlayerLocationRepository::class),
+            $this->chatCapturing($messages),
+            null,
+            $resolver,
+        );
+
+        $input = new AskQuestionInput();
+        $input->category = QuestionCategory::Matching;
+        $input->transitLineUuid = $line->uuid;
+
+        $question = $service->ask($round, $asker, $input);
+
+        self::assertSame($line->uuid, $question->getTransitLineUuid());
+        self::assertSame('RE 1: Basel - Mulhouse', $question->getTransitLineLabel());
+        self::assertSame('I am riding RE 1: Basel - Mulhouse. Does it stop at your station?', $messages[0]->getBody());
     }
 
     #[Test]
@@ -1591,8 +1628,9 @@ final class QuestionServiceTest extends TestCase
         $askedQuestions = $this->createMock(AskedQuestionRepository::class);
         $askedQuestions->method('findOutstandingByRound')->willReturn(null);
         $askedQuestions->expects(self::never())->method('save');
-        $transitLines = $this->createStub(GameTransitLineRepository::class);
-        $transitLines->method('findOneByGameAndOsm')->willReturn(null);
+        $resolver = $this->createStub(TransitLineResolver::class);
+        $resolver->method('resolveByOsm')->willReturn(null);
+        $resolver->method('resolveByUuid')->willReturn(null);
 
         $this->expectException(FunctionalException::class);
 
@@ -1602,7 +1640,7 @@ final class QuestionServiceTest extends TestCase
             $this->createStub(PlayerLocationRepository::class),
             $this->chatThatNeverPosts(),
             null,
-            $transitLines,
+            $resolver,
         )->ask($round, $asker, $this->transitLineInput($asker->getUuid()));
     }
 
@@ -1612,9 +1650,9 @@ final class QuestionServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
         $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $line = new GameTransitLine($game, 'relation', 42, 'S1', 'Airport Line', 'subway', 'BVG', null, null);
+        $line = new ResolvedTransitLine('11111111-1111-4111-8111-111111111111', 'S1', 'S1: Airport Line');
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('-1 minute'));
-        $question->setTransitLineUuid($line->getUuid())->setTransitLineLabel('S1: Airport Line');
+        $question->setTransitLineUuid($line->uuid)->setTransitLineLabel($line->label);
 
         $messages = [];
         $state = $this->transitLineRevealService($round, $hider, $line, ['S1', 'S7'], $this->chatCapturing($messages))
@@ -1633,9 +1671,9 @@ final class QuestionServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
         $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $line = new GameTransitLine($game, 'relation', 42, 'S1', 'Airport Line', 'subway', 'BVG', null, null);
+        $line = new ResolvedTransitLine('11111111-1111-4111-8111-111111111111', 'S1', 'S1: Airport Line');
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('-1 minute'));
-        $question->setTransitLineUuid($line->getUuid())->setTransitLineLabel('S1: Airport Line');
+        $question->setTransitLineUuid($line->uuid)->setTransitLineLabel($line->label);
 
         $messages = [];
         $state = $this->transitLineRevealService($round, $hider, $line, ['U2'], $this->chatCapturing($messages))
@@ -1649,7 +1687,7 @@ final class QuestionServiceTest extends TestCase
     private function transitLineRevealService(
         Round $round,
         Player $hider,
-        GameTransitLine $line,
+        ResolvedTransitLine $line,
         array $servingRefs,
         ChatService $chat,
     ): QuestionService {
@@ -1658,8 +1696,8 @@ final class QuestionServiceTest extends TestCase
 
         $hidingZones = $this->createStub(HidingZoneRepository::class);
         $hidingZones->method('findOneByRound')->willReturn(new HidingZone($round, new Point(2.0, 2.0), 800.0));
-        $transitLines = $this->createStub(GameTransitLineRepository::class);
-        $transitLines->method('findOneByGameAndUuid')->willReturn($line);
+        $resolver = $this->createStub(TransitLineResolver::class);
+        $resolver->method('resolveByUuid')->willReturn($line);
         $stations = $this->createStub(GameTransitStationRepository::class);
         $stations->method('findNearestServingRefs')->willReturn($servingRefs);
 
@@ -1669,7 +1707,7 @@ final class QuestionServiceTest extends TestCase
             $locations,
             $chat,
             null,
-            $transitLines,
+            $resolver,
             $stations,
             $hidingZones,
         );
@@ -1772,14 +1810,14 @@ final class QuestionServiceTest extends TestCase
         PlayerLocationRepository $locations,
         ChatService $chat,
         ?FeatureRepository $features = null,
-        ?GameTransitLineRepository $transitLines = null,
+        ?TransitLineResolver $transitLineResolver = null,
         ?GameTransitStationRepository $transitStations = null,
         ?HidingZoneRepository $hidingZones = null,
         ?ImageStorageInterface $imageStorage = null,
     ): QuestionService {
         $imageStorage ??= $this->createStub(ImageStorageInterface::class);
         $features ??= $this->createStub(FeatureRepository::class);
-        $transitLines ??= $this->createStub(GameTransitLineRepository::class);
+        $transitLineResolver ??= $this->createStub(TransitLineResolver::class);
         $transitStations ??= $this->createStub(GameTransitStationRepository::class);
         $hidingZones ??= $this->createStub(HidingZoneRepository::class);
 
@@ -1790,7 +1828,7 @@ final class QuestionServiceTest extends TestCase
         return new QuestionService(
             $memberships,
             $askedQuestions,
-            $transitLines,
+            $transitLineResolver,
             $transitStations,
             $hidingZones,
             $locations,

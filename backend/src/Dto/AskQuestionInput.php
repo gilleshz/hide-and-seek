@@ -54,6 +54,10 @@ final class AskQuestionInput
     #[Groups([Group::QUESTION_WRITE])]
     public bool $isCustomRadius = false;
 
+    #[Assert\Uuid]
+    #[Groups([Group::QUESTION_WRITE])]
+    public ?string $transitLineUuid = null;
+
     #[Groups([Group::QUESTION_WRITE])]
     public ?string $transitLineOsmId = null;
 

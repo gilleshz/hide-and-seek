@@ -37,9 +37,12 @@ final readonly class GameCleanupService
         $name = $game->getName();
         $sources = $this->gtfsSources->findByGame($game);
 
-        $this->entityManager->wrapInTransaction(function () use ($game): void {
+        $this->entityManager->wrapInTransaction(function () use ($game, $sources): void {
             $this->gameGtfsLines->deleteByGame($game);
-            $this->gtfsSources->deleteByGame($game);
+            // A raw DELETE leaves these managed, and the flush then re-cascades their game.
+            foreach ($sources as $source) {
+                $this->gtfsSources->remove($source, false);
+            }
             $this->entityManager->remove($game);
             $this->entityManager->flush();
         });

@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.data.mapper
 
 import fr.gshz.hideandseek.data.remote.dto.GameDto
+import fr.gshz.hideandseek.data.remote.dto.GtfsLineDto
 import fr.gshz.hideandseek.data.remote.dto.JoinDto
 import fr.gshz.hideandseek.data.remote.dto.LeaderboardEntryDto
 import fr.gshz.hideandseek.data.remote.dto.SubscriberTokenDto
@@ -33,7 +34,20 @@ fun GameDto.toDomain() = GameSummary(
     boundaryGeoJson = boundaryGeoJson,
     joinCode = joinCode,
     defaultHidingPeriodMinutes = defaultHidingPeriodMinutes,
-    selectedTransitLines = selectedTransitLines.map { it.toTransitLine() },
+    selectedTransitLines = selectedTransitLines.map { it.toTransitLine() } +
+        selectedGtfsLines.map { it.toTransitLine() },
+)
+
+fun GtfsLineDto.toTransitLine() = TransitLine(
+    osmId = "",
+    osmType = "",
+    ref = ref,
+    name = name,
+    colour = colour,
+    routeType = routeType,
+    network = network,
+    operator = operator,
+    uuid = uuid,
 )
 
 fun TransitLineRef.toTransitLine() = TransitLine(
@@ -46,6 +60,7 @@ fun TransitLineRef.toTransitLine() = TransitLine(
     routeType = routeType,
     network = network,
     operator = operator,
+    uuid = uuid,
 )
 
 fun JoinDto.toDomain() = JoinResult(

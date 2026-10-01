@@ -21,7 +21,6 @@ use App\Exception\IdentityRequiredException;
 use App\Repository\AskedQuestionRepository;
 use App\Repository\ChatMessageRepository;
 use App\Repository\FeatureRepository;
-use App\Repository\GameTransitLineRepository;
 use App\Repository\GameTransitStationRepository;
 use App\Repository\HidingZoneRepository;
 use App\Repository\PlayerLocationRepository;
@@ -36,6 +35,7 @@ use App\Service\PossibleAreaService;
 use App\Service\QuestionMessageFormatter;
 use App\Service\QuestionService;
 use App\Service\RoundClock;
+use App\Service\TransitLineResolver;
 use App\Service\UploadedImageReader;
 use App\State\VetoQuestionProcessor;
 use App\Storage\ImageStorageInterface;
@@ -189,7 +189,7 @@ final class VetoQuestionProcessorTest extends TestCase
         $questionService = new QuestionService(
             $memberships,
             $asked,
-            $this->createStub(GameTransitLineRepository::class),
+            $this->createStub(TransitLineResolver::class),
             $this->createStub(GameTransitStationRepository::class),
             $this->createStub(HidingZoneRepository::class),
             $this->createStub(PlayerLocationRepository::class),

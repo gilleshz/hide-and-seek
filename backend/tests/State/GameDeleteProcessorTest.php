@@ -73,7 +73,6 @@ final class GameDeleteProcessorTest extends TestCase
 
         $gtfsSources = $this->createMock(GtfsSourceRepository::class);
         $gtfsSources->expects(self::once())->method('findByGame')->willReturn([]);
-        $gtfsSources->expects(self::once())->method('deleteByGame')->with($game);
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
         $entityManager->expects(self::once())->method('wrapInTransaction')

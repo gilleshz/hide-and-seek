@@ -745,8 +745,8 @@ private suspend fun askRealFeature(
 }
 
 /**
- * Transit Line is a Matching option with a null feature type: send the chosen line's OSM ids instead.
- * Sea Level is the equivalent Measuring special: no feature type, the seeker's altitude instead.
+ * Transit Line is a Matching option with a null feature type: send the chosen line's uuid, plus the
+ * OSM ids an older server still expects. Sea Level is the equivalent Measuring special.
  */
 private fun featureAskRequest(
     state: SimulationState,
@@ -783,8 +783,9 @@ private fun featureAskRequest(
                 category = QuestionCategory.Matching,
                 seekerLat = seekerLat,
                 seekerLng = seekerLng,
-                transitLineOsmId = line.osmId,
-                transitLineOsmType = line.osmType,
+                transitLineUuid = line.uuid.takeIf { it.isNotBlank() },
+                transitLineOsmId = line.osmId.takeIf { it.isNotBlank() },
+                transitLineOsmType = line.osmType.takeIf { it.isNotBlank() },
             )
         }
     } else {

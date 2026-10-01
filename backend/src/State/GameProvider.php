@@ -7,6 +7,7 @@ namespace App\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ApiResource\GameResource;
+use App\Repository\GameGtfsLineRepository;
 use App\Repository\GameRepository;
 use App\Repository\GameTransitLineRepository;
 use App\Repository\RoundRepository;
@@ -20,6 +21,7 @@ final readonly class GameProvider implements ProviderInterface
         private GameRepository $games,
         private RoundRepository $rounds,
         private GameTransitLineRepository $transitLines,
+        private GameGtfsLineRepository $gtfsLines,
     ) {
     }
 
@@ -40,6 +42,11 @@ final readonly class GameProvider implements ProviderInterface
             return null;
         }
 
-        return GameResource::fromEntity($game, $round, $this->transitLines->findByGame($game));
+        return GameResource::fromEntity(
+            $game,
+            $round,
+            $this->transitLines->findByGame($game),
+            $this->gtfsLines->findByGame($game),
+        );
     }
 }

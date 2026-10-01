@@ -8,6 +8,7 @@ data class FeatureAskRequest(
     val seekerLng: Double,
     val featureType: FeatureType? = null,
     val withinMeters: Double? = null,
+    val transitLineUuid: String? = null,
     val transitLineOsmId: String? = null,
     val transitLineOsmType: String? = null,
     val stationNameLength: Boolean = false,

@@ -1288,67 +1288,6 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
     /**
      * @param array<string, string|int>|null $labelArgs
      */
-    public function insertTransitLineConstraint(
-        Round $round,
-        string $ref,
-        bool $serves,
-        string $label,
-        ?string $labelKey = null,
-        ?array $labelArgs = null,
-    ): void {
-        $geoJson = $this->buildTransitLineUnionGeoJson($round->getGame(), $ref, $serves);
-        if ($geoJson === '') {
-            return;
-        }
-
-        $this->insertConstraintFromGeoJson($round, $geoJson, $label, $labelKey, $labelArgs);
-    }
-
-    private function buildTransitLineUnionGeoJson(Game $game, string $ref, bool $serves): string
-    {
-        $env = $this->envelopeCorners($game, new Point(0, 0));
-        $kept = $serves
-            ? 'ST_Intersection((SELECT geom FROM uni), (SELECT geom FROM env))'
-            : "ST_Difference((SELECT geom FROM env), COALESCE((SELECT geom FROM uni), "
-                . "ST_SetSRID(ST_GeomFromText('POLYGON EMPTY'), 4326)))";
-        $sql = <<<SQL
-            WITH feats AS (
-                SELECT point::geometry AS g, line_refs
-                FROM game_transit_stations WHERE game_id = :gameId
-            ),
-            env AS (SELECT ST_SetSRID(ST_MakeEnvelope(:swLng, :swLat, :neLng, :neLat), 4326) AS geom),
-            vor AS (
-                SELECT (ST_Dump(ST_VoronoiPolygons(ST_Collect(g), 0.0, (SELECT geom FROM env)))).geom AS geom
-                FROM feats
-            ),
-            matched AS (
-                SELECT v.geom FROM vor v JOIN feats f ON ST_Contains(v.geom, f.g)
-                WHERE f.line_refs @> to_jsonb(:ref::text)
-            ),
-            uni AS (SELECT ST_Union(geom) AS geom FROM matched)
-            SELECT ST_AsGeoJSON($kept) AS geojson
-        SQL;
-
-        $result = $this->getEntityManager()->getConnection()->fetchAssociative(
-            $sql,
-            [
-                'gameId' => $game->getId(),
-                'swLng' => $env['swLng'],
-                'swLat' => $env['swLat'],
-                'neLng' => $env['neLng'],
-                'neLat' => $env['neLat'],
-                'ref' => $ref,
-            ],
-        );
-
-        $geojson = $result['geojson'] ?? null;
-
-        return is_string($geojson) && $geojson !== '' ? $geojson : '';
-    }
-
-    /**
-     * @param array<string, string|int>|null $labelArgs
-     */
     public function insertTentaclesCellConstraint(
         Round $round,
         FeatureType $type,
