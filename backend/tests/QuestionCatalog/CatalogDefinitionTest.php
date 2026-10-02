@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\QuestionCatalog;
 
+use App\Enum\Edition;
 use App\Enum\FeatureType;
+use App\Enum\GameSize;
 use App\Enum\QuestionCategory;
+use App\Enum\RulesVariant;
 use App\QuestionCatalog\CatalogCategory;
 use App\QuestionCatalog\CatalogDefinition;
 use App\QuestionCatalog\CatalogOption;
@@ -103,6 +106,44 @@ final class CatalogDefinitionTest extends TestCase
         self::assertContains(FeatureType::BorderInternational, $features);
         self::assertContains(FeatureType::Border1st, $features);
         self::assertContains(FeatureType::Border2nd, $features);
+    }
+
+    #[Test]
+    public function aCompactSmallGameServesTheShorterThermometerLadders(): void
+    {
+        self::assertSame(
+            ['1 km', '2 km'],
+            self::thermometerLabels(GameSize::Small, Edition::Metric, RulesVariant::Compact),
+        );
+        self::assertSame(
+            ['½ mi', '1 mi'],
+            self::thermometerLabels(GameSize::Small, Edition::Imperial, RulesVariant::Compact),
+        );
+    }
+
+    #[Test]
+    public function anOfficialSmallGameKeepsTheFullThermometerLadders(): void
+    {
+        self::assertSame(
+            ['1 km', '5 km'],
+            self::thermometerLabels(GameSize::Small, Edition::Metric, RulesVariant::Official),
+        );
+        self::assertSame(
+            ['½ mi', '3 mi'],
+            self::thermometerLabels(GameSize::Small, Edition::Imperial, RulesVariant::Official),
+        );
+    }
+
+    /** @return list<string> */
+    private static function thermometerLabels(GameSize $size, Edition $edition, RulesVariant $rulesVariant): array
+    {
+        foreach (CatalogDefinition::forGame($size, $edition, $rulesVariant) as $category) {
+            if ($category->key === QuestionCategory::Thermometer) {
+                return array_map(static fn (CatalogOption $option): string => $option->label, $category->options);
+            }
+        }
+
+        self::fail('No thermometer category.');
     }
 
     /** @return list<FeatureType> */

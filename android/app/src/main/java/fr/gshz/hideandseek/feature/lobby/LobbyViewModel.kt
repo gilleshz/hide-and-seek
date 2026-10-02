@@ -190,6 +190,7 @@ class LobbyViewModel @Inject constructor(
                     gameName = game.name,
                     gameSize = game.size,
                     gameEdition = game.edition,
+                    gameVariant = game.rulesVariant,
                     roster = roster,
                     mySide = session?.side?.let(Side::fromWireValue),
                     roundStatus = roundStatus,

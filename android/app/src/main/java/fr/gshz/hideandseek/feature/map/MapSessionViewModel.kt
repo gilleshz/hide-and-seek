@@ -14,6 +14,7 @@ import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.LocationUpdate
 import fr.gshz.hideandseek.domain.model.Round
 import fr.gshz.hideandseek.domain.model.RoundStatus
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.ScoreDeclaration
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TransitLine
@@ -150,6 +151,7 @@ class MapSessionViewModel @Inject constructor(
             side = info.side,
             edition = info.edition,
             gameSize = info.gameSize,
+            rulesVariant = info.rulesVariant,
             boundary = info.boundary,
             boundaryGeoJson = info.boundaryGeoJson,
             transitOverlayGeoJson = info.transitOverlayGeoJson,
@@ -207,6 +209,7 @@ class MapSessionViewModel @Inject constructor(
                         gameName = game.name,
                         edition = game.edition,
                         gameSize = game.size,
+                        rulesVariant = game.rulesVariant,
                         boundary = game.toMapBounds(),
                         boundaryGeoJson = game.boundaryGeoJson,
                         selectedTransitLines = game.selectedTransitLines,
@@ -414,6 +417,7 @@ class MapSessionViewModel @Inject constructor(
         val gameName: String = "",
         val edition: Edition = Edition.Metric,
         val gameSize: GameSize = GameSize.Small,
+        val rulesVariant: RulesVariant = RulesVariant.Official,
         val side: Side? = null,
         val boundary: MapBounds? = null,
         val transitOverlayGeoJson: String? = null,
@@ -447,6 +451,7 @@ data class MapSessionUiState(
     val side: Side? = null,
     val edition: Edition = Edition.Metric,
     val gameSize: GameSize = GameSize.Small,
+    val rulesVariant: RulesVariant = RulesVariant.Official,
     val boundary: MapBounds? = null,
     val boundaryGeoJson: String? = null,
     val transitOverlayGeoJson: String? = null,

@@ -750,6 +750,7 @@ private fun BoxScope.MapOverlays(
             state = uiState.simulation,
             edition = uiState.edition,
             gameSize = uiState.gameSize,
+            rulesVariant = uiState.rulesVariant,
             actions = simActions,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             askedQuestions = uiState.askedQuestions,

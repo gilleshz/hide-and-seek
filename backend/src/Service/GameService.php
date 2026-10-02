@@ -44,7 +44,7 @@ final readonly class GameService
     public function create(GameInput $input): Game
     {
         return $this->heavyWork->run(fn () => $this->entityManager->wrapInTransaction(function () use ($input): Game {
-            $game = new Game($input->name, $input->size, $input->edition);
+            $game = new Game($input->name, $input->size, $input->edition, $input->rulesVariant);
             $game->setJoinCode($this->generateJoinCode());
             $this->games->save($game);
 
@@ -162,7 +162,7 @@ final readonly class GameService
      */
     private function applyStructural(Game $game, GameConfigInput $input): void
     {
-        if ($input->size === null && $input->edition === null) {
+        if ($input->size === null && $input->edition === null && $input->rulesVariant === null) {
             return;
         }
 
@@ -177,6 +177,9 @@ final readonly class GameService
         }
         if ($input->edition !== null) {
             $game->setEdition($input->edition);
+        }
+        if ($input->rulesVariant !== null) {
+            $game->setRulesVariant($input->rulesVariant);
         }
     }
 

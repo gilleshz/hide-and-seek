@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RulesVariant;
 use App\Repository\GameRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +31,14 @@ class Game
 
     #[ORM\Column(type: 'string', length: 16, enumType: Edition::class)]
     private Edition $edition;
+
+    #[ORM\Column(
+        type: 'string',
+        length: 16,
+        enumType: RulesVariant::class,
+        options: ['default' => RulesVariant::Official->value],
+    )]
+    private RulesVariant $rulesVariant = RulesVariant::Official;
 
     #[ORM\Column(type: 'float', nullable: true)]
     private ?float $boundarySwLat = null;
@@ -68,12 +77,17 @@ class Game
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $updatedAt;
 
-    public function __construct(string $name, GameSize $size, Edition $edition)
-    {
+    public function __construct(
+        string $name,
+        GameSize $size,
+        Edition $edition,
+        RulesVariant $rulesVariant = RulesVariant::Official,
+    ) {
         $this->uuid = Uuid::v4()->toRfc4122();
         $this->name = $name;
         $this->size = $size;
         $this->edition = $edition;
+        $this->rulesVariant = $rulesVariant;
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = $this->createdAt;
     }
@@ -122,6 +136,19 @@ class Game
     public function setEdition(Edition $edition): self
     {
         $this->edition = $edition;
+        $this->touch();
+
+        return $this;
+    }
+
+    public function getRulesVariant(): RulesVariant
+    {
+        return $this->rulesVariant;
+    }
+
+    public function setRulesVariant(RulesVariant $rulesVariant): self
+    {
+        $this->rulesVariant = $rulesVariant;
         $this->touch();
 
         return $this;

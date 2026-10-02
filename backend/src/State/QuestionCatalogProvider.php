@@ -34,7 +34,7 @@ final readonly class QuestionCatalogProvider implements ProviderInterface
             throw new EntityNotFoundException(message: 'Game not found.', errorKey: 'game.not_found');
         }
 
-        $categories = CatalogDefinition::forGame($game->getSize(), $game->getEdition());
+        $categories = CatalogDefinition::forGame($game->getSize(), $game->getEdition(), $game->getRulesVariant());
 
         return array_map(
             fn($category) => QuestionCatalogResource::fromCategory($category),

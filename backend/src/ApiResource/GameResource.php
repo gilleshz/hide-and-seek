@@ -17,6 +17,7 @@ use App\Entity\GameTransitLine;
 use App\Entity\Round;
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RulesVariant;
 use App\RoundTiming;
 use App\Serializer\Group;
 use App\State\GameDeleteProcessor;
@@ -71,6 +72,9 @@ final class GameResource
 
     #[Groups([Group::GAME_READ])]
     public Edition $edition;
+
+    #[Groups([Group::GAME_READ])]
+    public RulesVariant $rulesVariant;
 
     #[Groups([Group::GAME_READ])]
     public int $defaultHidingPeriodMinutes;
@@ -129,6 +133,7 @@ final class GameResource
         $self->name = $game->getName();
         $self->size = $game->getSize();
         $self->edition = $game->getEdition();
+        $self->rulesVariant = $game->getRulesVariant();
         $self->defaultHidingPeriodMinutes = RoundTiming::hidingPeriodMinutes($game->getSize());
         $self->createdAt = $game->getCreatedAt();
         $self->roundUuid = $round->getUuid();

@@ -10,6 +10,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -91,6 +93,7 @@ fun CreateGameScreen(
             onNameChange = viewModel::onNameChange,
             onSizeChange = viewModel::onSizeChange,
             onEditionChange = viewModel::onEditionChange,
+            onCompactMapChange = viewModel::onCompactMapChange,
             onCreateClick = viewModel::createGame,
             onAreaSearchQueryChange = viewModel::onAreaSearchQueryChange,
             onSearchAreasClick = viewModel::searchAreas,
@@ -245,6 +248,29 @@ private fun GameFormFields(
 private fun GameConfigSection(uiState: CreateGameUiState, actions: CreateGameActions) {
     GameFormFields(uiState.name, actions.onNameChange)
     SizeSelector(uiState.size, actions.onSizeChange)
+    if (uiState.size == GameSize.Small) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { actions.onCompactMapChange(!uiState.compactMap) }
+                .padding(vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = uiState.compactMap, onCheckedChange = actions.onCompactMapChange)
+            Spacer(Modifier.width(Spacing.sm))
+            Column {
+                Text(
+                    text = stringResource(R.string.create_game_compact_map),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = stringResource(R.string.create_game_compact_map_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
     EditionSelector(uiState.edition, actions.onEditionChange)
 }
 
@@ -331,6 +357,7 @@ private fun CreateGameContentPreview() {
                 onNameChange = {},
                 onSizeChange = {},
                 onEditionChange = {},
+                onCompactMapChange = {},
                 onCreateClick = {},
             ),
         )

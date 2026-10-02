@@ -8,6 +8,7 @@ import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.JoinResult
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
 import fr.gshz.hideandseek.domain.model.Player
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
 import fr.gshz.hideandseek.domain.model.TransitLine
@@ -49,15 +50,26 @@ class FakeGameRepository : GameRepository {
     var uploadGtfsFromFileResult: Result<GtfsSourceState> =
         Result.success(GtfsSourceState("src-1", "test", emptyList()))
 
+    var lastCreateSize: GameSize? = null
+        private set
+    var lastCreateRulesVariant: RulesVariant? = null
+        private set
+
+    @Suppress("LongParameterList")
     override suspend fun createGame(
         name: String,
         size: GameSize,
         edition: Edition,
+        rulesVariant: RulesVariant,
         boundary: GameBoundary,
         areas: List<AreaInfo>?,
         selectedTransitLines: List<TransitLine>?,
         selectedGtfsLines: List<GtfsLineSelection>?,
-    ): GameSummary = createGameResult.getOrThrow()
+    ): GameSummary {
+        lastCreateSize = size
+        lastCreateRulesVariant = rulesVariant
+        return createGameResult.getOrThrow()
+    }
 
     override suspend fun searchAreas(query: String): List<AreaInfo> = emptyList()
 

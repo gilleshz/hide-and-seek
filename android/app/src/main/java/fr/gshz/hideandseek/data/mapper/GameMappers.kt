@@ -15,6 +15,7 @@ import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.JoinResult
 import fr.gshz.hideandseek.domain.model.Player
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
 import fr.gshz.hideandseek.domain.model.TokenRefresh
@@ -36,6 +37,7 @@ fun GameDto.toDomain() = GameSummary(
     defaultHidingPeriodMinutes = defaultHidingPeriodMinutes,
     selectedTransitLines = selectedTransitLines.map { it.toTransitLine() } +
         selectedGtfsLines.map { it.toTransitLine() },
+    rulesVariant = RulesVariant.fromWireValue(rulesVariant),
 )
 
 fun GtfsLineDto.toTransitLine() = TransitLine(

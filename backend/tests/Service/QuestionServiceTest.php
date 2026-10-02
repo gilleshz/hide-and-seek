@@ -24,6 +24,7 @@ use App\Enum\PhotoTarget;
 use App\Enum\QuestionCategory;
 use App\Enum\QuestionStatus;
 use App\Enum\RoundStatus;
+use App\Enum\RulesVariant;
 use App\Enum\Side;
 use App\Enum\ThermometerResult;
 use App\Exception\FunctionalException;
@@ -588,6 +589,61 @@ final class QuestionServiceTest extends TestCase
             $this->createStub(PlayerLocationRepository::class),
             $this->chatThatNeverPosts(),
         )->ask($round, $asker, $input);
+    }
+
+    #[Test]
+    public function aCompactGameAcceptsATwoKilometerThermometer(): void
+    {
+        $game = new Game('Metz', GameSize::Small, Edition::Metric, RulesVariant::Compact);
+        $round = $this->seekingRound($game);
+        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
+        $askedQuestions = $this->createMock(AskedQuestionRepository::class);
+        $askedQuestions->method('findOutstandingByRound')->willReturn(null);
+        $askedQuestions->expects(self::once())->method('save');
+
+        $input = $this->thermometerInput($asker->getUuid());
+        $input->distanceMeters = 2000.0;
+
+        $messages = [];
+        $question = $this->service(
+            $memberships,
+            $askedQuestions,
+            $this->createStub(PlayerLocationRepository::class),
+            $this->chatCapturing($messages),
+        )->ask($round, $asker, $input);
+
+        self::assertSame(2000.0, $question->getDistanceMeters());
+        self::assertCount(1, $messages);
+        self::assertSame("I'm starting a 2 km thermometer...", $messages[0]->getBody());
+    }
+
+    #[Test]
+    public function aCompactGameRefusesTheFiveKilometerThermometer(): void
+    {
+        $game = new Game('Metz', GameSize::Small, Edition::Metric, RulesVariant::Compact);
+        $round = $this->seekingRound($game);
+        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+
+        $input = $this->thermometerInput($asker->getUuid());
+        $input->distanceMeters = 5000.0;
+
+        self::assertSame('asked_question.invalid_preset', $this->askAndCaptureErrorKey($round, $asker, $input));
+    }
+
+    #[Test]
+    public function anOfficialGameRefusesTheTwoKilometerThermometer(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+
+        $input = $this->thermometerInput($asker->getUuid());
+        $input->distanceMeters = 2000.0;
+
+        self::assertSame('asked_question.invalid_preset', $this->askAndCaptureErrorKey($round, $asker, $input));
     }
 
     #[Test]

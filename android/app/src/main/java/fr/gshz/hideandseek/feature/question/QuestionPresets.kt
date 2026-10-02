@@ -3,6 +3,7 @@ package fr.gshz.hideandseek.feature.question
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.RulesVariant
 
 const val CUSTOM_RADAR_SENTINEL = -1.0
 
@@ -50,6 +51,21 @@ private val IMPERIAL_THERMOMETER_PRESETS = listOf(
     DistancePreset(labelRes = R.string.question_thermo_50mi, meters = 80467.2, minimumGameSize = GameSize.Large),
 )
 
+/** A compact game swaps the Small upper rung: 5 km becomes 2 km, 3 mi becomes 1 mi. */
+private val METRIC_THERMOMETER_COMPACT_PRESETS = listOf(
+    DistancePreset(labelRes = R.string.question_thermo_1km, meters = 1000.0, minimumGameSize = GameSize.Small),
+    DistancePreset(labelRes = R.string.question_thermo_2km, meters = 2000.0, minimumGameSize = GameSize.Small),
+    DistancePreset(labelRes = R.string.question_thermo_15km, meters = 15000.0, minimumGameSize = GameSize.Medium),
+    DistancePreset(labelRes = R.string.question_thermo_75km, meters = 75000.0, minimumGameSize = GameSize.Large),
+)
+
+private val IMPERIAL_THERMOMETER_COMPACT_PRESETS = listOf(
+    DistancePreset(labelRes = R.string.question_thermo_half_mi, meters = 804.672, minimumGameSize = GameSize.Small),
+    DistancePreset(labelRes = R.string.question_thermo_1mi, meters = 1609.344, minimumGameSize = GameSize.Small),
+    DistancePreset(labelRes = R.string.question_thermo_10mi, meters = 16093.44, minimumGameSize = GameSize.Medium),
+    DistancePreset(labelRes = R.string.question_thermo_50mi, meters = 80467.2, minimumGameSize = GameSize.Large),
+)
+
 object QuestionPresets {
 
     fun radarPresets(edition: Edition): List<RadiusPreset> = when (edition) {
@@ -57,10 +73,20 @@ object QuestionPresets {
         Edition.Imperial -> IMPERIAL_RADAR_PRESETS
     }
 
-    fun thermometerPresets(edition: Edition, gameSize: GameSize): List<DistancePreset> {
-        val presets = when (edition) {
-            Edition.Metric -> METRIC_THERMOMETER_PRESETS
-            Edition.Imperial -> IMPERIAL_THERMOMETER_PRESETS
+    fun thermometerPresets(
+        edition: Edition,
+        gameSize: GameSize,
+        rulesVariant: RulesVariant,
+    ): List<DistancePreset> {
+        val presets = when (rulesVariant) {
+            RulesVariant.Official -> when (edition) {
+                Edition.Metric -> METRIC_THERMOMETER_PRESETS
+                Edition.Imperial -> IMPERIAL_THERMOMETER_PRESETS
+            }
+            RulesVariant.Compact -> when (edition) {
+                Edition.Metric -> METRIC_THERMOMETER_COMPACT_PRESETS
+                Edition.Imperial -> IMPERIAL_THERMOMETER_COMPACT_PRESETS
+            }
         }
         return presets.filter { gameSize >= it.minimumGameSize }
     }

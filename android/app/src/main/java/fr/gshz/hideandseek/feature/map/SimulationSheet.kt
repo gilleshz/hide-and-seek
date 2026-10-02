@@ -52,6 +52,7 @@ import fr.gshz.hideandseek.domain.model.FeatureType
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.PhotoTarget
 import fr.gshz.hideandseek.domain.model.QuestionCategory
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.model.cardEconomy
 import fr.gshz.hideandseek.feature.question.CUSTOM_RADAR_SENTINEL
@@ -69,6 +70,7 @@ private const val NARROWING_PCT_MIN = 0
 private const val NARROWING_PCT_MAX = 100
 private const val SHEET_MAX_HEIGHT_FRACTION = 0.5f
 
+@Suppress("LongParameterList")
 @Composable
 internal fun SimulationSheet(
     state: SimulationState,
@@ -77,6 +79,7 @@ internal fun SimulationSheet(
     actions: SimulationActions,
     modifier: Modifier = Modifier,
     askedQuestions: List<AskedQuestion> = emptyList(),
+    rulesVariant: RulesVariant = RulesVariant.Official,
 ) {
     val isPreview = state.mode == QuestionSheetMode.Preview
     val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * SHEET_MAX_HEIGHT_FRACTION).dp
@@ -103,6 +106,7 @@ internal fun SimulationSheet(
                 actions = actions,
                 modifier = Modifier.weight(1f, fill = false),
                 askedQuestions = askedQuestions,
+                rulesVariant = rulesVariant,
             )
             if (isPreview && state.outstandingQuestion == null) {
                 Spacer(modifier = Modifier.height(Spacing.sm))
@@ -114,6 +118,7 @@ internal fun SimulationSheet(
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun SimSheetScrollContent(
     state: SimulationState,
@@ -122,6 +127,7 @@ private fun SimSheetScrollContent(
     actions: SimulationActions,
     modifier: Modifier = Modifier,
     askedQuestions: List<AskedQuestion> = emptyList(),
+    rulesVariant: RulesVariant = RulesVariant.Official,
 ) {
     val isPreview = state.mode == QuestionSheetMode.Preview
     Column(
@@ -147,7 +153,7 @@ private fun SimSheetScrollContent(
             OutstandingQuestionCard(outstanding, state, actions, edition)
         }
         QuestionCategoryChips(state.category, gameSize, actions.onSetCategory)
-        SimCategoryContent(state, edition, gameSize, actions, askedQuestions)
+        SimCategoryContent(state, edition, gameSize, actions, askedQuestions, rulesVariant)
         if (state.category != QuestionCategory.Photos) {
             PreviewToggle(isPreview, actions.onTogglePreviewMode)
         }
@@ -161,10 +167,12 @@ private fun SimCategoryContent(
     gameSize: GameSize,
     actions: SimulationActions,
     askedQuestions: List<AskedQuestion>,
+    rulesVariant: RulesVariant,
 ) {
     when (state.category) {
         QuestionCategory.Radar -> RadarPresetRows(state, edition, actions, askedQuestions)
-        QuestionCategory.Thermometer -> ThermometerPresetRow(state, edition, gameSize, actions, askedQuestions)
+        QuestionCategory.Thermometer ->
+            ThermometerPresetRow(state, edition, gameSize, actions, askedQuestions, rulesVariant)
         QuestionCategory.Measuring -> MeasuringContent(state, gameSize, actions, askedQuestions)
         QuestionCategory.Matching -> MatchingContent(state, gameSize, actions, askedQuestions)
         QuestionCategory.Tentacles -> TentaclesContent(state, gameSize, actions, askedQuestions)
@@ -404,6 +412,7 @@ private fun ThermometerPresetRow(
     gameSize: GameSize,
     actions: SimulationActions,
     askedQuestions: List<AskedQuestion>,
+    rulesVariant: RulesVariant,
 ) {
     val instruction = when {
         state.travelingThermometer != null -> stringResource(R.string.question_thermometer_awaiting_arrival)
@@ -417,7 +426,7 @@ private fun ThermometerPresetRow(
     when {
         state.travelingThermometer != null -> Unit
         state.mode == QuestionSheetMode.Ask -> {
-            ThermometerDistancePresets(state, edition, gameSize, actions, askedQuestions)
+            ThermometerDistancePresets(state, edition, gameSize, actions, askedQuestions, rulesVariant)
             Button(
                 onClick = actions.onStartThermometer,
                 enabled = state.distanceMeters != null && !state.isSubmitting &&
@@ -428,7 +437,7 @@ private fun ThermometerPresetRow(
             }
         }
         else -> {
-            ThermometerDistancePresets(state, edition, gameSize, actions, askedQuestions)
+            ThermometerDistancePresets(state, edition, gameSize, actions, askedQuestions, rulesVariant)
             SimAnswerToggle(
                 option1 = R.string.sim_hotter to SimAnswer.Hotter,
                 option2 = R.string.sim_colder to SimAnswer.Colder,
@@ -446,8 +455,9 @@ private fun ThermometerDistancePresets(
     gameSize: GameSize,
     actions: SimulationActions,
     askedQuestions: List<AskedQuestion>,
+    rulesVariant: RulesVariant,
 ) {
-    val presets = QuestionPresets.thermometerPresets(edition, gameSize)
+    val presets = QuestionPresets.thermometerPresets(edition, gameSize, rulesVariant)
     if (presets.isNotEmpty()) {
         PresetRow(
             items = presets.map { it.labelRes to it.meters },

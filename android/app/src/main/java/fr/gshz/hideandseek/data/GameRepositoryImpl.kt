@@ -26,6 +26,7 @@ import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.JoinResult
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
 import fr.gshz.hideandseek.domain.model.Player
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
 import fr.gshz.hideandseek.domain.model.TransitLine
@@ -47,10 +48,12 @@ class GameRepositoryImpl @Inject constructor(
     private val connectionStore: ConnectionStore,
 ) : GameRepository {
 
+    @Suppress("LongParameterList")
     override suspend fun createGame(
         name: String,
         size: GameSize,
         edition: Edition,
+        rulesVariant: RulesVariant,
         boundary: GameBoundary,
         areas: List<AreaInfo>?,
         selectedTransitLines: List<TransitLine>?,
@@ -61,6 +64,7 @@ class GameRepositoryImpl @Inject constructor(
             name = name,
             size = size.wireValue,
             edition = edition.wireValue,
+            rulesVariant = rulesVariant.wireValue,
             boundarySwLat = boundary.swLat,
             boundarySwLng = boundary.swLng,
             boundaryNeLat = boundary.neLat,

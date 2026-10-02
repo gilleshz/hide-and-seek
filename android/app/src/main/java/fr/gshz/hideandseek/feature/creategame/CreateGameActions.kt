@@ -8,6 +8,7 @@ data class CreateGameActions(
     val onNameChange: (String) -> Unit,
     val onSizeChange: (GameSize) -> Unit,
     val onEditionChange: (Edition) -> Unit,
+    val onCompactMapChange: (Boolean) -> Unit,
     val onCreateClick: () -> Unit,
     val onAreaSearchQueryChange: (String) -> Unit = {},
     val onSearchAreasClick: () -> Unit = {},

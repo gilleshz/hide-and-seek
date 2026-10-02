@@ -20,6 +20,7 @@ import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.domain.repository.GameRepository
@@ -106,11 +107,15 @@ class CreateGameViewModel @Inject constructor(
     }
 
     fun onSizeChange(value: GameSize) {
-        _uiState.update { it.copy(size = value) }
+        _uiState.update { it.copy(size = value, compactMap = it.compactMap && value == GameSize.Small) }
     }
 
     fun onEditionChange(value: Edition) {
         _uiState.update { it.copy(edition = value) }
+    }
+
+    fun onCompactMapChange(checked: Boolean) {
+        _uiState.update { it.copy(compactMap = checked) }
     }
 
     fun createGame() {
@@ -141,10 +146,17 @@ class CreateGameViewModel @Inject constructor(
 
             val selectedGtfs = resolveGtfsSelections(state)
 
+            val rulesVariant = if (state.compactMap && state.size == GameSize.Small) {
+                RulesVariant.Compact
+            } else {
+                RulesVariant.Official
+            }
+
             val game = gameRepository.createGame(
                 state.name.trim(),
                 state.size,
                 state.edition,
+                rulesVariant = rulesVariant,
                 areas = state.selectedAreas.ifEmpty { null },
                 selectedTransitLines = selectedLines,
                 selectedGtfsLines = selectedGtfs,

@@ -6,6 +6,7 @@ import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.JoinResult
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
 import fr.gshz.hideandseek.domain.model.Player
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
 import fr.gshz.hideandseek.domain.model.GtfsRoute
@@ -34,6 +35,7 @@ interface GameRepository {
         name: String,
         size: GameSize,
         edition: Edition,
+        rulesVariant: RulesVariant = RulesVariant.Official,
         boundary: GameBoundary = GameBoundary(),
         areas: List<AreaInfo>? = null,
         selectedTransitLines: List<TransitLine>? = null,

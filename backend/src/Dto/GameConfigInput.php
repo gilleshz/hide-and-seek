@@ -6,6 +6,7 @@ namespace App\Dto;
 
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RulesVariant;
 use App\Serializer\Group;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -21,4 +22,7 @@ final class GameConfigInput
 
     #[Groups([Group::GAME_WRITE])]
     public ?Edition $edition = null;
+
+    #[Groups([Group::GAME_WRITE])]
+    public ?RulesVariant $rulesVariant = null;
 }

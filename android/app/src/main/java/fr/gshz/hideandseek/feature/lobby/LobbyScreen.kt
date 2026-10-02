@@ -76,6 +76,7 @@ import fr.gshz.hideandseek.core.ui.theme.BrandColors
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
 import fr.gshz.hideandseek.domain.model.Player
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 
 @Suppress("LongMethod")
@@ -226,6 +227,10 @@ internal fun LobbyContent(
                     contentDescription = stringResource(R.string.settings_title),
                 )
             }
+        }
+
+        if (uiState.gameVariant == RulesVariant.Compact) {
+            CompactMapBadge()
         }
 
         ErrorText(
@@ -395,6 +400,27 @@ private fun DeleteGameDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
             }
         },
     )
+}
+
+@Composable
+private fun CompactMapBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Map,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = stringResource(R.string.lobby_compact_map),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
 }
 
 @Composable

@@ -15,6 +15,7 @@ use App\Enum\MeasuringResult;
 use App\Enum\QuestionCategory;
 use App\Enum\QuestionStatus;
 use App\Enum\RoundStatus;
+use App\Enum\RulesVariant;
 use App\Enum\Side;
 use App\Enum\ThermometerResult;
 use App\ErrorKey;
@@ -67,7 +68,8 @@ final readonly class QuestionService
      */
     public function ask(Round $round, Player $asker, AskQuestionInput $input): AskedQuestion
     {
-        $this->validateAgainstCatalog($round->getGame()->getSize(), $round->getGame()->getEdition(), $input);
+        $game = $round->getGame();
+        $this->validateAgainstCatalog($game->getSize(), $game->getEdition(), $game->getRulesVariant(), $input);
         $this->assertSeeker($round, $asker);
         $this->assertSeekersAreHunting($round);
         $this->assertNoOutstandingQuestion($round);
@@ -207,7 +209,11 @@ final readonly class QuestionService
                 $this->assertPendingQuestion($question);
 
                 $game = $question->getRound()->getGame();
-                $catalog = CatalogDefinition::forGame($game->getSize(), $game->getEdition());
+                $catalog = CatalogDefinition::forGame(
+                    $game->getSize(),
+                    $game->getEdition(),
+                    $game->getRulesVariant(),
+                );
 
                 $categoryCatalog = null;
                 foreach ($catalog as $cat) {
@@ -1177,9 +1183,13 @@ final readonly class QuestionService
         $question->setRevealDeadlineAt(null);
     }
 
-    private function validateAgainstCatalog(GameSize $size, Edition $edition, AskQuestionInput $data): void
-    {
-        $categories = CatalogDefinition::forGame($size, $edition);
+    private function validateAgainstCatalog(
+        GameSize $size,
+        Edition $edition,
+        RulesVariant $rulesVariant,
+        AskQuestionInput $data,
+    ): void {
+        $categories = CatalogDefinition::forGame($size, $edition, $rulesVariant);
         foreach ($categories as $category) {
             if ($category->key !== $data->category) {
                 continue;

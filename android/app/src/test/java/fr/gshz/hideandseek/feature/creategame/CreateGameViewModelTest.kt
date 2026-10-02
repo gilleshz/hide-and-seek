@@ -5,6 +5,8 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
+import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.fake.FakeGameRepository
@@ -371,5 +373,43 @@ class CreateGameViewModelTest {
         assertTrue(viewModel.uiState.value.needsAccount)
         assertNull(gameRepository.lastPassword)
         assertNull(viewModel.uiState.value.createdGameUuid)
+    }
+
+    @Test
+    fun `a compact small game is sent as compact`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onNameChange("Berlin")
+        viewModel.onSizeChange(GameSize.Small)
+        viewModel.onCompactMapChange(true)
+
+        viewModel.createGame()
+
+        assertEquals(GameSize.Small, gameRepository.lastCreateSize)
+        assertEquals(RulesVariant.Compact, gameRepository.lastCreateRulesVariant)
+    }
+
+    @Test
+    fun `an official game is sent as official`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onNameChange("Berlin")
+
+        viewModel.createGame()
+
+        assertEquals(RulesVariant.Official, gameRepository.lastCreateRulesVariant)
+    }
+
+    @Test
+    fun `switching away from small clears the compact flag`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onNameChange("Berlin")
+        viewModel.onSizeChange(GameSize.Small)
+        viewModel.onCompactMapChange(true)
+
+        viewModel.onSizeChange(GameSize.Medium)
+        viewModel.createGame()
+
+        assertFalse(viewModel.uiState.value.compactMap)
+        assertEquals(GameSize.Medium, gameRepository.lastCreateSize)
+        assertEquals(RulesVariant.Official, gameRepository.lastCreateRulesVariant)
     }
 }

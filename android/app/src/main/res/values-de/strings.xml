@@ -35,6 +35,8 @@
     <string name="create_game_name_label">Spielname</string>
     <string name="create_game_size_label">Größe</string>
     <string name="create_game_edition_label">Edition</string>
+    <string name="create_game_compact_map">Kompakte Karte (inoffiziell)</string>
+    <string name="create_game_compact_map_hint">Ersetzt das 5-km-Thermometer durch 2 km (3 mi durch 1 mi in der imperialen Edition)</string>
     <string name="create_game_button">Erstellen</string>
     <string name="transit_lines_header">Verkehrslinien</string>
     <string name="transit_line_focus_chip">Linie <xliff:g>%1$s</xliff:g> hervorgehoben</string>
@@ -61,6 +63,7 @@
     <string name="join_game_button">Beitreten</string>
 
     <string name="lobby_title">Lobby</string>
+    <string name="lobby_compact_map">Kompakte Karte</string>
     <string name="lobby_game_code_label">Spielcode</string>
     <string name="lobby_show_qr">QR-Code anzeigen</string>
     <string name="lobby_hide_qr">QR-Code ausblenden</string>
@@ -182,10 +185,12 @@
     <string name="question_radar_100mi">100 mi</string>
 
     <string name="question_thermo_1km">1 km</string>
+    <string name="question_thermo_2km">2 km</string>
     <string name="question_thermo_5km">5 km</string>
     <string name="question_thermo_15km">15 km</string>
     <string name="question_thermo_75km">75 km</string>
     <string name="question_thermo_half_mi">½ mi</string>
+    <string name="question_thermo_1mi">1 mi</string>
     <string name="question_thermo_3mi">3 mi</string>
     <string name="question_thermo_10mi">10 mi</string>
     <string name="question_thermo_50mi">50 mi</string>

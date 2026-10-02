@@ -12,6 +12,7 @@ import fr.gshz.hideandseek.domain.model.PhotoTarget
 import fr.gshz.hideandseek.domain.model.QuestionCategory
 import fr.gshz.hideandseek.domain.model.QuestionStatus
 import fr.gshz.hideandseek.domain.model.RoundStatus
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.SeekerMarker
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TimeTrap
@@ -95,6 +96,7 @@ data class MapUiState(
     val side: Side? = null,
     val edition: Edition = Edition.Metric,
     val gameSize: GameSize = GameSize.Small,
+    val rulesVariant: RulesVariant = RulesVariant.Official,
     val exclusionGeoJson: String? = null,
     val possibleAreaGeoJson: String? = null,
     val boundary: MapBounds? = null,
@@ -365,6 +367,7 @@ private fun sessionAndZoneUiState(session: MapSessionUiState, zone: MapZoneUiSta
         side = session.side,
         edition = session.edition,
         gameSize = session.gameSize,
+        rulesVariant = session.rulesVariant,
         boundary = session.boundary,
         isPlacingZone = zone.isPlacingZone,
         pendingZonePin = zone.pendingZonePin,

@@ -67,6 +67,8 @@ data class CreateGameUiState(
     val name: String = "",
     val size: GameSize = GameSize.Medium,
     val edition: Edition = Edition.Metric,
+    /** Only selectable for a Small game; the ViewModel clears it if the size changes away from Small. */
+    val compactMap: Boolean = false,
     val isLoading: Boolean = false,
     val error: ErrorType? = null,
     val errorKey: String? = null,

@@ -6,6 +6,7 @@ import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
 import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RoundStatus
+import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 
 data class LobbyUiState(
@@ -15,6 +16,7 @@ data class LobbyUiState(
     val gameName: String = "",
     val gameSize: GameSize? = null,
     val gameEdition: Edition? = null,
+    val gameVariant: RulesVariant? = null,
     val roster: List<Player> = emptyList(),
     val mySide: Side? = null,
     val roundStatus: RoundStatus? = null,

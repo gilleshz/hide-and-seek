@@ -9,15 +9,16 @@ use App\Enum\FeatureType;
 use App\Enum\GameSize;
 use App\Enum\PhotoTarget;
 use App\Enum\QuestionCategory;
+use App\Enum\RulesVariant;
 
 final class CatalogDefinition
 {
     /** @return list<CatalogCategory> */
-    public static function all(): array
+    public static function all(RulesVariant $rulesVariant = RulesVariant::Official): array
     {
         return [
             self::radar(),
-            self::thermometer(),
+            self::thermometer($rulesVariant),
             self::matching(),
             self::measuring(),
             self::tentacles(),
@@ -26,10 +27,13 @@ final class CatalogDefinition
     }
 
     /** @return list<CatalogCategory> */
-    public static function forGame(GameSize $size, Edition $edition): array
-    {
+    public static function forGame(
+        GameSize $size,
+        Edition $edition,
+        RulesVariant $rulesVariant = RulesVariant::Official,
+    ): array {
         $categories = [];
-        foreach (self::all() as $category) {
+        foreach (self::all($rulesVariant) as $category) {
             $options = array_filter($category->options, fn(CatalogOption $opt): bool =>
                 $opt->availableInSize($size) && $opt->availableInEdition($edition));
             if ($options !== []) {
@@ -71,17 +75,26 @@ final class CatalogDefinition
         );
     }
 
-    private static function thermometer(): CatalogCategory
+    private static function thermometer(RulesVariant $rulesVariant): CatalogCategory
     {
+        // A compact game replaces the Small upper rung (5 km / 3 mi) so a dense city is not forced into a long walk.
+        $compact = $rulesVariant === RulesVariant::Compact;
+        $metricUpper = $compact
+            ? new CatalogOption(label: '2 km', meters: 2000.0, minSize: GameSize::Small, edition: Edition::Metric)
+            : new CatalogOption(label: '5 km', meters: 5000.0, minSize: GameSize::Small, edition: Edition::Metric);
+        $imperialUpper = $compact
+            ? new CatalogOption(label: '1 mi', meters: 1609.344, minSize: GameSize::Small, edition: Edition::Imperial)
+            : new CatalogOption(label: '3 mi', meters: 4828.032, minSize: GameSize::Small, edition: Edition::Imperial);
+
         return new CatalogCategory(
             key: QuestionCategory::Thermometer,
             options: [
                 new CatalogOption(label: '1 km', meters: 1000.0, minSize: GameSize::Small, edition: Edition::Metric),
-                new CatalogOption(label: '5 km', meters: 5000.0, minSize: GameSize::Small, edition: Edition::Metric),
+                $metricUpper,
                 new CatalogOption(label: '15 km', meters: 15000.0, minSize: GameSize::Medium, edition: Edition::Metric),
                 new CatalogOption(label: '75 km', meters: 75000.0, minSize: GameSize::Large, edition: Edition::Metric),
                 new CatalogOption(label: '½ mi', meters: 804.672, minSize: GameSize::Small, edition: Edition::Imperial),
-                new CatalogOption(label: '3 mi', meters: 4828.032, minSize: GameSize::Small, edition: Edition::Imperial),
+                $imperialUpper,
                 new CatalogOption(label: '10 mi', meters: 16093.44, minSize: GameSize::Medium, edition: Edition::Imperial),
                 new CatalogOption(label: '50 mi', meters: 80467.2, minSize: GameSize::Large, edition: Edition::Imperial),
             ],

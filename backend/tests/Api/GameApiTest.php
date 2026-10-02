@@ -38,6 +38,7 @@ final class GameApiTest extends ApiTestCase
         self::assertResponseStatusCodeSame(201);
         self::assertSame('Berlin', $created['name']);
         self::assertSame('L', $created['size']);
+        self::assertSame('official', $created['rulesVariant']);
         self::assertSame(180, $created['defaultHidingPeriodMinutes']);
         self::assertIsString($created['uuid']);
         self::assertIsString($created['roundUuid']);
@@ -244,18 +245,49 @@ final class GameApiTest extends ApiTestCase
         $options = $this->headersWithToken($alice['token']);
         $options['headers']['Content-Type'] = 'application/merge-patch+json';
         $patched = $client->request('PATCH', "/api/games/{$uuid}", $options + [
-            'json' => ['name' => 'Nancy Est', 'size' => 'L', 'edition' => 'imperial'],
+            'json' => ['name' => 'Nancy Est', 'size' => 'L', 'edition' => 'imperial', 'rulesVariant' => 'compact'],
         ])->toArray();
 
         self::assertResponseIsSuccessful();
         self::assertSame('Nancy Est', $patched['name']);
         self::assertSame('L', $patched['size']);
         self::assertSame('imperial', $patched['edition']);
+        self::assertSame('compact', $patched['rulesVariant']);
         self::assertSame(180, $patched['defaultHidingPeriodMinutes']);
 
         $fetched = $client->request('GET', "/api/games/{$uuid}", self::AUTH)->toArray();
         self::assertSame('Nancy Est', $fetched['name']);
         self::assertSame('L', $fetched['size']);
+        self::assertSame('compact', $fetched['rulesVariant']);
+    }
+
+    #[Test]
+    public function itServesTheCompactThermometerLadderForACompactGame(): void
+    {
+        $client = static::createClient();
+
+        $created = $client->request('POST', '/api/games', self::AUTH + [
+            'json' => ['name' => 'Metz', 'size' => 'S', 'edition' => 'metric', 'rulesVariant' => 'compact'],
+        ])->toArray();
+        $uuid = $created['uuid'];
+        self::assertIsString($uuid);
+
+        $catalog = $client->request('GET', "/api/games/{$uuid}/question-catalog", self::AUTH)->toArray();
+
+        self::assertResponseIsSuccessful();
+        self::assertIsArray($catalog['member']);
+        $labels = [];
+        foreach ($catalog['member'] as $category) {
+            self::assertIsArray($category);
+            if (($category['key'] ?? null) === 'thermometer') {
+                self::assertIsArray($category['options']);
+                $labels = array_column($category['options'], 'label');
+                break;
+            }
+        }
+
+        self::assertContains('2 km', $labels);
+        self::assertNotContains('5 km', $labels);
     }
 
     #[Test]
