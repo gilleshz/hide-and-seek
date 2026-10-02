@@ -330,6 +330,36 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
+    fun cannotAnswerQuestion(questionUuid: String) {
+        viewModelScope.launch {
+            if (selfPlayerUuid.value.isBlank()) return@launch
+            questionActions.update { it.copy(isRevealing = true) }
+            try {
+                runApiCall(
+                    block = {
+                        questionRepository.cannotAnswerQuestion(questionUuid)
+                        refreshQuestionsAndHistory()
+                        questionActions.update { it.copy(isRevealing = false) }
+                    },
+                    logMessage = "Failed to decline the photo question",
+                    httpLogMessage = "Cannot-answer rejected, resyncing",
+                    onError = { error, key, args ->
+                        if (error == ErrorType.Network) {
+                            questionActions.update { it.copy(isRevealing = false, revealError = true) }
+                        } else {
+                            refreshQuestionsAndHistory()
+                            questionActions.update { it.copyWithRevealRace(key, args) }
+                        }
+                    },
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to decline the photo question (unexpected)", e)
+                questionActions.update { it.copy(isRevealing = false, revealError = true) }
+            }
+        }
+    }
+
     /**
      * Hands a traced-streets question over to the map. Stored synchronously so the request is
      * parked before the map screen is reached.

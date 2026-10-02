@@ -152,6 +152,7 @@
     <string name="question_category_photos">Fotos</string>
     <string name="question_reveal_button">Aufdecken</string>
     <string name="question_photo_answer_button">Foto senden</string>
+    <string name="question_cannot_answer_button">Ich kann nicht antworten</string>
     <string name="question_cancel_button">Frage abbrechen</string>
     <string name="question_thermometer_start_button">Starten</string>
     <string name="question_thermometer_confirm_button">Bestätigen: Ich bin angekommen</string>
@@ -477,7 +478,8 @@
     <string name="question_answer_sea_level_further">Weiter vom Meeresspiegel entfernt</string>
     <string name="question_measuring_ask_sea_level">Bist du näher am oder weiter vom Meeresspiegel entfernt als ich?</string>
     <string name="question_answer_no_answer">Keine Antwort verfügbar</string>
-    <string name="question_answer_photo_in_chat">Foto wird im Chat gepostet.</string>
+    <string name="question_answer_photo_not_answered">Es wurde keine Antwort gegeben.</string>
+    <string name="question_answer_cannot_answer">Ich kann nicht antworten.</string>
     <string name="question_answer_tentacles_answer"><xliff:g>%1$s</xliff:g></string>
 
     <string name="system_player_joined">%1$s ist dem Spiel beigetreten.</string>

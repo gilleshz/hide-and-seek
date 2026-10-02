@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -115,6 +116,7 @@ internal fun MessageBubble(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
+    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
     onCountdownExpired: () -> Unit,
     onImageClick: (String) -> Unit,
@@ -124,7 +126,7 @@ internal fun MessageBubble(
 ) {
     when {
         message.isQuestion -> QuestionBubble(
-            message, uiState, onRevealClick, onAnswerPhotoClick,
+            message, uiState, onRevealClick, onAnswerPhotoClick, onCannotAnswerClick,
             onPowerupClick, onCountdownExpired, onReplySwipe, onLongPress,
         )
         message.isQuestionInfo -> QuestionInfoBubble(message, uiState, onPowerupClick, onLongPress)
@@ -185,6 +187,7 @@ private fun QuestionBubble(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
+    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
     onCountdownExpired: () -> Unit,
     onReplySwipe: (() -> Unit)? = null,
@@ -203,7 +206,7 @@ private fun QuestionBubble(
         QuestionSubtexts(message, uiState, pending, onCountdownExpired)
         if (uiState.isHider && pending) {
             HiderQuestionActions(
-                message, uiState, onRevealClick, onAnswerPhotoClick, onPowerupClick,
+                message, uiState, onRevealClick, onAnswerPhotoClick, onCannotAnswerClick, onPowerupClick,
             )
         }
         MessageFooter(message, uiState)
@@ -216,6 +219,7 @@ private fun HiderQuestionActions(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
+    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
 ) {
     val question = uiState.joinedQuestion(message)
@@ -225,11 +229,18 @@ private fun HiderQuestionActions(
         modifier = Modifier.padding(top = Spacing.xs),
     ) {
         when {
-            isPhotoQuestion -> Button(
-                onClick = { message.questionUuid?.let(onAnswerPhotoClick) },
-                enabled = !uiState.isRevealing,
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.question_photo_answer_button)) }
+            isPhotoQuestion -> {
+                Button(
+                    onClick = { message.questionUuid?.let(onAnswerPhotoClick) },
+                    enabled = !uiState.isRevealing,
+                    modifier = Modifier.weight(1f),
+                ) { Text(stringResource(R.string.question_photo_answer_button)) }
+                OutlinedButton(
+                    onClick = { message.questionUuid?.let(onCannotAnswerClick) },
+                    enabled = !uiState.isRevealing,
+                    modifier = Modifier.weight(1f),
+                ) { Text(stringResource(R.string.question_cannot_answer_button)) }
+            }
             else -> Button(
                 onClick = { message.questionUuid?.let(onRevealClick) },
                 enabled = !uiState.isRevealing,

@@ -511,6 +511,125 @@ final class QuestionServiceTest extends TestCase
     }
 
     #[Test]
+    public function aHiderCanCloseAPhotoQuestionWithoutAPhotoAndItCountsAsAnswered(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $question = $this->photoQuestion($round, $hider);
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $hider, Side::Hider));
+        $askedQuestions = $this->createMock(AskedQuestionRepository::class);
+        $askedQuestions->expects(self::once())->method('claimUnrevealed')->willReturn(true);
+        $askedQuestions->expects(self::once())->method('save')->with($question);
+        $possibleArea = $this->createMock(PossibleAreaService::class);
+        $possibleArea->expects(self::never())->method('computeAfterReveal');
+
+        /** @var list<ChatMessage> $messages */
+        $messages = [];
+        $answered = $this->service(
+            $memberships,
+            $askedQuestions,
+            $this->createStub(PlayerLocationRepository::class),
+            $this->chatCapturing($messages),
+            possibleArea: $possibleArea,
+        )->cannotAnswer($question, $hider);
+
+        self::assertSame($question, $answered);
+        self::assertSame(QuestionStatus::Open, $answered->getStatus());
+        self::assertNotNull($answered->getRevealedAt());
+        self::assertCount(1, $messages);
+        self::assertSame(ChatMessageType::Answer, $messages[0]->getType());
+        self::assertSame($hider->getUuid(), $messages[0]->getSender()?->getUuid());
+        self::assertSame('I cannot answer.', $messages[0]->getBody());
+        self::assertSame('question.answer.cannot_answer', $messages[0]->getBodyKey());
+        self::assertSame($question->getUuid(), $messages[0]->getQuestionUuid());
+    }
+
+    #[Test]
+    public function cannotAnswerIsRejectedForANonPhotoQuestion(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+
+        self::assertSame(
+            'question.cannot_answer_only_photos',
+            $this->cannotAnswerErrorKey(
+                $this->radarQuestion($round, $hider, new \DateTimeImmutable('+5 minutes')),
+                $hider,
+                Side::Hider,
+            ),
+        );
+    }
+
+    #[Test]
+    public function cannotAnswerIsRejectedForAnAlreadyRevealedQuestion(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $question = $this->photoQuestion($round, $hider)->setRevealedAt(new \DateTimeImmutable());
+
+        self::assertSame('question.already_revealed', $this->cannotAnswerErrorKey($question, $hider, Side::Hider));
+    }
+
+    #[Test]
+    public function cannotAnswerIsRejectedWhenTheQuestionIsNoLongerOpen(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $question = $this->photoQuestion($round, $hider)->setStatus(QuestionStatus::Randomized);
+
+        self::assertSame('question.reveal_only_open', $this->cannotAnswerErrorKey($question, $hider, Side::Hider));
+    }
+
+    #[Test]
+    public function cannotAnswerIsRejectedForANonHiderPlayer(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+
+        self::assertSame(
+            'question.hider_only',
+            $this->cannotAnswerErrorKey($this->photoQuestion($round, $seeker), $seeker, Side::Seeker),
+        );
+    }
+
+    #[Test]
+    public function cannotAnswerThatLosesTheClaimTellsTheHiderItWasAlreadyAnswered(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = $this->seekingRound($game);
+        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $question = $this->photoQuestion($round, $hider);
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $hider, Side::Hider));
+        $askedQuestions = $this->createMock(AskedQuestionRepository::class);
+        $askedQuestions->method('claimUnrevealed')->willReturn(false);
+        $askedQuestions->expects(self::never())->method('save');
+
+        $errorKey = null;
+        try {
+            $this->service(
+                $memberships,
+                $askedQuestions,
+                $this->createStub(PlayerLocationRepository::class),
+                $this->chatThatNeverPosts(),
+            )->cannotAnswer($question, $hider);
+        } catch (FunctionalException $e) {
+            $errorKey = $e->getErrorKey();
+        }
+
+        self::assertSame('question.already_revealed', $errorKey);
+        self::assertNull($question->getRevealedAt());
+    }
+
+    #[Test]
     public function currentStateLeavesAQuestionStillWithinItsWindowUntouched(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
@@ -1870,8 +1989,10 @@ final class QuestionServiceTest extends TestCase
         ?GameTransitStationRepository $transitStations = null,
         ?HidingZoneRepository $hidingZones = null,
         ?ImageStorageInterface $imageStorage = null,
+        ?PossibleAreaService $possibleArea = null,
     ): QuestionService {
         $imageStorage ??= $this->createStub(ImageStorageInterface::class);
+        $possibleArea ??= $this->possibleAreaThatDoesNothing();
         $features ??= $this->createStub(FeatureRepository::class);
         $transitLineResolver ??= $this->createStub(TransitLineResolver::class);
         $transitStations ??= $this->createStub(GameTransitStationRepository::class);
@@ -1889,7 +2010,7 @@ final class QuestionServiceTest extends TestCase
             $hidingZones,
             $locations,
             $chat,
-            $this->possibleAreaThatDoesNothing(),
+            $possibleArea,
             $features,
             new QuestionMessageFormatter($features),
             $this->createStub(OverpassService::class),
@@ -2031,6 +2152,37 @@ final class QuestionServiceTest extends TestCase
         $question->setRadiusMeters(500.0)->setSeekerPoint(new Point(0.0, 0.0));
 
         return $question;
+    }
+
+    private function photoQuestion(Round $round, Player $asker): AskedQuestion
+    {
+        $question = new AskedQuestion($round, $asker, QuestionCategory::Photos, new \DateTimeImmutable('+10 minutes'));
+        $question->setPhotoTarget(PhotoTarget::Tree);
+
+        return $question;
+    }
+
+    private function cannotAnswerErrorKey(AskedQuestion $question, Player $player, Side $side): ?string
+    {
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')
+            ->willReturn(new RoundMembership($question->getRound(), $player, $side));
+        $askedQuestions = $this->createMock(AskedQuestionRepository::class);
+        $askedQuestions->expects(self::never())->method('claimUnrevealed');
+        $askedQuestions->expects(self::never())->method('save');
+
+        try {
+            $this->service(
+                $memberships,
+                $askedQuestions,
+                $this->createStub(PlayerLocationRepository::class),
+                $this->chatThatNeverPosts(),
+            )->cannotAnswer($question, $player);
+        } catch (FunctionalException $e) {
+            return $e->getErrorKey();
+        }
+
+        self::fail('Cannot-answer should have been rejected.');
     }
 
     private function travelingThermometer(Round $round, Player $asker): AskedQuestion

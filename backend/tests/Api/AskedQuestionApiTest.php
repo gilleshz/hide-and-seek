@@ -312,6 +312,66 @@ final class AskedQuestionApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function aHiderCanCloseAPhotoQuestionWithoutAPhoto(): void
+    {
+        $client = static::createClient();
+        [$roundUuid, $gameUuid, , $seekerToken, $hiderUuid, $hiderToken] = $this->setUpGameWithSides($client);
+
+        $asked = $client->request(
+            'POST',
+            "/api/rounds/{$roundUuid}/questions",
+            $this->headersWithToken($seekerToken) + ['json' => ['category' => 'photos', 'photoTarget' => 'tree']],
+        )->toArray();
+        self::assertResponseIsSuccessful();
+        self::assertIsString($asked['uuid']);
+        $questionUuid = $asked['uuid'];
+
+        $closed = $client->request(
+            'POST',
+            "/api/questions/{$questionUuid}/cannot-answer",
+            $this->headersWithToken($hiderToken),
+        )->toArray();
+
+        self::assertResponseIsSuccessful();
+        self::assertNotNull($closed['revealedAt']);
+        self::assertSame('open', $closed['status']);
+
+        $answerMessage = $this->questionMessage($client, $gameUuid, 'answer', $questionUuid);
+        self::assertSame($hiderUuid, $answerMessage['senderUuid']);
+        self::assertSame('I cannot answer.', $answerMessage['body']);
+    }
+
+    #[Test]
+    public function cannotAnswerIsRejectedForANonPhotoQuestion(): void
+    {
+        $client = static::createClient();
+        [$roundUuid, , , $seekerToken, , $hiderToken] = $this->setUpGameWithSides($client);
+
+        $asked = $client->request(
+            'POST',
+            "/api/rounds/{$roundUuid}/questions",
+            $this->headersWithToken($seekerToken) + [
+                'json' => [
+                    'category' => 'radar',
+                    'radiusMeters' => 500.0,
+                    'seekerLat' => 52.52,
+                    'seekerLng' => 13.405,
+                ],
+            ],
+        )->toArray();
+        self::assertIsString($asked['uuid']);
+
+        $rejected = $client->request(
+            'POST',
+            "/api/questions/{$asked['uuid']}/cannot-answer",
+            $this->headersWithToken($hiderToken),
+        )->toArray(false);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame('question.cannot_answer_only_photos', $rejected['errorKey']);
+    }
+
+    #[Test]
     public function cancellingAQuestionPostsANoticeAndDeletesTheQuestion(): void
     {
         $client = static::createClient();

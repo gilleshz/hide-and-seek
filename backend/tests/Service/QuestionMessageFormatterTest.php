@@ -490,7 +490,7 @@ final class QuestionMessageFormatterTest extends TestCase
             'photos' => [
                 QuestionCategory::Photos,
                 static fn(AskedQuestion $q): AskedQuestion => $q,
-                self::payload('question.answer.photo_in_chat', 'Photo will be posted in chat.'),
+                self::payload('question.answer.photo_not_answered', 'No answer was given.'),
             ],
         ];
     }

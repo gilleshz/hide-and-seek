@@ -122,6 +122,9 @@ class QuestionRepositoryImpl @Inject constructor(
         playerUuid = imageParts.text(playerUuid),
     ).toDomainOrThrow()
 
+    override suspend fun cannotAnswerQuestion(questionUuid: String): AskedQuestion =
+        api.cannotAnswerQuestion(url = urlFor("/api/questions/$questionUuid/cannot-answer")).toDomainOrThrow()
+
     override suspend fun cancelQuestion(questionUuid: String, askerPlayerUuid: String) {
         api.cancelQuestion(
             url = urlFor("/api/questions/$questionUuid/cancel"),

@@ -124,6 +124,18 @@ class FakeQuestionRepository : QuestionRepository {
         return revealed
     }
 
+    var cannotAnswerResult: Result<AskedQuestion>? = null
+    val cannotAnsweredCalls = mutableListOf<String>()
+
+    override suspend fun cannotAnswerQuestion(questionUuid: String): AskedQuestion {
+        cannotAnsweredCalls += questionUuid
+        val closed = cannotAnswerResult?.getOrThrow() ?: questions.first { it.uuid == questionUuid }.copy(
+            revealedAt = "2026-01-01T00:05:00Z",
+        )
+        questions = questions.map { if (it.uuid == questionUuid) closed else it }.toMutableList()
+        return closed
+    }
+
     override suspend fun cancelQuestion(questionUuid: String, askerPlayerUuid: String) {
         questions = questions.filter { it.uuid != questionUuid }.toMutableList()
     }

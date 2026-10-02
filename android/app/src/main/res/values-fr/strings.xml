@@ -152,6 +152,7 @@
     <string name="question_category_photos">Photos</string>
     <string name="question_reveal_button">Révéler</string>
     <string name="question_photo_answer_button">Envoyer une photo</string>
+    <string name="question_cannot_answer_button">Je ne peux pas répondre</string>
     <string name="question_cancel_button">Annuler la question</string>
     <string name="question_thermometer_start_button">Démarrer</string>
     <string name="question_thermometer_confirm_button">Confirmer : je suis sur place</string>
@@ -578,7 +579,8 @@
     <string name="question_answer_sea_level_further">Plus loin du niveau de la mer</string>
     <string name="question_measuring_ask_sea_level">Êtes-vous plus proche ou plus loin du niveau de la mer que moi ?</string>
     <string name="question_answer_no_answer">Aucune réponse disponible</string>
-    <string name="question_answer_photo_in_chat">La photo sera publiée dans le chat.</string>
+    <string name="question_answer_photo_not_answered">Aucune réponse n\'a été donnée.</string>
+    <string name="question_answer_cannot_answer">Je ne peux pas répondre.</string>
     <string name="question_answer_tentacles_answer"><xliff:g>%1$s</xliff:g></string>
 
     <string name="system_player_joined">%1$s a rejoint la partie.</string>

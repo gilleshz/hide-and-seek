@@ -396,6 +396,51 @@ final readonly class QuestionService
         });
     }
 
+    public function cannotAnswer(AskedQuestion $question, Player $hider): AskedQuestion
+    {
+        return $this->entityManager->wrapInTransaction(function () use ($question, $hider): AskedQuestion {
+            $this->assertHider($question->getRound(), $hider);
+            if ($question->getRevealedAt() !== null) {
+                throw new FunctionalException(
+                    message: 'Question has already been revealed.',
+                    errorKey: 'question.already_revealed',
+                );
+            }
+            if ($question->getStatus() !== QuestionStatus::Open) {
+                throw new FunctionalException(
+                    message: 'Only open questions can be revealed.',
+                    errorKey: 'question.reveal_only_open',
+                );
+            }
+            if ($question->getCategory() !== QuestionCategory::Photos) {
+                throw new FunctionalException(
+                    message: 'Only photo questions can be answered this way.',
+                    errorKey: 'question.cannot_answer_only_photos',
+                );
+            }
+
+            $revealedAt = new \DateTimeImmutable();
+            if (!$this->askedQuestions->claimUnrevealed($question, $revealedAt)) {
+                throw new FunctionalException(
+                    message: 'Question has already been revealed.',
+                    errorKey: 'question.already_revealed',
+                );
+            }
+
+            $question->setRevealedAt($revealedAt);
+            $this->chatService->postAnswer(
+                game: $question->getRound()->getGame(),
+                sender: $hider,
+                body: 'I cannot answer.',
+                questionUuid: $question->getUuid(),
+                bodyKey: 'question.answer.cannot_answer',
+            );
+            $this->askedQuestions->save($question);
+
+            return $question;
+        });
+    }
+
     /**
      * Past-deadline answers used to surface only when a client happened to read them, so a table with
      * nobody's phone awake sat on an answer it already owed.

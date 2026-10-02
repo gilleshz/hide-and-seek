@@ -36,6 +36,7 @@ interface QuestionRepository {
     suspend fun listQuestions(roundUuid: String): List<AskedQuestion>
     suspend fun revealQuestion(questionUuid: String, revealingPlayerUuid: String): AskedQuestion
     suspend fun revealPhotoQuestion(questionUuid: String, playerUuid: String, imageUri: String): AskedQuestion
+    suspend fun cannotAnswerQuestion(questionUuid: String): AskedQuestion
     suspend fun cancelQuestion(questionUuid: String, askerPlayerUuid: String)
     suspend fun vetoQuestion(questionUuid: String, playerUuid: String, cardPhotoUri: String)
     suspend fun randomizeQuestion(questionUuid: String, playerUuid: String, cardPhotoUri: String): AskedQuestion

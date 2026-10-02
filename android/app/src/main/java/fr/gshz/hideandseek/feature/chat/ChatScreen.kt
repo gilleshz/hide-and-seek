@@ -185,6 +185,7 @@ fun ChatScreen(
         onAnswerPhoto = { questionUuid, imageUri ->
             viewModel.revealPhotoQuestion(questionUuid, imageUri)
         },
+        onCannotAnswer = viewModel::cannotAnswerQuestion,
         onDrawTrace = { questionUuid ->
             viewModel.requestTrace(questionUuid)
             onNavigateToMap(uiState.gameUuid)
@@ -211,6 +212,7 @@ internal fun ChatContent(
     onBackClick: () -> Unit,
     onRevealClick: (String) -> Unit,
     onAnswerPhoto: (String, String) -> Unit,
+    onCannotAnswer: (String) -> Unit,
     onDrawTrace: (String) -> Unit,
     onVetoClick: (String, String) -> Unit,
     onRandomizeClick: (String, String) -> Unit,
@@ -285,6 +287,7 @@ internal fun ChatContent(
                 pendingPhotoAnswerUuid = questionUuid
                 showImageSourceDialog = true
             },
+            onCannotAnswerClick = onCannotAnswer,
             onPowerupClick = { powerupTargetUuid = it },
             onCountdownExpired = onCountdownExpired,
             onImageClick = { fullscreenImageUrl = it },
@@ -499,6 +502,7 @@ private fun ChatMessageList(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
+    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
     onCountdownExpired: () -> Unit,
     onImageClick: (String) -> Unit,
@@ -535,6 +539,7 @@ private fun ChatMessageList(
                         uiState = uiState,
                         onRevealClick = onRevealClick,
                         onAnswerPhotoClick = onAnswerPhotoClick,
+                        onCannotAnswerClick = onCannotAnswerClick,
                         onPowerupClick = onPowerupClick,
                         onCountdownExpired = onCountdownExpired,
                         onImageClick = onImageClick,
@@ -644,6 +649,7 @@ private fun ChatContentPreview() {
             onBackClick = {},
             onRevealClick = {},
             onAnswerPhoto = { _, _ -> },
+            onCannotAnswer = {},
             onDrawTrace = {},
             onVetoClick = { _, _ -> },
             onRandomizeClick = { _, _ -> },

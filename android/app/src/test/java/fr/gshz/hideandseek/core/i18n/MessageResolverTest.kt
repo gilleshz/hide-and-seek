@@ -609,7 +609,12 @@ class MessageResolverTest {
         Case("question.answer.sea_level_further", R.string.question_answer_sea_level_further, emptyList()),
         Case("question.measuring.ask.sea_level", R.string.question_measuring_ask_sea_level, emptyList()),
         Case("question.answer.no_answer", R.string.question_answer_no_answer, emptyList()),
-        Case("question.answer.photo_in_chat", R.string.question_answer_photo_in_chat, emptyList()),
+        Case(
+            "question.answer.photo_not_answered",
+            R.string.question_answer_photo_not_answered,
+            emptyList(),
+        ),
+        Case("question.answer.cannot_answer", R.string.question_answer_cannot_answer, emptyList()),
         Case("question.answer.tentacles_answer", R.string.question_answer_tentacles_answer, listOf("answer")),
         Case("question.matching.ask_transit_line", R.string.question_matching_ask_transit_line, listOf("line")),
         Case(

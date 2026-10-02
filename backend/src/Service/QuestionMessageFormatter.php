@@ -98,8 +98,8 @@ final readonly class QuestionMessageFormatter
                 : $this->enumAnswer($question->getMeasuringAnswer()?->value),
             QuestionCategory::Tentacles => $this->tentaclesAnswerBody($question),
             QuestionCategory::Photos => new MessagePayload(
-                bodyKey: 'question.answer.photo_in_chat',
-                body: 'Photo will be posted in chat.',
+                bodyKey: 'question.answer.photo_not_answered',
+                body: 'No answer was given.',
             ),
         };
     }

@@ -232,6 +232,10 @@ interface HideAndSeekApi {
         @Part("playerUuid") playerUuid: RequestBody,
     ): AskedQuestionDto
 
+    // The answering player comes from the subscriber token, so this POST carries no body.
+    @POST
+    suspend fun cannotAnswerQuestion(@Url url: String): AskedQuestionDto
+
     @GET
     suspend fun getSeekerCandidateMarkers(@Url url: String): List<SeekerCandidateMarkerDto>
 

@@ -363,6 +363,37 @@ class ChatViewModelTest {
     }
 
     @Test
+    fun `cannot answer closes the photo question and clears isRevealing`() = runTest(testDispatcher) {
+        sessionRepository.seed(hiderSession())
+        chatRepository.messages += questionMessage()
+        questionRepository.questions += photoQuestion()
+        val viewModel = createViewModel()
+
+        viewModel.cannotAnswerQuestion("q1")
+        advanceUntilIdle()
+
+        assertEquals(listOf("q1"), questionRepository.cannotAnsweredCalls)
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.questionsByUuid["q1"]?.revealedAt == null) state = awaitItem()
+            assertFalse(state.isRevealing)
+            assertFalse(state.isPendingQuestion(state.messages.first()))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private fun photoQuestion(uuid: String = "q1") = AskedQuestion(
+        uuid = uuid,
+        roundUuid = "round-1",
+        category = QuestionCategory.Photos,
+        askedAt = "2026-07-05T12:00:00Z",
+        revealDeadlineAt = "2026-07-05T12:05:00Z",
+        revealedAt = null,
+        radarAnswer = null,
+        thermometerResult = null,
+    )
+
+    @Test
     fun `a transit-line matching question is pending and reveals via the generic reveal path`() =
         runTest(testDispatcher) {
             sessionRepository.seed(hiderSession())

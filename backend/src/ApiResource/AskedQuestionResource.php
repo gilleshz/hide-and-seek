@@ -26,6 +26,7 @@ use App\State\AskedQuestionProcessor;
 use App\State\AskedQuestionProvider;
 use App\State\AskedQuestionRevealProcessor;
 use App\State\CancelQuestionProcessor;
+use App\State\CannotAnswerQuestionProcessor;
 use App\State\CompleteThermometerProcessor;
 use App\State\RandomizeQuestionProcessor;
 use App\State\VetoQuestionProcessor;
@@ -71,6 +72,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ],
             input: false,
             processor: AnswerPhotoQuestionProcessor::class,
+        ),
+        new Post(
+            uriTemplate: '/questions/{questionUuid}/cannot-answer',
+            uriVariables: [
+                'questionUuid' => new Link(identifiers: ['uuid']),
+            ],
+            input: false,
+            processor: CannotAnswerQuestionProcessor::class,
+            description: 'Closes a photo question without a photo. It counts as answered and produces no geometry.',
         ),
         new Post(
             uriTemplate: '/questions/{questionUuid}/complete',
