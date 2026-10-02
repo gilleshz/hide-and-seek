@@ -626,6 +626,7 @@
     <string name="error_too_many_players">Cette partie a atteint le nombre maximum de personnes.</string>
     <string name="error_transit_tiles_failed">Impossible de générer le plan des transports pour les lignes choisies. Essayez une autre sélection.</string>
     <string name="error_boundary_too_large">La zone choisie est trop grande pour une partie. Retirez une zone ou choisissez-en une plus petite.</string>
+    <string name="error_too_many_areas">Au maximum <xliff:g>%1$s</xliff:g> zones par partie. Retirez-en une pour continuer.</string>
     <string name="error_no_area_geometry">Aucune donnée cartographique trouvée pour les zones choisies.</string>
     <string name="error_invalid_zone">La zone sélectionnée est invalide.</string>
     <string name="error_zone_too_small">La zone est trop petite. Choisissez une zone plus grande.</string>

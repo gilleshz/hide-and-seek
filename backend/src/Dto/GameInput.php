@@ -23,8 +23,7 @@ final class GameInput
     #[Groups([Group::GAME_WRITE])]
     public Edition $edition = Edition::Metric;
 
-    /** @var list<array<string, mixed>> */
-    #[Assert\Count(max: 12)]
+    /** @var list<array<string, mixed>> The count is capped by NominatimService's lookup limit. */
     #[Groups([Group::GAME_WRITE])]
     public array $areas = [];
 

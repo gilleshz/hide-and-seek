@@ -626,6 +626,7 @@
     <string name="error_too_many_players">Dieses Spiel hat die maximale Anzahl an Spielenden erreicht.</string>
     <string name="error_transit_tiles_failed">Der Verkehrsplan konnte für die gewählten Linien nicht erstellt werden. Bitte eine andere Auswahl treffen.</string>
     <string name="error_boundary_too_large">Das gewählte Gebiet ist für eine Partie zu gross. Entferne ein Gebiet oder wähle ein kleineres.</string>
+    <string name="error_too_many_areas">Höchstens <xliff:g>%1$s</xliff:g> Gebiete pro Partie. Entferne eines, um fortzufahren.</string>
     <string name="error_no_area_geometry">Für die gewählten Gebiete wurden keine Kartendaten gefunden.</string>
     <string name="error_invalid_zone">Die ausgewählte Zone ist ungültig.</string>
     <string name="error_zone_too_small">Die Zone ist zu klein. Wähle einen größeren Bereich.</string>

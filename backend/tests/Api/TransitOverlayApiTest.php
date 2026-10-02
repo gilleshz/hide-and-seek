@@ -14,6 +14,7 @@ use App\Service\OverpassService;
 use App\Service\TransitService;
 use App\Service\TransitTilePipeline;
 use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -188,6 +189,34 @@ final class TransitOverlayApiTest extends ApiTestCase
         self::assertArrayHasKey('features', $geoJson);
         self::assertIsArray($geoJson['features']);
         self::assertGreaterThanOrEqual(1, count($geoJson['features']));
+    }
+
+    /** @return iterable<string, array{string, array<string, mixed>}> */
+    public static function areaEndpoints(): iterable
+    {
+        yield 'game creation' => ['/api/games', ['name' => 'Too Many Areas', 'size' => 'M', 'edition' => 'metric']];
+        yield 'boundary preview' => ['/api/boundary-preview', []];
+        yield 'transit discovery' => ['/api/transit-lines', []];
+    }
+
+    /** @param array<string, mixed> $payload */
+    #[DataProvider('areaEndpoints')]
+    #[Test]
+    public function itRefusesMoreAreasThanTheLookupLimit(string $uri, array $payload): void
+    {
+        $areas = array_map(
+            static fn(int $i): array => ['osmType' => 'relation', 'osmId' => 1000 + $i],
+            range(1, NominatimService::MAX_LOOKUP_IDS + 1),
+        );
+
+        $client = static::createClient();
+        $client->request('POST', $uri, self::AUTH + ['json' => $payload + ['areas' => $areas]]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains([
+            'errorKey' => 'game.too_many_areas',
+            'errorArgs' => ['max' => (string) NominatimService::MAX_LOOKUP_IDS],
+        ]);
     }
 
     #[Test]

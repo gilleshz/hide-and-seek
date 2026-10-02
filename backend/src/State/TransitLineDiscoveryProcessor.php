@@ -37,6 +37,9 @@ final readonly class TransitLineDiscoveryProcessor implements ProcessorInterface
 
         try {
             $rawLines = $this->transitService->discoverLines($data->areas, $data->routeTypes);
+        } catch (FunctionalException $e) {
+            // A rule already ruled on the request: its own key explains the refusal better than a timeout would.
+            throw $e;
         } catch (\RuntimeException $e) {
             throw new FunctionalException(
                 message: 'Transit discovery failed. The query may have timed out, try selecting fewer route types or a smaller area.',

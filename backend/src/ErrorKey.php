@@ -24,4 +24,5 @@ final class ErrorKey
     public const string QUESTION_SEEKER_POSITION_REQUIRED = 'question.seeker_position_required';
     public const string CHAT_IMAGE_TOO_LARGE = 'chat_image.too_large';
     public const string HEAVY_WORK_BUSY = 'heavy_work.busy';
+    public const string TOO_MANY_AREAS = 'game.too_many_areas';
 }

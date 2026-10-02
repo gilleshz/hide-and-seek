@@ -629,6 +629,7 @@
     <string name="error_too_many_players">This game has reached the maximum number of players.</string>
     <string name="error_transit_tiles_failed">Could not build the transit map for the selected lines. Try a different selection.</string>
     <string name="error_boundary_too_large">The chosen area is too large for one game. Remove an area or pick a smaller one.</string>
+    <string name="error_too_many_areas">At most <xliff:g>%1$s</xliff:g> areas per game. Remove one to continue.</string>
     <string name="error_no_area_geometry">No map data was found for the chosen areas.</string>
     <string name="error_invalid_zone">The selected zone is invalid.</string>
     <string name="error_zone_too_small">The zone is too small. Choose a larger area.</string>

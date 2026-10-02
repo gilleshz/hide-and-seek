@@ -32,6 +32,7 @@ private val ERROR_KEY_MAP: Map<String, Int> = mapOf(
     "game.too_many_players" to R.string.error_too_many_players,
     "game.transit_tiles_failed" to R.string.error_transit_tiles_failed,
     "game.boundary_too_large" to R.string.error_boundary_too_large,
+    "game.too_many_areas" to R.string.error_too_many_areas,
     "game.no_area_geometry" to R.string.error_no_area_geometry,
     "zone.invalid" to R.string.error_invalid_zone,
     "zone.too_small" to R.string.error_zone_too_small,
@@ -88,5 +89,6 @@ fun resolveError(errorKey: String?, errorArgs: Map<String, String>?): String? {
 private fun orderedErrorArgs(key: String, args: Map<String, String>): Array<Any> = when (key) {
     // Keys with positional args, order them to match %1$s, %2$s in the string
     "game.name_taken" -> listOfNotNull(args["name"]).toTypedArray()
+    "game.too_many_areas" -> listOfNotNull(args["max"]).toTypedArray()
     else -> emptyArray()
 }

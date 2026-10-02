@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\AreaResult;
+use App\ErrorKey;
+use App\Exception\FunctionalException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -14,6 +16,9 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 final readonly class NominatimService
 {
     private const int MAX_RESPONSE_BYTES = 10 * 1_000_000;
+
+    /** The public lookup endpoint accepts at most 50 osm_ids per request, and one covers every area. */
+    public const int MAX_LOOKUP_IDS = 50;
 
     public function __construct(
         private HttpClientInterface $httpClient,
@@ -120,6 +125,14 @@ final readonly class NominatimService
     {
         if ($refs === []) {
             return [];
+        }
+
+        if (count($refs) > self::MAX_LOOKUP_IDS) {
+            throw new FunctionalException(
+                message: sprintf('At most %d areas can be selected.', self::MAX_LOOKUP_IDS),
+                errorKey: ErrorKey::TOO_MANY_AREAS,
+                errorArgs: ['max' => (string) self::MAX_LOOKUP_IDS],
+            );
         }
 
         $ids = implode(',', array_map(fn(array $r): string => match ($r['osmType']) {

@@ -10,8 +10,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class TransitLineDiscoveryInput
 {
-    /** @var list<array<string, mixed>> */
-    #[Assert\Count(min: 1, max: 12)]
+    /** @var list<array<string, mixed>> The count is capped by NominatimService's lookup limit. */
+    #[Assert\Count(min: 1)]
     #[Groups([Group::TRANSIT_LINE_DISCOVERY_WRITE])]
     public array $areas = [];
 
