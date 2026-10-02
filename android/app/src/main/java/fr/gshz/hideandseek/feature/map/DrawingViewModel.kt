@@ -293,6 +293,11 @@ class DrawingViewModel @Inject constructor(
         }
     }
 
+    /** The hiding radius around a station the seekers are sure of, kept as searchable area. */
+    fun addSearchAreaConstraint(latitude: Double, longitude: Double, radiusMeters: Double) {
+        addManualConstraint(circleRingGeoJson(latitude, longitude, radiusMeters), ConstraintMode.Include)
+    }
+
     fun deleteManualConstraint(constraintUuid: String) {
         viewModelScope.launch {
             val session = sessionEvents.sessionRepository.currentSession() ?: return@launch

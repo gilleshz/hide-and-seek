@@ -133,8 +133,10 @@ internal data class SeekerMarkerOverlay(
     val markers: List<SeekerMarker> = emptyList(),
     val radiusMeters: Double? = null,
     val isSeeker: Boolean = false,
+    val edition: Edition = Edition.Metric,
     val onMark: (Double, Double) -> Unit = { _, _ -> },
     val onUnmark: (String) -> Unit = {},
+    val onConstrainSearchArea: (Double, Double, Double) -> Unit = { _, _, _ -> },
 )
 
 internal data class MapNavigation(
@@ -218,6 +220,9 @@ fun MapScreen(
         onStyleSelected = sessionViewModel::setMapStyle,
         onMarkSuspectedStation = seekerMarkersViewModel::markSuspectedStation,
         onUnmarkStation = seekerMarkersViewModel::unmarkStation,
+        onConstrainSearchArea = { lat, lng, radius ->
+            drawingViewModel.addSearchAreaConstraint(lat, lng, radius)
+        },
         onTransitLineTapped = sessionViewModel::toggleTransitFocus,
     )
 }
@@ -437,6 +442,7 @@ internal fun MapContent(
     onStyleSelected: (MapStyle) -> Unit = {},
     onMarkSuspectedStation: (Double, Double) -> Unit = { _, _ -> },
     onUnmarkStation: (String) -> Unit = {},
+    onConstrainSearchArea: (Double, Double, Double) -> Unit = { _, _, _ -> },
     onTransitLineTapped: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -496,8 +502,10 @@ internal fun MapContent(
                     markers = uiState.seekerMarkers,
                     radiusMeters = uiState.currentZoneRadiusMeters,
                     isSeeker = uiState.side == Side.Seeker,
+                    edition = uiState.edition,
                     onMark = onMarkSuspectedStation,
                     onUnmark = onUnmarkStation,
+                    onConstrainSearchArea = onConstrainSearchArea,
                 ),
             )
         }
@@ -1473,6 +1481,7 @@ private fun MapWithTooltipOverlay(
     val currentSeekerHost by rememberUpdatedState(seekerHost)
     val currentDrawing by rememberUpdatedState(drawingOverlay)
     val density = LocalDensity.current
+    val pendingConstraint = remember { mutableStateOf<SeekerActionData?>(null) }
 
     DisposableEffect(lifecycle, mapView) {
         val observer = mapViewLifecycleObserver(mapView, state)
@@ -1529,9 +1538,28 @@ private fun MapWithTooltipOverlay(
     seekerAction.value?.let { action ->
         StationActionTooltip(
             action = action,
+            radiusMeters = seekerHost.radiusMeters,
             onMark = { seekerHost.onMark(action.lat, action.lng); seekerAction.value = null },
             onUnmark = { uuid -> seekerHost.onUnmark(uuid); seekerAction.value = null },
+            onConstrainSearchArea = {
+                pendingConstraint.value = action
+                seekerAction.value = null
+            },
             onDismiss = { seekerAction.value = null },
+        )
+    }
+    val constraintRadius = seekerHost.radiusMeters
+    val pending = pendingConstraint.value
+    if (pending != null && constraintRadius != null) {
+        SearchAreaConstraintDialog(
+            stationLabel = pending.label,
+            radiusMeters = constraintRadius,
+            edition = seekerHost.edition,
+            onConfirm = {
+                seekerHost.onConstrainSearchArea(pending.lat, pending.lng, constraintRadius)
+                pendingConstraint.value = null
+            },
+            onDismiss = { pendingConstraint.value = null },
         )
     }
 }

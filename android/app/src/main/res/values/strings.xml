@@ -127,6 +127,9 @@
     <string name="zone_marker_label">Hiding zone</string>
     <string name="seeker_marker_mark">Mark suspected station</string>
     <string name="seeker_marker_unmark">Unmark station</string>
+    <string name="seeker_marker_constrain">Use as hiding zone</string>
+    <string name="search_area_constraint_title">Narrow the search area?</string>
+    <string name="search_area_constraint_body">Add a <xliff:g>%1$s</xliff:g> radius around <xliff:g>%2$s</xliff:g>? Shared with the team, deletable like a drawn area.</string>
     <string name="zone_status_label">Hiding zone set: radius <xliff:g>%1$s</xliff:g></string>
 
     <string name="draw_constraint_button">Draw search area</string>

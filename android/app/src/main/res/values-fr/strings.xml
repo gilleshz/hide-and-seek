@@ -127,6 +127,9 @@
     <string name="zone_marker_label">Zone de cache</string>
     <string name="seeker_marker_mark">Marquer une station suspecte</string>
     <string name="seeker_marker_unmark">Retirer le marquage</string>
+    <string name="seeker_marker_constrain">Utiliser comme zone de cache</string>
+    <string name="search_area_constraint_title">Restreindre la zone de recherche ?</string>
+    <string name="search_area_constraint_body">Ajouter un rayon de <xliff:g>%1$s</xliff:g> autour de <xliff:g>%2$s</xliff:g> ? Partagé avec l\'équipe, supprimable comme une zone dessinée.</string>
     <string name="zone_status_label">Zone de cache définie : rayon <xliff:g>%1$s</xliff:g></string>
 
     <string name="draw_constraint_button">Dessiner une zone de recherche</string>

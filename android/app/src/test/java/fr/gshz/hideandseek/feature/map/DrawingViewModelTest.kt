@@ -236,6 +236,45 @@ class DrawingViewModelTest {
         }
 
     @Test
+    fun `a marked station commits an include circle of the hiding radius around it`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
+        )
+        val viewModel = fixture.createDrawingViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+
+            viewModel.addSearchAreaConstraint(STATION_LAT, STATION_LNG, HIDING_RADIUS_METERS)
+            while (state.manualConstraints.isEmpty()) state = awaitItem()
+
+            val call = fixture.manualConstraintRepository.addCalls.single()
+            assertEquals(ConstraintMode.Include, call.mode)
+            val vertices = RING_VERTEX.findAll(call.geoJson)
+                .map { it.groupValues[1].toDouble() to it.groupValues[2].toDouble() }
+                .toList()
+            // A bare Polygon is what ST_GeomFromGeoJSON parses; a FeatureCollection would be rejected.
+            assertTrue(call.geoJson.startsWith("""{"type":"Polygon","""))
+            assertEquals(65, vertices.size)
+            assertEquals(vertices.first(), vertices.last())
+            val ring = vertices.dropLast(1)
+            assertEquals(64, ring.size)
+            ring.forEach { (lng, lat) ->
+                assertEquals(HIDING_RADIUS_METERS, haversineMeters(lat, lng, STATION_LAT, STATION_LNG), 1.0)
+            }
+            assertTrue(
+                haversineMeters(
+                    ring.map { it.second }.average(),
+                    ring.map { it.first }.average(),
+                    STATION_LAT,
+                    STATION_LNG,
+                ) < 1.0,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `an inverted drawing commits with the include mode`() = runTest(testDispatcher) {
         fixture.sessionRepository.seed(
             PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
@@ -478,6 +517,13 @@ class DrawingViewModelTest {
 
         const val WARM_ATTEMPTS = 3
         const val POLL_STEP_MS = 11_000L
+
+        const val STATION_LAT = 48.85
+        const val STATION_LNG = 2.35
+        const val HIDING_RADIUS_METERS = 500.0
+
+        // Small coordinates are written in exponent form ("1.5E-5"), so the pattern needs that branch.
+        val RING_VERTEX = Regex("""\[(-?[\d.]+(?:E[+-]?\d+)?),(-?[\d.]+(?:E[+-]?\d+)?)]""")
     }
 }
 

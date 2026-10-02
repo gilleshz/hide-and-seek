@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +30,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.gshz.hideandseek.R
+import fr.gshz.hideandseek.core.ui.formatDistance
+import fr.gshz.hideandseek.domain.model.Edition
 import kotlin.math.roundToInt
 
 private val STATION_TOOLTIP_MAX_WIDTH = 200.dp
@@ -104,8 +108,10 @@ private const val ACTION_TOOLTIP_ALPHA = 0.92f
 @Composable
 internal fun StationActionTooltip(
     action: SeekerActionData,
+    radiusMeters: Double?,
     onMark: () -> Unit,
     onUnmark: (String) -> Unit,
+    onConstrainSearchArea: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var heightPx by remember { mutableStateOf(0) }
@@ -137,8 +143,43 @@ internal fun StationActionTooltip(
                     ),
                 )
             }
+            if (existingUuid != null && radiusMeters != null) {
+                Spacer(Modifier.height(6.dp))
+                Button(onClick = onConstrainSearchArea) {
+                    Text(stringResource(R.string.seeker_marker_constrain))
+                }
+            }
         }
     }
+}
+
+@Composable
+internal fun SearchAreaConstraintDialog(
+    stationLabel: String,
+    radiusMeters: Double,
+    edition: Edition,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.search_area_constraint_title)) },
+        text = {
+            Text(
+                stringResource(
+                    R.string.search_area_constraint_body,
+                    formatDistance(radiusMeters, edition),
+                    stationLabel,
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.zone_confirm_button)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        },
+    )
 }
 
 private val TOOLTIP_NAMED_COLORS = mapOf(

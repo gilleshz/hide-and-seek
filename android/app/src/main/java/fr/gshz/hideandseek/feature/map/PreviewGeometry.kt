@@ -32,9 +32,19 @@ internal fun circlePolygonGeoJson(centerLat: Double, centerLng: Double, radiusMe
  * Bare GeoJSON Polygon (closed linear ring) from [vertices]. The backend's
  * ST_GeomFromGeoJSON expects a geometry object, not a Feature.
  */
-internal fun polygonRingGeoJson(vertices: List<ZonePin>): String {
-    val ring = (vertices + vertices.first())
-        .joinToString(",", prefix = "[", postfix = "]") { "[${it.longitude},${it.latitude}]" }
+internal fun polygonRingGeoJson(vertices: List<ZonePin>): String =
+    closedRingGeoJson(vertices.map { it.longitude to it.latitude })
+
+/**
+ * The same bare Polygon shape as [polygonRingGeoJson], drawn as a geodesic circle: what a
+ * search-area constraint is made of, unlike the FeatureCollection of [circlePolygonGeoJson].
+ */
+internal fun circleRingGeoJson(centerLat: Double, centerLng: Double, radiusMeters: Double): String =
+    closedRingGeoJson(circlePolygonCoords(centerLat, centerLng, radiusMeters))
+
+private fun closedRingGeoJson(coords: List<Pair<Double, Double>>): String {
+    val ring = (coords + coords.first())
+        .joinToString(",", prefix = "[", postfix = "]") { "[${it.first},${it.second}]" }
     return """{"type":"Polygon","coordinates":[$ring]}"""
 }
 

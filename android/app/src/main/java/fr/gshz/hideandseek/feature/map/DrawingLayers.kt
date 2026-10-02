@@ -135,10 +135,10 @@ internal fun Style.updateManualConstraintSource(constraints: List<ManualConstrai
 
 internal fun MapLibreMap.manualConstraintUuidAt(point: PointF, radiusPx: Float): String? {
     val rect = RectF(point.x - radiusPx, point.y - radiusPx, point.x + radiusPx, point.y + radiusPx)
-    return queryRenderedFeatures(rect, MANUAL_CONSTRAINT_FILL_LAYER_ID)
-        .firstOrNull()
-        ?.getStringProperty(UUID_PROP)
-        ?.takeIf { it.isNotEmpty() }
+    // An include constraint fills the world minus its ring, so only its outline is tappable.
+    val feature = queryRenderedFeatures(rect, MANUAL_CONSTRAINT_FILL_LAYER_ID).firstOrNull()
+        ?: queryRenderedFeatures(rect, MANUAL_CONSTRAINT_LINE_LAYER_ID).firstOrNull()
+    return feature?.getStringProperty(UUID_PROP)?.takeIf { it.isNotEmpty() }
 }
 
 private fun drawingShapeGeoJson(

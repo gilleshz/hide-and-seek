@@ -127,6 +127,9 @@
     <string name="zone_marker_label">Versteckzone</string>
     <string name="seeker_marker_mark">Verdächtige Haltestelle markieren</string>
     <string name="seeker_marker_unmark">Markierung entfernen</string>
+    <string name="seeker_marker_constrain">Als Versteckzone verwenden</string>
+    <string name="search_area_constraint_title">Suchgebiet eingrenzen?</string>
+    <string name="search_area_constraint_body">Einen Radius von <xliff:g>%1$s</xliff:g> um <xliff:g>%2$s</xliff:g> hinzufügen? Mit dem Team geteilt, wie ein gezeichnetes Gebiet löschbar.</string>
     <string name="zone_status_label">Versteckzone gesetzt: Radius <xliff:g>%1$s</xliff:g></string>
 
     <string name="draw_constraint_button">Suchgebiet zeichnen</string>
