@@ -5,7 +5,7 @@ import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.QuestionCategory
 
 /**
- * Feature types a category can target, per the game rules. Matching and Measuring have
+ * Feature types a category can target, per docs/rules/04-questions.md. Matching and Measuring have
  * distinct sets (Measuring adds transit lines, coastline, body of water; Matching has neither);
  * Tentacles is unavailable in Small games and size-gated. Transit Line matching is a separate chip.
  */
@@ -76,7 +76,7 @@ private val TENTACLES_MEDIUM_TYPES = listOf(
 )
 
 private val TENTACLES_LARGE_EXTRA_TYPES = listOf(
-    FeatureType.MetroLine,
+    FeatureType.RailStation,
     FeatureType.Zoo,
     FeatureType.Aquarium,
     FeatureType.AmusementPark,

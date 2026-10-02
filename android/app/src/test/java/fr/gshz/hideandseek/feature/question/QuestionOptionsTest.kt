@@ -31,6 +31,31 @@ class QuestionOptionsTest {
     }
 
     @Test
+    fun `tentacles offers exactly the backend catalog options for each size`() {
+        assertEquals(
+            emptyList<FeatureType>(),
+            availableFeatureTypes(QuestionCategory.Tentacles, GameSize.Small),
+        )
+        assertEquals(
+            listOf(FeatureType.Museum, FeatureType.Library, FeatureType.MovieTheater, FeatureType.Hospital),
+            availableFeatureTypes(QuestionCategory.Tentacles, GameSize.Medium),
+        )
+        assertEquals(
+            listOf(
+                FeatureType.Museum,
+                FeatureType.Library,
+                FeatureType.MovieTheater,
+                FeatureType.Hospital,
+                FeatureType.RailStation,
+                FeatureType.Zoo,
+                FeatureType.Aquarium,
+                FeatureType.AmusementPark,
+            ),
+            availableFeatureTypes(QuestionCategory.Tentacles, GameSize.Large),
+        )
+    }
+
+    @Test
     fun `the border wire values match the backend enum`() {
         assertEquals("border_international", FeatureType.BorderInternational.wireValue)
         assertEquals("border_admin_1st", FeatureType.Border1st.wireValue)
