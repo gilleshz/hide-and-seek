@@ -194,6 +194,17 @@ The hub now speaks Mercure 1.0. Deploy the new image first, then install the
 updated APK (or restart the app) so it fetches a 1.0 access token. An old APK
 cannot receive live events from the new hub; REST calls keep working.
 
+### Worker mode (optional)
+
+Worker mode is off by default. Set `FRANKENPHP_WORKER_MODE=1` in the stack env
+(optionally `FRANKENPHP_WORKER_COUNT`, default 4, `FRANKENPHP_WORKER_THREADS`,
+default 2, `FRANKENPHP_LOOP_MAX`, default 500) and redeploy the app service.
+It reuses the PHP process, Symfony container and Doctrine connection. Roll
+back with `FRANKENPHP_WORKER_MODE=0` and a restart. A database restart can
+leave stale connections until the worker recycles; session advisory locks
+live with the connection; keep 4 to 8 workers and watch memory. Do not enable
+it in dev, where bind mounts need hot reload.
+
 ## Backups
 
 - Database (essential):

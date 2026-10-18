@@ -101,3 +101,11 @@ guard_prod_config() {
         fi
     fi
 }
+
+configure_worker_mode() {
+    if [ "${FRANKENPHP_WORKER_MODE:-0}" = "1" ]; then
+        export FRANKENPHP_CONFIG="num_threads ${FRANKENPHP_WORKER_THREADS:-2}
+worker /app/public/index.php ${FRANKENPHP_WORKER_COUNT:-4}"
+        export FRANKENPHP_LOOP_MAX="${FRANKENPHP_LOOP_MAX:-500}"
+    fi
+}

@@ -73,7 +73,7 @@ class ChatMessageReadRepository extends ServiceEntityRepository
             ->andWhere('p.leftAt IS NULL')
             ->groupBy('p.uuid')
             ->addGroupBy('acct.name')
-            ->orderBy('acct.name', 'ASC')
+            ->orderBy('acct.name', \SortDirection::Ascending)
             ->setParameter('game', $game)
             ->getQuery()
             ->getScalarResult();
@@ -115,8 +115,8 @@ class ChatMessageReadRepository extends ServiceEntityRepository
             ->innerJoin('p.account', 'acct')
             ->where('r.message = :message')
             ->andWhere('p.leftAt IS NULL')
-            ->orderBy('r.readAt', 'ASC')
-            ->addOrderBy('acct.name', 'ASC')
+            ->orderBy('r.readAt', \SortDirection::Ascending)
+            ->addOrderBy('acct.name', \SortDirection::Ascending)
             ->setParameter('message', $message)
             ->getQuery()
             ->getScalarResult();

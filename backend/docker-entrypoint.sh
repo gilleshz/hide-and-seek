@@ -4,6 +4,7 @@ set -e
 . /app/docker-entrypoint-lib.sh
 resolve_secrets
 guard_prod_config
+configure_worker_mode
 
 until php -r '
     $url = getenv("DATABASE_URL");

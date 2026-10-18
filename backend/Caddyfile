@@ -27,6 +27,9 @@
 		# Without it a carrier dropping an idle stream without a FIN is invisible to the app: it would
 		# neither fail nor close, so the reconnect never arms. Must stay under the client's readTimeout.
 		heartbeat 30s
+		# Per-IP is 0 because the hub sits behind a proxy; per-token stays 4 (one stream per player).
+		subscription_limits 1000 4 0
+		drain_timeout 30s
 	}
 
 	# Caddy 2.11.7 compresses SSE through `encode`: each stream keeps its own encoder (several MiB),

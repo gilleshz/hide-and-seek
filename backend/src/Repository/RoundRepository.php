@@ -53,8 +53,8 @@ class RoundRepository extends ServiceEntityRepository
             ->andWhere('r.caught = true')
             ->andWhere('r.seekingEndedAt IS NOT NULL')
             ->setParameter('game', $game)
-            ->orderBy('r.createdAt', 'ASC')
-            ->addOrderBy('r.id', 'ASC')
+            ->orderBy('r.createdAt', \SortDirection::Ascending)
+            ->addOrderBy('r.id', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

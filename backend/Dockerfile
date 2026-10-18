@@ -6,8 +6,8 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
     libglpk-dev libzip-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Pin a known-good commit (master, 2025).
-ARG LOOM_COMMIT=9d0a87a096abd8fd49d233dbc7df312c0438ad11
+# Pin a known-good commit (master, 2026-07-24).
+ARG LOOM_COMMIT=1e4757838104d1e4d22186c9b77d5fc4b98681a0
 # topo samples every SEGL metres but only merges within dCut; see the patch header.
 COPY loom-sample-dist.patch /tmp/
 RUN git clone --recurse-submodules https://github.com/ad-freiburg/loom.git /loom \
@@ -44,27 +44,22 @@ COPY --from=loom-builder /usr/lib/x86_64-linux-gnu/libzip.so.4* /usr/lib/x86_64-
 RUN ldconfig
 
 # osm2gtfs turns an OSM route-relation selection into GTFS with real-geometry shapes, which
-# gtfs2graph then feeds into the LOOM pipeline.
-# Bump OSM2GTFS_BUMP to invalidate the cache when the upstream repo has fixes.
-ARG OSM2GTFS_BUMP=5
+# gtfs2graph then feeds into the LOOM pipeline. Pinned to exact commits so builds are
+# reproducible; bump the hash to pick up upstream fixes.
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 python3-venv git \
     && python3 -m venv /opt/osm2gtfs \
     && /opt/osm2gtfs/bin/pip install --no-cache-dir \
-       "git+https://github.com/gilleshz/osm2gtfs.git" \
-       mapbox_vector_tile \
-    && echo "osm2gtfs bump: ${OSM2GTFS_BUMP}" \
+       "git+https://github.com/gilleshz/osm2gtfs.git@f90d78eb4a03d91afaa43d8b722cc101d4abf8c8" \
+       "mapbox_vector_tile==2.2.0" \
     && apt-get purge -y git && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 # gtfsmerge merges multiple GTFS feeds (OSM-derived + user-provided) into a single feed with
 # coordinate-based stop deduplication, feeding the combined result into gtfs2graph.
-# Bump GTFSMERGE_BUMP to invalidate the cache when the upstream repo has fixes.
-ARG GTFSMERGE_BUMP=7
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends git \
     && /opt/osm2gtfs/bin/pip install --no-cache-dir \
-       "git+https://github.com/gilleshz/gtfsmerge.git" \
+       "git+https://github.com/gilleshz/gtfsmerge.git@ce81173f1d327110dd5b650707888b01fa08e9d2" \
     && ln -s /opt/osm2gtfs/bin/gtfsmerge /usr/local/bin/gtfsmerge \
-    && echo "gtfsmerge bump: ${GTFSMERGE_BUMP}" \
     && apt-get purge -y git && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 

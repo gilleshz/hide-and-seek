@@ -13,8 +13,10 @@ readonly class TransitTilePipeline
     private const int TIMEOUT_SECONDS = 360;
     // transitmap only emits correct web-mercator XYZ tiles at zoom 14; a zoom range misprojects them.
     private const int NATIVE_ZOOM = 14;
-    private const int LINE_WIDTH = 1;
+    // LOOM's 2026-07 pin scales MVT widths by 0.1, so 10 restores the former geometry scale.
+    private const int LINE_WIDTH = 10;
     private const int LINE_SPACING = 0;
+    private const int OUTLINE_WIDTH = 10;
     // Below this loom's default optimiser is instant and within one crossing of greedy; above it, minutes.
     private const int LOOM_GREEDY_ABOVE_BYTES = 4_000_000;
     private const string LOOM_GREEDY_METHOD = 'greedy-lookahead';
@@ -183,6 +185,7 @@ readonly class TransitTilePipeline
         $zoom = (string) self::NATIVE_ZOOM;
         $width = (string) self::LINE_WIDTH;
         $spacing = (string) self::LINE_SPACING;
+        $outline = (string) self::OUTLINE_WIDTH;
 
         return 'TOPO=$(mktemp /tmp/transit-topo-XXXXXX.json)' . "\n"
             . 'trap \'rm -f "$TOPO" "$TOPO.clean"\' EXIT' . "\n"
@@ -197,7 +200,7 @@ readonly class TransitTilePipeline
             . 'fi' . "\n"
             . 'loom ${LOOM_METHOD} < "$TOPO" | tee ' . $graph . ' | '
             . "transitmap --render-engine=mvt --zoom={$zoom} "
-            . "--line-width {$width} --line-spacing {$spacing} --tight-stations "
+            . "--line-width {$width} --line-spacing {$spacing} --outline-width {$outline} --tight-stations "
             . "--mvt-path {$tilesDir}\n";
     }
 

@@ -17,6 +17,10 @@ services:
       STADIA_API_KEY: ${STADIA_API_KEY:-}
       THUNDERFOREST_API_KEY: ${THUNDERFOREST_API_KEY:-}
       MAPTILER_API_KEY: ${MAPTILER_API_KEY:-}
+      FRANKENPHP_WORKER_MODE: ${FRANKENPHP_WORKER_MODE:-0}
+      FRANKENPHP_WORKER_COUNT: ${FRANKENPHP_WORKER_COUNT:-4}
+      FRANKENPHP_WORKER_THREADS: ${FRANKENPHP_WORKER_THREADS:-2}
+      FRANKENPHP_LOOP_MAX: ${FRANKENPHP_LOOP_MAX:-500}
       APP_API_KEY: ${APP_API_KEY:-}
       PUBLIC_URL: ${PUBLIC_URL:-}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
@@ -41,6 +45,7 @@ services:
     # Resource caps, adjust to your hardware; the LOOM transit pipeline is CPU/memory-heavy.
     mem_limit: 4g
     cpus: "4.0"
+    stop_grace_period: 30s
 
   db:
     image: postgis/postgis:16-3.6

@@ -105,6 +105,17 @@ final class TransitTilePipelineTest extends TestCase
     }
 
     #[Test]
+    public function itCompensatesLoomsPointOneWidthScale(): void
+    {
+        $script = $this->scriptFor([]);
+
+        self::assertStringContainsString(
+            '--line-width 10 --line-spacing 0 --outline-width 10 --tight-stations',
+            $script,
+        );
+    }
+
+    #[Test]
     public function itLeavesLoomOnItsDefaultMethodBelowTheThreshold(): void
     {
         $script = $this->scriptFor([]);

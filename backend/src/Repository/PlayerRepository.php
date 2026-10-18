@@ -55,8 +55,8 @@ class PlayerRepository extends ServiceEntityRepository
             ->innerJoin('p.account', 'acct')
             ->where('p.game = :game')
             ->andWhere('p.leftAt IS NULL')
-            ->orderBy('p.createdAt', 'ASC')
-            ->addOrderBy('p.id', 'ASC')
+            ->orderBy('p.createdAt', \SortDirection::Ascending)
+            ->addOrderBy('p.id', \SortDirection::Ascending)
             ->setParameter('game', $game)
             ->getQuery()
             ->getResult();

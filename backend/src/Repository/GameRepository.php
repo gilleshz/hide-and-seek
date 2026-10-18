@@ -41,7 +41,7 @@ class GameRepository extends ServiceEntityRepository
     /** @return list<Game> */
     public function findAllCreatedBefore(?\DateTimeImmutable $createdBefore): array
     {
-        $qb = $this->createQueryBuilder('g')->orderBy('g.id', 'ASC');
+        $qb = $this->createQueryBuilder('g')->orderBy('g.id', \SortDirection::Ascending);
         if ($createdBefore !== null) {
             $qb->andWhere('g.createdAt < :before')->setParameter('before', $createdBefore);
         }

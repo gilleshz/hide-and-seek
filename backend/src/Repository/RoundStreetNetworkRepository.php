@@ -135,7 +135,9 @@ class RoundStreetNetworkRepository extends ServiceEntityRepository
     private function findByIdsInOrder(array $ids): array
     {
         $qb = $this->createQueryBuilder('n');
-        $qb->where($qb->expr()->in('n.id', $ids))->orderBy('n.updatedAt', 'ASC')->addOrderBy('n.id', 'ASC');
+        $qb->where($qb->expr()->in('n.id', $ids))
+            ->orderBy('n.updatedAt', \SortDirection::Ascending)
+            ->addOrderBy('n.id', \SortDirection::Ascending);
 
         /** @var list<RoundStreetNetwork> */
         return $qb->getQuery()->getResult();

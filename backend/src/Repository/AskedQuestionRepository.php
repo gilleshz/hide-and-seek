@@ -63,7 +63,7 @@ class AskedQuestionRepository extends ServiceEntityRepository
             ->setParameter('open', QuestionStatus::Open)
             ->setParameter('at', $at)
             ->setParameter('roundStatuses', $roundStatuses)
-            ->orderBy('q.askedAt', 'ASC')
+            ->orderBy('q.askedAt', \SortDirection::Ascending)
             ->getQuery();
 
         /** @var list<AskedQuestion> */
@@ -82,7 +82,7 @@ class AskedQuestionRepository extends ServiceEntityRepository
             ->andWhere('q.status != :randomized')
             ->setParameter('round', $round)
             ->setParameter('randomized', QuestionStatus::Randomized)
-            ->orderBy('q.askedAt', 'ASC')
+            ->orderBy('q.askedAt', \SortDirection::Ascending)
             ->getQuery();
 
         /** @var list<AskedQuestion> */

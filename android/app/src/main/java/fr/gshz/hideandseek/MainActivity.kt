@@ -8,8 +8,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoundEffect
+import androidx.compose.ui.platform.SoundEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import fr.gshz.hideandseek.core.data.SettingsStore
@@ -45,12 +48,14 @@ class MainActivity : AppCompatActivity() {
             val themeMode by settingsStore.themeMode.collectAsStateWithLifecycle(
                 initialValue = "system",
             )
-            AppTheme(themeMode = themeMode) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    HideAndSeekNavHost()
+            CompositionLocalProvider(LocalSoundEffect provides NoopSoundEffect) {
+                AppTheme(themeMode = themeMode) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background,
+                    ) {
+                        HideAndSeekNavHost()
+                    }
                 }
             }
         }
@@ -70,4 +75,9 @@ class MainActivity : AppCompatActivity() {
             navigationRequestStore.requestChat(gameUuid)
         }
     }
+}
+
+// Compose 1.12 plays a system click on every clickable; keep a hider's phone silent.
+private object NoopSoundEffect : SoundEffect {
+    override fun playClickSound() = Unit
 }

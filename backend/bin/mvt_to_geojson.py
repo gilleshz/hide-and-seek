@@ -197,7 +197,10 @@ def build(tiles_dir, graph_path=None):
         station_layer = tile.get("stations")
         if station_layer:
             for feat in station_layer["features"]:
-                ring = feat["geometry"]["coordinates"][0]
+                coords = feat["geometry"]["coordinates"]
+                if not coords or len(coords[0]) < 3:
+                    continue
+                ring = coords[0]
                 lonlat = [tile_to_lonlat(xt, yt, px, py) for px, py in ring]
                 area = Polygon(lonlat).area
                 sid = feat["properties"].get("stationId", "")
