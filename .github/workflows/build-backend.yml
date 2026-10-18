@@ -90,11 +90,11 @@ jobs:
       - run: touch .env
         working-directory: backend
 
-      - name: Provision test database (app_test)
+      - name: Provision test database (app_test_test)
         working-directory: backend
         run: |
           php bin/console doctrine:database:create --env=test --if-not-exists
-          php -r '$p = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=app_test", "jetlag", "jetlag"); $p->exec("CREATE EXTENSION IF NOT EXISTS postgis"); $p->exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");'
+          php -r '$p = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=app_test_test", "jetlag", "jetlag"); $p->exec("CREATE EXTENSION IF NOT EXISTS postgis"); $p->exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");'
           php bin/console doctrine:migrations:migrate --env=test --no-interaction
 
       - run: vendor/bin/phpunit
