@@ -107,7 +107,7 @@ final class IngestFeaturesProcessorTest extends TestCase
         bool $withHeader = true,
         bool $lockAcquired = false,
     ): IngestFeaturesProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $stack = new RequestStack();
         $request = new Request();
         if ($withHeader && $player !== null) {

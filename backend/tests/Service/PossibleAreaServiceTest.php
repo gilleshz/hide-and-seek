@@ -51,7 +51,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('Radar'),
             );
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -79,7 +79,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('no'),
             );
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -107,7 +107,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('hotter'),
             );
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -135,7 +135,7 @@ final class PossibleAreaServiceTest extends TestCase
                 self::stringContains('colder'),
             );
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -155,7 +155,7 @@ final class PossibleAreaServiceTest extends TestCase
         $constraints = $this->createMock(PossibleAreaConstraintRepository::class);
         $constraints->expects(self::never())->method(self::anything());
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -187,7 +187,7 @@ final class PossibleAreaServiceTest extends TestCase
                 ['result' => 'same'],
             );
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
         $service->computeAfterReveal($question, new Point(0.0, 0.0));
     }
 
@@ -200,7 +200,7 @@ final class PossibleAreaServiceTest extends TestCase
         $constraints = $this->createStub(PossibleAreaConstraintRepository::class);
         $constraints->method('computePossibleArea')->willReturn(null);
 
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
 
         self::assertNull($service->computeCurrent($round));
     }
@@ -209,7 +209,7 @@ final class PossibleAreaServiceTest extends TestCase
     public function itCanComputePossibleAreaForBothCategories(): void
     {
         $constraints = $this->createStub(PossibleAreaConstraintRepository::class);
-        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET), new FakeMercureHub());
+        $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
 
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);

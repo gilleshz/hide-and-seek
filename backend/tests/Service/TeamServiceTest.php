@@ -36,7 +36,7 @@ final class TeamServiceTest extends TestCase
     {
         return new RosterNotifier(
             $this->createStub(HubInterface::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $this->emptyRosterService(),
         );
     }

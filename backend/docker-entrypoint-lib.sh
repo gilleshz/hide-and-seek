@@ -76,6 +76,11 @@ resolve_secrets() {
     fi
     resolve_mercure_key MERCURE_PUBLISHER_JWT_KEY  mercure_publisher_jwt
     resolve_mercure_key MERCURE_SUBSCRIBER_JWT_KEY mercure_subscriber_jwt
+
+    # Caddy and Symfony share PUBLIC_URL: strip trailing slashes so issuer and audience stay aligned.
+    PUBLIC_URL="${PUBLIC_URL:-http://localhost}"
+    while [ "${PUBLIC_URL%/}" != "$PUBLIC_URL" ]; do PUBLIC_URL="${PUBLIC_URL%/}"; done
+    export PUBLIC_URL
 }
 
 guard_prod_config() {

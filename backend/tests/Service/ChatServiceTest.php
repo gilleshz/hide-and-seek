@@ -36,7 +36,7 @@ final class ChatServiceTest extends TestCase
     {
         return new ChatService(
             $messages,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $this->createStub(ImageStorageInterface::class),
         );
@@ -370,7 +370,7 @@ final class ChatServiceTest extends TestCase
 
         $service = new ChatService(
             $messages,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $this->createStub(HubInterface::class),
             $storage,
         );

@@ -3,6 +3,7 @@ package fr.gshz.hideandseek.core.token
 import android.util.Log
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
+import fr.gshz.hideandseek.core.util.isMercureV1AccessToken
 import fr.gshz.hideandseek.core.util.isSessionExpired
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.jwtExpEpochSeconds
@@ -51,15 +52,25 @@ class TokenRefresher @Inject constructor(
     @Volatile
     private var started = false
 
+    /**
+     * A legacy token is hub-rejected after the Mercure 1.0 cutover, so it must be re-minted at once
+     * rather than hours later. One immediate attempt per process is enough: a server that still
+     * hands out legacy tokens must not turn the session flow into a refresh loop.
+     */
+    private var immediateLegacyRefreshAttempted = false
+
     fun start() {
         if (started) return
         started = true
         scope.launch {
             sessionRepository.observeSession().collect { session ->
                 refreshJob?.cancel()
-                val exp = session?.mercureToken?.jwtExpEpochSeconds() ?: return@collect
+                val token = session?.mercureToken ?: return@collect
+                val exp = token.jwtExpEpochSeconds() ?: return@collect
+                val immediate = !token.isMercureV1AccessToken() && !immediateLegacyRefreshAttempted
+                if (immediate) immediateLegacyRefreshAttempted = true
                 refreshJob = scope.launch {
-                    delay(nextRefreshDelayMillis(exp, System.currentTimeMillis()))
+                    if (!immediate) delay(nextRefreshDelayMillis(exp, System.currentTimeMillis()))
                     attemptRefresh(original = session)
                 }
             }

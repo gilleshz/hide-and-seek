@@ -189,7 +189,7 @@ final class RoundStopProcessorTest extends TestCase
         bool $withHeader = true,
         Side $side = Side::Hider,
     ): RoundStopProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(

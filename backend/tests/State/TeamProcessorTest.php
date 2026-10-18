@@ -58,7 +58,7 @@ final class TeamProcessorTest extends TestCase
         self::assertSame($player->getUuid(), $resource->playerUuid);
         self::assertSame(
             $player->getUuid(),
-            (new MercureJwtService(self::SECRET))->subscriberPlayerUuid($resource->mercureToken),
+            (new MercureJwtService(self::SECRET, 'https://jetlag.test'))->subscriberPlayerUuid($resource->mercureToken),
         );
     }
 
@@ -79,7 +79,7 @@ final class TeamProcessorTest extends TestCase
 
         $resource = $processor->process($input, new Post(), ['roundUuid' => $round->getUuid()]);
 
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         self::assertContains($mercure->hiderLocationsTopic($game, $round), $resource->topics);
         self::assertContains($mercure->playerEndgameTopic($player->getUuid()), $resource->topics);
         self::assertNotContains($mercure->seekerCandidatesTopic($game, $round), $resource->topics);
@@ -121,7 +121,7 @@ final class TeamProcessorTest extends TestCase
         bool $withHeader = true,
         ?RoundRepository $rounds = null,
     ): TeamProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByUuidIncludingLeft')->willReturn($player);

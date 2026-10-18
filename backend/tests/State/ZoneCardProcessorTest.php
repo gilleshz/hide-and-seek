@@ -113,7 +113,7 @@ final class ZoneCardProcessorTest extends TestCase
         $request = $this->multipartRequest(['card' => 'not-a-card']);
         $request->headers->set(
             IdentityResolver::HEADER,
-            (new MercureJwtService(self::SECRET))->issueSubscriberToken([], $hider->getUuid()),
+            (new MercureJwtService(self::SECRET, 'https://jetlag.test'))->issueSubscriberToken([], $hider->getUuid()),
         );
 
         try {
@@ -177,7 +177,7 @@ final class ZoneCardProcessorTest extends TestCase
         $request = $this->multipartRequest(['card' => 'prosperous_home']);
         $request->headers->set(
             IdentityResolver::HEADER,
-            (new MercureJwtService(self::SECRET))->issueSubscriberToken([], $player->getUuid()),
+            (new MercureJwtService(self::SECRET, 'https://jetlag.test'))->issueSubscriberToken([], $player->getUuid()),
         );
 
         return $this->processorWithRequest($round, $player, $membership, $request, $zones, $storage);
@@ -191,7 +191,7 @@ final class ZoneCardProcessorTest extends TestCase
         ?HidingZoneRepository $zones = null,
         ?ImageStorageInterface $storage = null,
     ): ZoneCardProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);

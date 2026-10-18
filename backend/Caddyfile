@@ -10,15 +10,29 @@
 
 {$SERVER_NAME:localhost} {
 	root {$SERVER_ROOT:public/}
-	encode zstd br gzip
 
+	# Mercure 1.x binds the keys to a trusted issuer. The entrypoint exports PUBLIC_URL to the
+	# process environment, so the app and the hub agree on both the issuer and the audience.
 	mercure {
-		publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}
-		subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}
+		issuer {$PUBLIC_URL:http://localhost} {
+			publisher {
+				jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}
+			}
+			subscriber {
+				jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}
+			}
+		}
+		# Pinned so a token minted for PUBLIC_URL is accepted whatever host the client used to reach the hub.
+		resource_identifier {$PUBLIC_URL:http://localhost}/.well-known/mercure
 		# Without it a carrier dropping an idle stream without a FIN is invisible to the app: it would
 		# neither fail nor close, so the reconnect never arms. Must stay under the client's readTimeout.
 		heartbeat 30s
 	}
+
+	# Caddy 2.11.7 compresses SSE through `encode`: each stream keeps its own encoder (several MiB),
+	# and mixing attacker-influenced data with private updates enables BREACH.
+	@compressible not path /.well-known/mercure
+	encode @compressible zstd br gzip
 
 	# Everything writable at runtime lives outside public/ now; a stray PHP file under the
 	# docroot must never execute. Only the front controller may run.

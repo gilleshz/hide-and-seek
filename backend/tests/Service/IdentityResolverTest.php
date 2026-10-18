@@ -81,7 +81,7 @@ final class IdentityResolverTest extends TestCase
 
     private function tokenFor(Player $player): string
     {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
 
         return $mercure->issueSubscriberToken([$mercure->playerEndgameTopic($player->getUuid())], $player->getUuid());
     }
@@ -101,6 +101,6 @@ final class IdentityResolverTest extends TestCase
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByUuidIncludingLeft')->willReturn($player);
 
-        return new IdentityResolver(new MercureJwtService(self::SECRET), $players, $stack);
+        return new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $stack);
     }
 }

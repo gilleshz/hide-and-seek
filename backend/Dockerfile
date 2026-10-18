@@ -19,7 +19,7 @@ RUN git clone --recurse-submodules https://github.com/ad-freiburg/loom.git /loom
     && make -j$(nproc)
 
 # Stage 2: Symfony + API Platform on FrankenPHP (bundles the Caddy web server + Mercure hub).
-FROM dunglas/frankenphp:1-php8.4
+FROM dunglas/frankenphp:1.13.1-php8.4
 
 # PHP extensions for PostgreSQL/PostGIS + Symfony
 # pcntl lets messenger:consume handle SIGTERM, so the scheduler worker stops gracefully.

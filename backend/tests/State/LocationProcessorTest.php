@@ -296,7 +296,7 @@ final class LocationProcessorTest extends TestCase
         bool $withHeader = true,
     ): LocationProcessor {
         $resolvedHub = $hub ?? new FakeMercureHub();
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);
         $players = $this->createStub(PlayerRepository::class);

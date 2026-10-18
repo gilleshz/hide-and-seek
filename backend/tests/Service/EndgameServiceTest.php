@@ -270,7 +270,7 @@ final class EndgameServiceTest extends TestCase
             $this->createStub(PlayerLocationRepository::class),
             $this->createStub(HidingZoneRepository::class),
             $this->createStub(RoundRepository::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
         );
     }
@@ -285,7 +285,7 @@ final class EndgameServiceTest extends TestCase
             $locations,
             $zones,
             $this->createStub(RoundRepository::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             new FakeMercureHub(),
         );
     }

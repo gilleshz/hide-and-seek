@@ -6,6 +6,7 @@ namespace App\Tests\Fake;
 
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
+use Symfony\Component\Mercure\ProtocolVersion;
 use Symfony\Component\Mercure\Update;
 
 final class FakeMercureHub implements HubInterface
@@ -23,6 +24,16 @@ final class FakeMercureHub implements HubInterface
     public function getFactory(): ?TokenFactoryInterface
     {
         return null;
+    }
+
+    public function getProtocolVersion(): ProtocolVersion
+    {
+        return ProtocolVersion::V1;
+    }
+
+    public function getCookieName(): string
+    {
+        return ProtocolVersion::V1->getDefaultCookieName();
     }
 
     public function publish(Update $update): string

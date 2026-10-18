@@ -6,7 +6,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class JwtTest {
@@ -14,8 +16,12 @@ class JwtTest {
     private fun b64url(input: String): String =
         Base64.getUrlEncoder().withoutPadding().encodeToString(input.toByteArray())
 
-    private fun token(payload: String, segments: Int = 3): String {
-        val parts = listOf(b64url("""{"alg":"HS256"}"""), b64url(payload), "signature")
+    private fun token(
+        payload: String,
+        segments: Int = 3,
+        header: String = """{"alg":"HS256"}""",
+    ): String {
+        val parts = listOf(b64url(header), b64url(payload), "signature")
         val adjusted = when {
             segments < JWT_SEGMENT_COUNT -> parts.take(segments)
             segments > JWT_SEGMENT_COUNT -> parts + "extra"
@@ -40,6 +46,11 @@ class JwtTest {
         val payload = buildJsonObject { put("sub", "player-1") }
 
         assertNull(token(payload.toString()).jwtExpEpochSeconds())
+    }
+
+    @Test
+    fun `a token with a decimal exp is truncated to epoch seconds`() {
+        assertEquals(1_792_374_885L, token("""{"exp":1792374885.601785}""").jwtExpEpochSeconds())
     }
 
     @Test
@@ -94,5 +105,23 @@ class JwtTest {
         val payload = Json.parseToJsonElement("""{"exp":null}""") as JsonObject
 
         assertNull(token(payload.toString()).jwtExpEpochSeconds())
+    }
+
+    @Test
+    fun `an at+jwt header is recognized as a v1 access token`() {
+        val jwt = token(
+            payload = """{"exp":1752000000}""",
+            header = """{"alg":"EdDSA","typ":"at+jwt"}""",
+        )
+
+        assertTrue(jwt.isMercureV1AccessToken())
+    }
+
+    @Test
+    fun `a legacy header or malformed token is not a v1 access token`() {
+        assertFalse(token("""{"exp":1752000000}""").isMercureV1AccessToken())
+        assertFalse(token("""{"exp":1752000000}""", header = """{"typ":"JWT"}""").isMercureV1AccessToken())
+        assertFalse("not-a-jwt".isMercureV1AccessToken())
+        assertFalse("a.b.c".isMercureV1AccessToken())
     }
 }

@@ -126,14 +126,14 @@ final class HidingZoneProviderTest extends TestCase
         $request = new Request();
         $request->headers->set(
             IdentityResolver::HEADER,
-            (new MercureJwtService(self::SECRET))
+            (new MercureJwtService(self::SECRET, 'https://jetlag.test'))
                 ->issueSubscriberToken([], $player->getUuid()),
         );
         $stack = new RequestStack();
         $stack->push($request);
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByUuidIncludingLeft')->willReturn($player);
-        $identity = new IdentityResolver(new MercureJwtService(self::SECRET), $players, $stack);
+        $identity = new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $stack);
 
         return $this->providerWithIdentity($round, $identity, new RoundMembership($round, $player, $side), $zones);
     }
@@ -144,7 +144,7 @@ final class HidingZoneProviderTest extends TestCase
         $stack->push($request);
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByUuidIncludingLeft')->willReturn(null);
-        $identity = new IdentityResolver(new MercureJwtService(self::SECRET), $players, $stack);
+        $identity = new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $stack);
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(null);
 
@@ -167,7 +167,7 @@ final class HidingZoneProviderTest extends TestCase
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);
         $hiderGuard = new HiderGuard($identity, $memberships);
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $chat = new ChatService(
             $this->createStub(ChatMessageRepository::class),

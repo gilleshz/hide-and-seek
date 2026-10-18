@@ -144,7 +144,7 @@ final class ChatMessageProcessorTest extends TestCase
         bool $withHeader = true,
         ?GameRepository $games = null,
     ): ChatMessageProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $stack = new RequestStack();
         $request = new Request();

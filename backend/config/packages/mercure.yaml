@@ -3,6 +3,12 @@ mercure:
         default:
             url: '%env(default::MERCURE_URL)%'
             public_url: '%env(default::PUBLIC_URL)%/.well-known/mercure'
+            protocol_version: '1.0'
             jwt:
                 secret: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
                 publish: '*'
+                claims:
+                    iss: '%env(PUBLIC_URL)%'
+                    aud: '%env(PUBLIC_URL)%/.well-known/mercure'
+                    sub: 'jetlag-companion'
+                    client_id: 'jetlag-companion'

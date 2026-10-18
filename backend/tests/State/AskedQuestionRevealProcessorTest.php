@@ -185,7 +185,7 @@ final class AskedQuestionRevealProcessorTest extends TestCase
         bool $withHeader = true,
         ?ChatMessageRepository $messages = null,
     ): AskedQuestionRevealProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);

@@ -18,11 +18,12 @@ use PHPUnit\Framework\TestCase;
 final class MercureJwtServiceTest extends TestCase
 {
     private const string SECRET = 'test-mercure-secret-at-least-32-bytes-long!';
+    private const string PUBLIC_URL = 'https://jetlag.test';
 
     #[Test]
     public function itIssuesAThreePartJwt(): void
     {
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $token = $service->issueSubscriberToken(['game/x/roster'], 'player-1');
 
@@ -30,25 +31,33 @@ final class MercureJwtServiceTest extends TestCase
     }
 
     #[Test]
-    public function issuedTokenExpiresInTwelveHoursAndNamesTheHolderInTheSubClaim(): void
+    public function issuedTokenIsAnAccessTokenForTheHolderWithSubscribeGrants(): void
     {
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $token = $service->issueSubscriberToken(['game/x/roster'], 'player-1');
-        $parts = explode('.', $token);
-        self::assertCount(3, $parts);
-        $decoded = base64_decode($parts[1], true);
-        self::assertIsString($decoded);
-        $payload = json_decode($decoded, true, 512, JSON_THROW_ON_ERROR);
-        self::assertIsArray($payload);
-        self::assertArrayHasKey('exp', $payload);
-        self::assertIsNumeric($payload['exp']);
+        $header = $this->decodePart($token, 0);
+        $payload = $this->decodePart($token, 1);
+
+        self::assertSame('at+jwt', $header['typ'] ?? null);
         self::assertSame('player-1', $payload['sub'] ?? null);
+        self::assertSame(self::PUBLIC_URL, $payload['iss'] ?? null);
+        self::assertSame(self::PUBLIC_URL . '/.well-known/mercure', $payload['aud'] ?? null);
+        self::assertSame('jetlag-companion', $payload['client_id'] ?? null);
+        self::assertIsNumeric($payload['exp'] ?? null);
 
         $expiresIn = (int) $payload['exp'] - time();
         // 12h TTL, not the historical 24h; a little slack for the seconds the test takes.
         self::assertGreaterThan(12 * 3600 - 60, $expiresIn);
         self::assertLessThan(12 * 3600 + 60, $expiresIn);
+
+        $details = $payload['authorization_details'] ?? null;
+        self::assertIsArray($details);
+        $grant = $details[0] ?? null;
+        self::assertIsArray($grant);
+        self::assertSame('https://mercure.rocks/authorization-detail', $grant['type'] ?? null);
+        self::assertSame(['subscribe'], $grant['actions'] ?? null);
+        self::assertSame([['match' => 'game/x/roster']], $grant['topics'] ?? null);
     }
 
     #[Test]
@@ -56,7 +65,7 @@ final class MercureJwtServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $topics = $service->baselineTopics($game, $round);
 
@@ -80,7 +89,7 @@ final class MercureJwtServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $game->setPossibleAreaSharedWithHiders(false);
         $round = new Round($game);
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $topics = $service->baselineTopics($game, $round, Side::Hider);
 
@@ -93,7 +102,7 @@ final class MercureJwtServiceTest extends TestCase
     #[Test]
     public function playerEndgameTopicIsScopedToThePlayerUuid(): void
     {
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $topic = $service->playerEndgameTopic('abc-123');
 
@@ -105,7 +114,7 @@ final class MercureJwtServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $topics = $service->locationTopics($game, $round, Side::Seeker);
 
@@ -118,7 +127,7 @@ final class MercureJwtServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $topics = $service->locationTopics($game, $round, Side::Hider);
 
@@ -127,9 +136,20 @@ final class MercureJwtServiceTest extends TestCase
     }
 
     #[Test]
+    public function issuedTokenNormalizesATrailingSlashInThePublicUrl(): void
+    {
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL . '/');
+
+        $payload = $this->decodePart($service->issueSubscriberToken(['game/x/roster'], 'player-1'), 1);
+
+        self::assertSame(self::PUBLIC_URL, $payload['iss'] ?? null);
+        self::assertSame(self::PUBLIC_URL . '/.well-known/mercure', $payload['aud'] ?? null);
+    }
+
+    #[Test]
     public function subscriberPlayerUuidReadsTheSubClaim(): void
     {
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $token = $service->issueSubscriberToken(['game/x/roster'], 'player-42');
 
@@ -137,25 +157,9 @@ final class MercureJwtServiceTest extends TestCase
     }
 
     #[Test]
-    public function subscriberPlayerUuidFallsBackToTheEndgameTopicForLegacyTokens(): void
-    {
-        $service = new MercureJwtService(self::SECRET);
-
-        // Minted without a sub claim, exactly like tokens from before the claim existed.
-        $legacy = $service->issueSubscriberToken([$service->playerEndgameTopic('legacy-1')], 'legacy-1');
-        $parsed = $this->decodePayload($legacy);
-        unset($parsed['sub']);
-        $rebuilt = $this->rebuildToken($legacy, $parsed);
-
-        self::assertSame('legacy-1', $service->subscriberPlayerUuid($rebuilt));
-        self::assertNull($service->subscriberPlayerUuid(''));
-        self::assertNull($service->subscriberPlayerUuid('not-a-jwt'));
-    }
-
-    #[Test]
     public function subscriberPlayerUuidRejectsForeignSignedAndMalformedTokens(): void
     {
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $foreign = \Lcobucci\JWT\Configuration::forSymmetricSigner(
             new \Lcobucci\JWT\Signer\Hmac\Sha256(),
@@ -179,7 +183,7 @@ final class MercureJwtServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $service = new MercureJwtService(self::SECRET);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $seekerTopics = $service->seekerOnlyTopics($game, $round, Side::Seeker);
         $hiderTopics = $service->seekerOnlyTopics($game, $round, Side::Hider);
@@ -195,39 +199,18 @@ final class MercureJwtServiceTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private function decodePayload(string $token): array
+    private function decodePart(string $token, int $index): array
     {
         $parts = explode('.', $token);
         self::assertCount(3, $parts);
-        $decoded = base64_decode($parts[1], true);
+        $encoded = strtr($parts[$index], '-_', '+/');
+        $encoded .= str_repeat('=', (4 - strlen($encoded) % 4) % 4);
+        $decoded = base64_decode($encoded, true);
         self::assertIsString($decoded);
         $payload = json_decode($decoded, true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($payload);
 
         /** @var array<string, mixed> $payload */
         return $payload;
-    }
-
-    /**
-     * Re-signs a legacy-shaped payload (no sub claim) with the service's own key.
-     *
-     * @param array<string, mixed> $claims
-     */
-    private function rebuildToken(string $original, array $claims): string
-    {
-        $configuration = \Lcobucci\JWT\Configuration::forSymmetricSigner(
-            new \Lcobucci\JWT\Signer\Hmac\Sha256(),
-            \Lcobucci\JWT\Signer\Key\InMemory::plainText(self::SECRET),
-        );
-        $mercure = $claims['mercure'] ?? [];
-        $subscribe = is_array($mercure) ? ($mercure['subscribe'] ?? []) : [];
-        $now = new \DateTimeImmutable();
-        $token = $configuration->builder()
-            ->issuedAt($now)
-            ->expiresAt($now->modify('+12 hours'))
-            ->withClaim('mercure', ['subscribe' => is_array($subscribe) ? $subscribe : []])
-            ->getToken($configuration->signer(), $configuration->signingKey());
-
-        return $token->toString();
     }
 }

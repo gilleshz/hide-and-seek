@@ -39,7 +39,7 @@ final class RosterNotifierTest extends TestCase
         $hub = new FakeMercureHub();
         $roster = $this->rosterService($round, [$alice, $bob], [new RoundMembership($round, $alice, Side::Hider)]);
 
-        new RosterNotifier($hub, new MercureJwtService(self::SECRET), $roster)->publishChanged($game);
+        new RosterNotifier($hub, new MercureJwtService(self::SECRET, 'https://jetlag.test'), $roster)->publishChanged($game);
 
         $updates = $hub->published();
         self::assertCount(1, $updates);
@@ -61,7 +61,7 @@ final class RosterNotifierTest extends TestCase
         $hub = new FakeMercureHub();
         $roster = $this->rosterService($round, [self::playerWithId($game, 'Alice', 1)], []);
 
-        new RosterNotifier($hub, new MercureJwtService(self::SECRET), $roster)->publishChanged($game);
+        new RosterNotifier($hub, new MercureJwtService(self::SECRET, 'https://jetlag.test'), $roster)->publishChanged($game);
 
         $data = $hub->published()[0]->getData();
         self::assertStringNotContainsString('lat', $data);

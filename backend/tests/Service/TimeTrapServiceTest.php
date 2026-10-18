@@ -111,7 +111,7 @@ final class TimeTrapServiceTest extends TestCase
         $update = $this->onlyTrapUpdate();
         $payload = self::decode($update);
         self::assertSame(
-            [new MercureJwtService(self::SECRET)->timeTrapTopic($round->getGame(), $round)],
+            [new MercureJwtService(self::SECRET, 'https://jetlag.test')->timeTrapTopic($round->getGame(), $round)],
             $update->getTopics(),
         );
         self::assertSame('placed', $payload['action']);
@@ -673,13 +673,13 @@ final class TimeTrapServiceTest extends TestCase
             $locations,
             new ChatService(
                 $this->messages ?? $this->createStub(ChatMessageRepository::class),
-                new MercureJwtService(self::SECRET),
+                new MercureJwtService(self::SECRET, 'https://jetlag.test'),
                 $this->hub,
                 $this->createStub(ImageStorageInterface::class),
             ),
             $this->imageStorage ?? $this->createStub(ImageStorageInterface::class),
             new RoundClock(),
-            new TimeTrapPublisher(new MercureJwtService(self::SECRET), $this->hub),
+            new TimeTrapPublisher(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $this->hub),
             $entityManager,
         );
     }

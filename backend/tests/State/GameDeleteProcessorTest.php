@@ -143,7 +143,7 @@ final class GameDeleteProcessorTest extends TestCase
         ?EntityManagerInterface $entityManager = null,
         bool $withHeader = true,
     ): GameDeleteProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $stack = new RequestStack();
         $request = new Request();
         if ($withHeader && $player !== null) {

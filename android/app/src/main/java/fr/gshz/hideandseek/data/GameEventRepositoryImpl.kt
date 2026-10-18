@@ -143,7 +143,7 @@ class GameEventRepositoryImpl @Inject constructor(
                 .build()
         }
         val subscribeUrl = mercureBase.newBuilder()
-            .apply { topics.forEach { topic -> addQueryParameter("topic", topic) } }
+            .apply { topics.forEach { topic -> addQueryParameter("match", topic) } }
             .build()
 
         val request = Request.Builder()

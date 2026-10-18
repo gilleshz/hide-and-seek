@@ -132,7 +132,7 @@ final class ChatMessageDeleteProcessorTest extends TestCase
         bool $withHeader = true,
         ?GameRepository $games = null,
     ): ChatMessageDeleteProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $stack = new RequestStack();
         $request = new Request();
         if ($withHeader && $player !== null) {

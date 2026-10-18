@@ -72,7 +72,7 @@ final class HidingZoneServiceTest extends TestCase
         $resolvedHub = $hub ?? new FakeMercureHub();
         $chat = new ChatService(
             $messages ?? $this->createStub(ChatMessageRepository::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $resolvedHub,
             $this->createStub(ImageStorageInterface::class),
         );
@@ -108,12 +108,12 @@ final class HidingZoneServiceTest extends TestCase
                 $p,
                 $z,
                 $chat,
-                new MercureJwtService(self::SECRET),
+                new MercureJwtService(self::SECRET, 'https://jetlag.test'),
                 $resolvedHub,
                 $this->createStub(LoggerInterface::class),
             ),
             new RoundClock(),
-            new HidingZonePublisher(new MercureJwtService(self::SECRET), $resolvedHub, $streetNetworks),
+            new HidingZonePublisher(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $resolvedHub, $streetNetworks),
             new ZoneCardMessageBuilder(new QuestionMessageFormatter($this->createStub(FeatureRepository::class))),
             $entityManager,
         );
@@ -125,7 +125,7 @@ final class HidingZoneServiceTest extends TestCase
         $stack = new RequestStack();
         $stack->push(new Request());
 
-        return new IdentityResolver(new MercureJwtService(self::SECRET), $players, $stack);
+        return new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $stack);
     }
 
     #[Test]
@@ -292,7 +292,7 @@ final class HidingZoneServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $hub = new FakeMercureHub();
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
 
         $this->hiderService($round, $hub)
             ->setZone($round->getUuid(), 'player-uuid', new ZonePlacement(new Point(13.405, 52.52), 750.0));
@@ -333,7 +333,7 @@ final class HidingZoneServiceTest extends TestCase
         $radiusUpdates = self::updatesOfType($hub, 'zone-radius');
         self::assertCount(1, $radiusUpdates);
         self::assertSame(
-            [new MercureJwtService(self::SECRET)->seekerZoneTopic($game, $round)],
+            [new MercureJwtService(self::SECRET, 'https://jetlag.test')->seekerZoneTopic($game, $round)],
             $radiusUpdates[0]->getTopics(),
         );
         self::assertEquals(

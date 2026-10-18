@@ -16,7 +16,7 @@ final class ClientConfigApiTest extends ApiTestCase
         $client->request('GET', '/api/client-config', self::AUTH);
 
         self::assertResponseStatusCodeSame(200);
-        self::assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
+        self::assertResponseHeaderSame('content-type', 'application/ld+json');
     }
 
     #[Test]

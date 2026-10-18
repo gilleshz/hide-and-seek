@@ -185,7 +185,7 @@ final class TimeTrapPlacementProcessorTest extends TestCase
         $request = $this->multipartRequest(['lat' => '52.52', 'lng' => '13.405']);
         $request->headers->set(
             IdentityResolver::HEADER,
-            (new MercureJwtService(self::SECRET))->issueSubscriberToken([], $player->getUuid()),
+            (new MercureJwtService(self::SECRET, 'https://jetlag.test'))->issueSubscriberToken([], $player->getUuid()),
         );
 
         return $this->processorWithRequest($round, $player, $membership, $request, $traps, $stations, $storage);
@@ -200,7 +200,7 @@ final class TimeTrapPlacementProcessorTest extends TestCase
         ?GameTransitStationRepository $stations = null,
         ?ImageStorageInterface $storage = null,
     ): TimeTrapPlacementProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);

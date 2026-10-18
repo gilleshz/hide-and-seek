@@ -2218,7 +2218,7 @@ final class QuestionServiceTest extends TestCase
     {
         return new ChatService(
             $messages,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             new FakeMercureHub(),
             $this->createStub(ImageStorageInterface::class),
         );

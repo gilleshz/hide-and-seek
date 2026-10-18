@@ -13,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -36,7 +37,7 @@ class TokenRefresherTest {
         refresher = TokenRefresher(sessionRepository, roundRepository, navigationRequestStore, dispatcher)
     }
 
-    private fun session(token: String = expiredToken()) = PlayerSession(
+    private fun session(token: String = legacyToken(1_000_000_000L)) = PlayerSession(
         gameUuid = "game-1",
         roundUuid = "round-1",
         playerUuid = "player-1",
@@ -46,11 +47,15 @@ class TokenRefresherTest {
         topics = listOf("roster"),
     )
 
-    private fun expiredToken(): String {
-        val header = Base64.getUrlEncoder().withoutPadding().encodeToString("""{"alg":"none"}""".toByteArray())
-        val payload = Base64.getUrlEncoder().withoutPadding()
-            .encodeToString("""{"exp":1000000000}""".toByteArray())
-        return "$header.$payload.sig"
+    private fun legacyToken(exp: Long): String = jwtToken("""{"alg":"none"}""", exp)
+
+    private fun v1Token(exp: Long): String = jwtToken("""{"alg":"EdDSA","typ":"at+jwt"}""", exp)
+
+    private fun jwtToken(header: String, exp: Long): String {
+        val encodedHeader = Base64.getUrlEncoder().withoutPadding().encodeToString(header.toByteArray())
+        val encodedPayload = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString("""{"exp":$exp}""".toByteArray())
+        return "$encodedHeader.$encodedPayload.sig"
     }
 
     @Test
@@ -209,5 +214,34 @@ class TokenRefresherTest {
 
         assertEquals(MAX_REFRESH_ATTEMPTS, roundRepository.refreshSubscriberTokenCalls.size)
         assertNull(navigationRequestStore.sessionExpiredRequest.value)
+    }
+
+    @Test
+    fun `a legacy token refreshes immediately instead of waiting for its expiry`() = runTest(dispatcher) {
+        sessionRepository.seed(session(token = legacyToken(exp = FAR_FUTURE_EXP)))
+        val refreshed = v1Token(exp = FAR_FUTURE_EXP)
+        roundRepository.refreshSubscriberTokenResult = Result.success(TokenRefresh(refreshed, listOf("roster")))
+
+        refresher.start()
+        runCurrent()
+
+        assertEquals(listOf("round-1"), roundRepository.refreshSubscriberTokenCalls)
+        assertEquals(refreshed, sessionRepository.refreshedMercureToken)
+    }
+
+    @Test
+    fun `a legacy token refreshes only once when the server keeps minting legacy tokens`() = runTest(dispatcher) {
+        sessionRepository.seed(session(token = legacyToken(exp = FAR_FUTURE_EXP)))
+        roundRepository.refreshSubscriberTokenResult =
+            Result.success(TokenRefresh(legacyToken(exp = FAR_FUTURE_EXP), listOf("roster")))
+
+        refresher.start()
+        runCurrent()
+
+        assertEquals(1, roundRepository.refreshSubscriberTokenCalls.size)
+    }
+
+    private companion object {
+        const val FAR_FUTURE_EXP = 4_000_000_000L
     }
 }

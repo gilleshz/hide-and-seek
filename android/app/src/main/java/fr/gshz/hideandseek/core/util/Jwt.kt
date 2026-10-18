@@ -3,7 +3,7 @@ package fr.gshz.hideandseek.core.util
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.doubleOrNull
 
 private val BASE64URL_INDEX: Map<Char, Int> = buildMap {
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".forEachIndexed { index, char ->
@@ -16,21 +16,38 @@ private const val BITS_PER_BYTE = 8
 private const val BASE64_GROUP_SIZE = 4
 private const val JWT_SEGMENT_COUNT = 3
 private const val BYTE_MASK = 0xFF
+private const val HEADER_SEGMENT = 0
+private const val PAYLOAD_SEGMENT = 1
+private const val MERCURE_V1_TYP = "at+jwt"
 
 /**
  * Returns the JWT `exp` claim in epoch seconds, or null when the token is not a well-formed
- * three-segment JWT with a numeric expiry.
+ * three-segment JWT with a numeric expiry. Server-minted tokens use a decimal `exp`, so both
+ * decimal and integer numerics are accepted and truncated to whole seconds.
  */
-fun String.jwtExpEpochSeconds(json: Json = Json): Long? {
+fun String.jwtExpEpochSeconds(json: Json = Json): Long? =
+    jwtJsonSegment(PAYLOAD_SEGMENT, json)
+        ?.get("exp")
+        ?.let { (it as? JsonPrimitive)?.doubleOrNull?.toLong() }
+
+/**
+ * True when the JWT header declares `typ: at+jwt`, the Mercure 1.0 access-token header. Tokens
+ * without it are legacy subscriber tokens, and anything unparseable counts as legacy too.
+ */
+fun String.isMercureV1AccessToken(json: Json = Json): Boolean =
+    jwtJsonSegment(HEADER_SEGMENT, json)
+        ?.get("typ")
+        ?.let { (it as? JsonPrimitive)?.content == MERCURE_V1_TYP } == true
+
+private fun String.jwtJsonSegment(index: Int, json: Json): JsonObject? {
     val segments = split('.')
-    val payload = if (segments.size == JWT_SEGMENT_COUNT) decodeBase64Url(segments[1]) else null
-    if (payload == null) return null
-    return try {
-        val obj = json.parseToJsonElement(payload) as? JsonObject
-        val exp = obj?.get("exp") as? JsonPrimitive
-        exp?.longOrNull
-    } catch (_: IllegalArgumentException) {
-        null
+    val decoded = if (segments.size == JWT_SEGMENT_COUNT) decodeBase64Url(segments[index]) else null
+    return decoded?.let { segment ->
+        try {
+            json.parseToJsonElement(segment) as? JsonObject
+        } catch (_: IllegalArgumentException) {
+            null
+        }
     }
 }
 

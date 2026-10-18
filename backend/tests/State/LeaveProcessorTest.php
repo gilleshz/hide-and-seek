@@ -111,7 +111,7 @@ final class LeaveProcessorTest extends TestCase
         PlayerRepository $players,
         bool $withHeader = true,
     ): LeaveProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $rounds = $this->createStub(RoundRepository::class);
         $memberships = $this->createStub(RoundMembershipRepository::class);

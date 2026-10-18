@@ -137,7 +137,7 @@ final class StreetNetworkProviderTest extends TestCase
         $request = new Request();
         $request->headers->set(
             IdentityResolver::HEADER,
-            (new MercureJwtService(self::SECRET))->issueSubscriberToken([], $player->getUuid()),
+            (new MercureJwtService(self::SECRET, 'https://jetlag.test'))->issueSubscriberToken([], $player->getUuid()),
         );
         $stack = new RequestStack();
         $stack->push($request);
@@ -146,7 +146,7 @@ final class StreetNetworkProviderTest extends TestCase
 
         return $this->service(
             $round,
-            new IdentityResolver(new MercureJwtService(self::SECRET), $players, $stack),
+            new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $stack),
             new RoundMembership($round, $player, $side),
             $zones,
             $networks,
@@ -166,7 +166,7 @@ final class StreetNetworkProviderTest extends TestCase
 
         return $this->service(
             $round,
-            new IdentityResolver(new MercureJwtService(self::SECRET), $players, $stack),
+            new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $stack),
             null,
             $zones,
             $networks,

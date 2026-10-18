@@ -75,7 +75,7 @@ final class LocationServiceTest extends TestCase
         $service = new LocationService(
             $locations,
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $endgameService,
             new RoundClock(),
@@ -104,7 +104,7 @@ final class LocationServiceTest extends TestCase
         $service = new LocationService(
             $locations,
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $this->createStub(HubInterface::class),
             $this->createStub(EndgameService::class),
             new RoundClock(),
@@ -146,7 +146,7 @@ final class LocationServiceTest extends TestCase
         new LocationService(
             $locations,
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $endgameService,
             new RoundClock(),
@@ -184,7 +184,7 @@ final class LocationServiceTest extends TestCase
         $result = (new LocationService(
             $this->createStub(PlayerLocationRepository::class),
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $endgameService,
             new RoundClock(),
@@ -216,7 +216,7 @@ final class LocationServiceTest extends TestCase
         $result = (new LocationService(
             $this->createStub(PlayerLocationRepository::class),
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $endgameService,
             new RoundClock(),
@@ -248,7 +248,7 @@ final class LocationServiceTest extends TestCase
         $result = (new LocationService(
             $this->createStub(PlayerLocationRepository::class),
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $endgameService,
             new RoundClock(),
@@ -282,7 +282,7 @@ final class LocationServiceTest extends TestCase
         new LocationService(
             $locations,
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $this->createStub(EndgameService::class),
             new RoundClock(),
@@ -308,7 +308,7 @@ final class LocationServiceTest extends TestCase
         new LocationService(
             $this->createStub(PlayerLocationRepository::class),
             $memberships,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $this->createStub(EndgameService::class),
             new RoundClock(),
@@ -332,7 +332,7 @@ final class LocationServiceTest extends TestCase
         new LocationService(
             $this->createStub(PlayerLocationRepository::class),
             $this->createStub(RoundMembershipRepository::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $this->createStub(EndgameService::class),
             new RoundClock(),
@@ -359,13 +359,13 @@ final class LocationServiceTest extends TestCase
             $this->createStub(PlayerLocationRepository::class),
             new ChatService(
                 $this->createStub(ChatMessageRepository::class),
-                new MercureJwtService(self::SECRET),
+                new MercureJwtService(self::SECRET, 'https://jetlag.test'),
                 new FakeMercureHub(),
                 $this->createStub(ImageStorageInterface::class),
             ),
             $this->createStub(ImageStorageInterface::class),
             new RoundClock(),
-            new TimeTrapPublisher(new MercureJwtService(self::SECRET), new FakeMercureHub()),
+            new TimeTrapPublisher(new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub()),
             $entityManager,
         );
     }

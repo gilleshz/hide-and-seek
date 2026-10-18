@@ -10,6 +10,7 @@ use App\Repository\GameRepository;
 use App\Repository\RoundRepository;
 use App\Tests\Fake\FakeMercureHub;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Mercure\Jwt\Grant;
 use Symfony\Component\Mercure\Jwt\LcobucciFactory;
 
 final class IdentityGuardApiTest extends ApiTestCase
@@ -221,9 +222,14 @@ final class IdentityGuardApiTest extends ApiTestCase
         $player = $this->joinAndPickSide($client, $game['uuid'], $game['roundUuid'], 'Alice', 'seeker');
 
         $expired = (new LcobucciFactory(self::TEST_SECRET))->create(
-            ["player/{$player['playerUuid']}/endgame"],
-            [],
-            ['exp' => new \DateTimeImmutable('-1 hour'), 'sub' => $player['playerUuid']],
+            [new Grant(actions: [Grant::ACTION_SUBSCRIBE], topics: ["player/{$player['playerUuid']}/endgame"])],
+            [
+                'iss' => 'https://jetlag.test',
+                'aud' => 'https://jetlag.test/.well-known/mercure',
+                'sub' => $player['playerUuid'],
+                'client_id' => 'jetlag-companion',
+                'exp' => new \DateTimeImmutable('-1 hour'),
+            ],
         );
 
         $client->request('POST', "/api/rounds/{$game['roundUuid']}/team", $this->headersWithToken($expired) + [

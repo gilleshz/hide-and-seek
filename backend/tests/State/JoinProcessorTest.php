@@ -175,7 +175,7 @@ final class JoinProcessorTest extends TestCase
         AccountRepository $accounts,
         ?GameRepository $games = null,
     ): JoinProcessor {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = new FakeMercureHub();
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findActiveByGame')->willReturn($round);

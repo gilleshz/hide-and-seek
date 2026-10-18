@@ -136,7 +136,7 @@ final class LeaveServiceTest extends TestCase
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
 
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $hub = $this->createStub(HubInterface::class);
 
         $entityManager = $this->createStub(EntityManagerInterface::class);

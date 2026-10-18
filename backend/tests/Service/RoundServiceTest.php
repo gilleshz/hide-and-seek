@@ -61,7 +61,7 @@ final class RoundServiceTest extends TestCase
             $players ?? $this->stubPlayers(),
             $zones ?? $this->createStub(HidingZoneRepository::class),
             $chat ?? $this->chatStub($hub),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $logger ?? $this->createStub(LoggerInterface::class),
         );
@@ -84,7 +84,7 @@ final class RoundServiceTest extends TestCase
     {
         return new ChatService(
             $messages,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $hub,
             $this->createStub(ImageStorageInterface::class),
         );

@@ -13,7 +13,9 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\UnencryptedToken;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mercure\Jwt\Grant;
 use Symfony\Component\Mercure\Jwt\LcobucciFactory;
+use Symfony\Component\Mercure\ProtocolVersion;
 
 final readonly class MercureJwtService
 {
@@ -21,19 +23,30 @@ final readonly class MercureJwtService
 
     private Configuration $configuration;
 
+    private string $publicUrl;
+
     /**
      * 12h instead of the historical 24h: long enough to cover a full game day, short enough that a
      * leaked token is useless the next morning (round-scoped topics + the refresh endpoint shrink it further).
      */
     private const int TOKEN_TTL_SECONDS = 43_200;
 
-    public function __construct(#[Autowire('%env(MERCURE_SUBSCRIBER_JWT_KEY)%')] string $secret)
-    {
+    private const string CLIENT_ID = 'jetlag-companion';
+
+    public function __construct(
+        #[Autowire('%env(MERCURE_SUBSCRIBER_JWT_KEY)%')] string $secret,
+        #[Autowire('%env(PUBLIC_URL)%')] string $publicUrl,
+    ) {
         if ($secret === '') {
             throw new \InvalidArgumentException('MERCURE_SUBSCRIBER_JWT_KEY must not be empty.');
         }
 
-        $this->factory = new LcobucciFactory($secret);
+        if ($publicUrl === '') {
+            throw new \InvalidArgumentException('PUBLIC_URL must not be empty.');
+        }
+
+        $this->publicUrl = rtrim($publicUrl, '/');
+        $this->factory = new LcobucciFactory($secret, protocolVersion: ProtocolVersion::V1);
         $this->configuration = Configuration::forSymmetricSigner(new Sha256(), InMemory::plainText($secret));
     }
 
@@ -58,25 +71,20 @@ final readonly class MercureJwtService
     }
 
     /**
-     * @return list<string>
-     */
-    private static function subscribedTopics(UnencryptedToken $token): array
-    {
-        $mercure = $token->claims()->get('mercure');
-        $subscribe = is_array($mercure) ? ($mercure['subscribe'] ?? null) : null;
-
-        return is_array($subscribe) ? array_values(array_filter($subscribe, 'is_string')) : [];
-    }
-
-    /**
      * @param list<string> $topics
      */
     public function issueSubscriberToken(array $topics, string $playerUuid): string
     {
-        return $this->factory->create($topics, [], [
-            'exp' => new \DateTimeImmutable(sprintf('+%d seconds', self::TOKEN_TTL_SECONDS)),
-            'sub' => $playerUuid,
-        ]);
+        return $this->factory->create(
+            [new Grant(actions: [Grant::ACTION_SUBSCRIBE], topics: $topics)],
+            [
+                'iss' => $this->publicUrl,
+                'aud' => $this->publicUrl . '/.well-known/mercure',
+                'sub' => $playerUuid,
+                'client_id' => self::CLIENT_ID,
+                'exp' => new \DateTimeImmutable(sprintf('+%d seconds', self::TOKEN_TTL_SECONDS)),
+            ],
+        );
     }
 
     /**
@@ -175,11 +183,6 @@ final readonly class MercureJwtService
         return "player/{$playerUuid}/endgame";
     }
 
-    /**
-     * Tokens carry the holder's own endgame topic; the explicit `sub` claim (added at mint time) is
-     * authoritative, the topic scan is the fallback so tokens minted before the claim existed still
-     * resolve during the rollout.
-     */
     public function subscriberPlayerUuid(string $token): ?string
     {
         $parsed = $this->parse($token);
@@ -188,17 +191,8 @@ final readonly class MercureJwtService
         }
 
         $sub = $parsed->claims()->get('sub');
-        if (is_string($sub) && $sub !== '') {
-            return $sub;
-        }
 
-        foreach (self::subscribedTopics($parsed) as $topic) {
-            if (preg_match('#^player/([^/]+)/endgame$#', $topic, $matches) === 1) {
-                return $matches[1];
-            }
-        }
-
-        return null;
+        return is_string($sub) && $sub !== '' ? $sub : null;
     }
 
     public function possibleAreaTopic(Game $game, Round $round): string

@@ -45,7 +45,7 @@ final class JoinServiceTest extends TestCase
     {
         return new RosterNotifier(
             $this->createStub(HubInterface::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $this->emptyRosterService(),
         );
     }
@@ -66,7 +66,7 @@ final class JoinServiceTest extends TestCase
     {
         return new ChatService(
             $messages ?? $this->createStub(ChatMessageRepository::class),
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             $this->createStub(HubInterface::class),
             $this->createStub(ImageStorageInterface::class),
         );

@@ -173,7 +173,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
         // IdentityResolver is final, so the real thing runs over a staged request header.
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByUuidIncludingLeft')->willReturn($player);
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $request = new Request();
         if ($withHeader) {
             $request->headers->set(
@@ -190,7 +190,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
 
         $service = new SeekerCandidateMarkerService(
             $markerRepo,
-            new MercureJwtService(self::SECRET),
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
             new FakeMercureHub(),
         );
 

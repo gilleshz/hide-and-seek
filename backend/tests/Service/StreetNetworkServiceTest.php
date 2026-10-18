@@ -598,7 +598,7 @@ final class StreetNetworkServiceTest extends TestCase
 
     private function hiderToken(Game $game): string
     {
-        $mercure = new MercureJwtService(self::SECRET);
+        $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
         $this->subscriber ??= new Player($game, AccountFactory::create('Alice', 'test-password'));
 
         return $mercure->issueSubscriberToken(
@@ -624,7 +624,7 @@ final class StreetNetworkServiceTest extends TestCase
             fn (string $uuid): ?Player => $this->subscriber?->getUuid() === $uuid ? $this->subscriber : null,
         );
 
-        $identity = new IdentityResolver(new MercureJwtService(self::SECRET), $players, $this->requestStack());
+        $identity = new IdentityResolver(new MercureJwtService(self::SECRET, 'https://jetlag.test'), $players, $this->requestStack());
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturnCallback(
