@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Api;
 
-use ApiPlatform\Symfony\Bundle\Test\Client;
+use ApiPlatform\Test\Client;
 use App\Repository\RoundRepository;
 use App\Service\RoundService;
 use PHPUnit\Framework\Attributes\Test;

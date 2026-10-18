@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0a32356112ed0c0175bcf150096ce7be",
+    "content-hash": "b1655e1bb34fd89395ffe28803a2ca78",
     "packages": [
         {
             "name": "api-platform/core",
-            "version": "v4.4.5",
+            "version": "v5.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/api-platform/core.git",
-                "reference": "e0cb3502c86ac8668a4283d1af27121d7925599f"
+                "reference": "1eef9e4f1e899af2f8439ecafc3e91a705516159"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/api-platform/core/zipball/e0cb3502c86ac8668a4283d1af27121d7925599f",
-                "reference": "e0cb3502c86ac8668a4283d1af27121d7925599f",
+                "url": "https://api.github.com/repos/api-platform/core/zipball/1eef9e4f1e899af2f8439ecafc3e91a705516159",
+                "reference": "1eef9e4f1e899af2f8439ecafc3e91a705516159",
                 "shasum": ""
             },
             "require": {
@@ -73,6 +73,7 @@
                 "api-platform/serializer": "self.version",
                 "api-platform/state": "self.version",
                 "api-platform/symfony": "self.version",
+                "api-platform/test": "self.version",
                 "api-platform/validator": "self.version"
             },
             "require-dev": {
@@ -102,7 +103,7 @@
                 "phpstan/phpstan-doctrine": "^2.0",
                 "phpstan/phpstan-phpunit": "^2.0",
                 "phpstan/phpstan-symfony": "^2.0",
-                "phpunit/phpunit": "^11.5 || ^12.2",
+                "phpunit/phpunit": "^11.5 || ^12.2 || ^13.0",
                 "psr/log": "^1.0 || ^2.0 || ^3.0",
                 "ramsey/uuid": "^4.7",
                 "ramsey/uuid-doctrine": "^2.0",
@@ -146,6 +147,7 @@
             "suggest": {
                 "doctrine/mongodb-odm-bundle": "To support MongoDB. Only versions 4.0 and later are supported.",
                 "elasticsearch/elasticsearch": "To support Elasticsearch.",
+                "ext-deepclone": "To speed up the PHP files metadata cache with symfony/var-exporter 8.1+ (install symfony/deepclone with PIE).",
                 "opensearch-project/opensearch-php": "To support OpenSearch (^2.5).",
                 "phpstan/phpdoc-parser": "To support extracting metadata from PHPDoc.",
                 "psr/cache-implementation": "To use metadata caching.",
@@ -181,7 +183,7 @@
                     "dev-3.4": "3.4.x-dev",
                     "dev-4.1": "4.1.x-dev",
                     "dev-4.2": "4.2.x-dev",
-                    "dev-main": "4.4.x-dev"
+                    "dev-main": "5.0.x-dev"
                 }
             },
             "autoload": {
@@ -220,9 +222,9 @@
             ],
             "support": {
                 "issues": "https://github.com/api-platform/core/issues",
-                "source": "https://github.com/api-platform/core/tree/v4.4.5"
+                "source": "https://github.com/api-platform/core/tree/v5.0.4"
             },
-            "time": "2026-10-16T14:14:36+00:00"
+            "time": "2026-10-16T14:57:02+00:00"
         },
         {
             "name": "composer/semver",
@@ -1493,43 +1495,40 @@
         },
         {
             "name": "longitude-one/doctrine-spatial",
-            "version": "5.0.5",
+            "version": "6.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/longitude-one/doctrine-spatial.git",
-                "reference": "26f0a800d452b6a6c3b0d6b2577860309bc00df3"
+                "reference": "42387d65d860b10e3a531b6b347c0e4f3025184e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/longitude-one/doctrine-spatial/zipball/26f0a800d452b6a6c3b0d6b2577860309bc00df3",
-                "reference": "26f0a800d452b6a6c3b0d6b2577860309bc00df3",
+                "url": "https://api.github.com/repos/longitude-one/doctrine-spatial/zipball/42387d65d860b10e3a531b6b347c0e4f3025184e",
+                "reference": "42387d65d860b10e3a531b6b347c0e4f3025184e",
                 "shasum": ""
             },
             "require": {
-                "doctrine/orm": "^2.19|^3.1",
+                "doctrine/orm": "^3.6",
                 "ext-mbstring": "*",
-                "longitude-one/geo-parser": "^3.0.1",
+                "longitude-one/geo-parser": "^4.0.0",
                 "longitude-one/wkb-parser": "^3.0.1",
                 "longitude-one/wkt-parser": "^3.0.1",
-                "php": "^8.1"
+                "php": "^8.4"
             },
             "replace": {
                 "creof/doctrine2-spatial": "*"
             },
             "require-dev": {
-                "cache/array-adapter": "^1.1",
-                "composer/semver": "^3.4",
-                "dg/bypass-finals": "<1.11",
-                "monolog/monolog": "^2.0|^3.0",
-                "phpunit/phpcov": "^9|^10",
-                "phpunit/phpunit": "^10.0|^11.0",
-                "symfony/var-exporter": "^6.4"
+                "dg/bypass-finals": "^1.11",
+                "monolog/monolog": "^3.0",
+                "phpunit/phpcov": "^13.0",
+                "phpunit/phpunit": "^13.0",
+                "symfony/cache": "^7.4"
             },
             "type": "library",
             "autoload": {
-                "psr-0": {
-                    "LongitudeOne\\Spatial": "lib/",
-                    "LongitudeOne\\Spatial\\Tests": "tests/"
+                "psr-4": {
+                    "LongitudeOne\\Spatial\\": "lib/LongitudeOne/Spatial/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -1539,11 +1538,13 @@
             "authors": [
                 {
                     "name": "Derek Lambert",
-                    "email": "dlambert@dereklambert.com"
+                    "email": "dlambert@dereklambert.com",
+                    "role": "Historical author"
                 },
                 {
                     "name": "Alexandre Tranchant",
-                    "email": "alexandre.tranchant@gmail.com"
+                    "email": "alexandre.tranchant@gmail.com",
+                    "role": "Lead maintainer"
                 }
             ],
             "description": "Doctrine multi-platform support for spatial types and functions, compliant with Doctrine 2.19, 3.1, and dev ones (3.2 and 4.0).",
@@ -1564,35 +1565,42 @@
             ],
             "support": {
                 "issues": "https://github.com/longitude-one/doctrine-spatial/issues",
-                "source": "https://github.com/longitude-one/doctrine-spatial/tree/5.0.5"
+                "source": "https://github.com/longitude-one/doctrine-spatial/tree/6.0.0"
             },
-            "time": "2026-08-23T13:11:48+00:00"
+            "funding": [
+                {
+                    "url": "https://ko-fi.com/longitudeone",
+                    "type": "ko_fi"
+                }
+            ],
+            "time": "2026-09-12T14:29:00+00:00"
         },
         {
             "name": "longitude-one/geo-parser",
-            "version": "3.0.4",
+            "version": "4.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/longitude-one/geo-parser.git",
-                "reference": "80edec79bc3cab7195a0833b1e94569de09ccc6b"
+                "reference": "a44cb245445b2c39fce097b0b3f0f55ffdfcf1c4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/longitude-one/geo-parser/zipball/80edec79bc3cab7195a0833b1e94569de09ccc6b",
-                "reference": "80edec79bc3cab7195a0833b1e94569de09ccc6b",
+                "url": "https://api.github.com/repos/longitude-one/geo-parser/zipball/a44cb245445b2c39fce097b0b3f0f55ffdfcf1c4",
+                "reference": "a44cb245445b2c39fce097b0b3f0f55ffdfcf1c4",
                 "shasum": ""
             },
             "require": {
-                "doctrine/lexer": "^2.1|^3.0",
-                "php": "^8.1"
+                "doctrine/lexer": "^3.0",
+                "longitude-one/spatial-core": "^1.1",
+                "php": "^8.3"
             },
             "require-dev": {
-                "phpunit/phpunit": "~10.0"
+                "phpunit/phpunit": "^12.5.33"
             },
             "type": "library",
             "autoload": {
-                "psr-0": {
-                    "LongitudeOne\\Geo\\String": "lib/"
+                "psr-4": {
+                    "LongitudeOne\\GeoParser\\": "lib/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -1623,9 +1631,69 @@
             ],
             "support": {
                 "issues": "https://github.com/longitude-one/geo-parser/issues",
-                "source": "https://github.com/longitude-one/geo-parser/tree/3.0.4"
+                "source": "https://github.com/longitude-one/geo-parser/tree/4.1.0"
             },
-            "time": "2026-08-23T06:53:02+00:00"
+            "funding": [
+                {
+                    "url": "https://ko-fi.com/longitudeone",
+                    "type": "ko_fi"
+                }
+            ],
+            "time": "2026-09-12T13:55:54+00:00"
+        },
+        {
+            "name": "longitude-one/spatial-core",
+            "version": "1.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/longitude-one/spatial-core.git",
+                "reference": "1289582288e8954243de5ccb1f28ab7e78f4e9a4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/longitude-one/spatial-core/zipball/1289582288e8954243de5ccb1f28ab7e78f4e9a4",
+                "reference": "1289582288e8954243de5ccb1f28ab7e78f4e9a4",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "phpunit/phpcov": "^11.0",
+                "phpunit/phpunit": "^12.5.34"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "LongitudeOne\\Core\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alexandre Tranchant",
+                    "email": "alexandre.tranchant@gmail.com",
+                    "role": "Lead maintainer"
+                }
+            ],
+            "description": "Core classes for other LongitudeOne spatial libraries.",
+            "keywords": [
+                "geo",
+                "geography",
+                "geometry",
+                "gis",
+                "longitude-one",
+                "spatial"
+            ],
+            "support": {
+                "issues": "https://github.com/longitude-one/spatial-core/issues",
+                "source": "https://github.com/longitude-one/spatial-core/tree/1.3.0"
+            },
+            "time": "2026-10-03T20:49:25+00:00"
         },
         {
             "name": "longitude-one/wkb-parser",
@@ -9074,32 +9142,32 @@
         },
         {
             "name": "slevomat/coding-standard",
-            "version": "8.22.1",
+            "version": "8.31.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/slevomat/coding-standard.git",
-                "reference": "1dd80bf3b93692bedb21a6623c496887fad05fec"
+                "reference": "0a40807a48873948bfa7ffce2a4e69ba40cf5e76"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/slevomat/coding-standard/zipball/1dd80bf3b93692bedb21a6623c496887fad05fec",
-                "reference": "1dd80bf3b93692bedb21a6623c496887fad05fec",
+                "url": "https://api.github.com/repos/slevomat/coding-standard/zipball/0a40807a48873948bfa7ffce2a4e69ba40cf5e76",
+                "reference": "0a40807a48873948bfa7ffce2a4e69ba40cf5e76",
                 "shasum": ""
             },
             "require": {
-                "dealerdirect/phpcodesniffer-composer-installer": "^0.6.2 || ^0.7 || ^1.1.2",
+                "dealerdirect/phpcodesniffer-composer-installer": "^0.7 || ^1.2.1",
                 "php": "^7.4 || ^8.0",
-                "phpstan/phpdoc-parser": "^2.3.0",
-                "squizlabs/php_codesniffer": "^3.13.4"
+                "phpstan/phpdoc-parser": "^2.3.3",
+                "squizlabs/php_codesniffer": "^4.0.1"
             },
             "require-dev": {
-                "phing/phing": "3.0.1|3.1.0",
+                "phing/phing": "3.0.1|3.1.2",
                 "php-parallel-lint/php-parallel-lint": "1.4.0",
-                "phpstan/phpstan": "2.1.24",
-                "phpstan/phpstan-deprecation-rules": "2.0.3",
-                "phpstan/phpstan-phpunit": "2.0.7",
-                "phpstan/phpstan-strict-rules": "2.0.6",
-                "phpunit/phpunit": "9.6.8|10.5.48|11.4.4|11.5.36|12.3.10"
+                "phpstan/phpstan": "2.2.7",
+                "phpstan/phpstan-deprecation-rules": "2.0.5",
+                "phpstan/phpstan-phpunit": "2.0.18",
+                "phpstan/phpstan-strict-rules": "2.0.12",
+                "phpunit/phpunit": "9.6.34|10.5.63|11.4.4|11.5.56|12.5.33"
             },
             "type": "phpcodesniffer-standard",
             "extra": {
@@ -9123,7 +9191,7 @@
             ],
             "support": {
                 "issues": "https://github.com/slevomat/coding-standard/issues",
-                "source": "https://github.com/slevomat/coding-standard/tree/8.22.1"
+                "source": "https://github.com/slevomat/coding-standard/tree/8.31.1"
             },
             "funding": [
                 {
@@ -9135,30 +9203,35 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-09-13T08:53:30+00:00"
+            "time": "2026-07-31T10:42:43+00:00"
         },
         {
             "name": "squizlabs/php_codesniffer",
-            "version": "3.13.6",
+            "version": "4.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHP_CodeSniffer.git",
-                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91"
+                "reference": "bbdc3d0532623e21838b7041a4364383a8126f96"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
-                "reference": "4c378e1a528ea066890fc2397cbdd2f94eb2fc91",
+                "url": "https://api.github.com/repos/PHPCSStandards/PHP_CodeSniffer/zipball/bbdc3d0532623e21838b7041a4364383a8126f96",
+                "reference": "bbdc3d0532623e21838b7041a4364383a8126f96",
                 "shasum": ""
             },
             "require": {
+                "ext-libxml": "*",
                 "ext-simplexml": "*",
                 "ext-tokenizer": "*",
                 "ext-xmlwriter": "*",
-                "php": ">=5.4.0"
+                "php": ">=7.2.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^4.0 || ^5.0 || ^6.0 || ^7.0 || ^8.0 || ^9.3.4"
+                "phpunit/phpunit": "^8.4.0 || ^9.3.4 || ^10.5.32 || 11.3.3 - 11.5.28 || ^11.5.31"
+            },
+            "suggest": {
+                "ext-iconv": "For accurate character length calculation when the checked files contain multi-byte characters.",
+                "ext-pcntl": "For parallel processing support via the --parallel CLI option."
             },
             "bin": [
                 "bin/phpcbf",
@@ -9183,7 +9256,7 @@
                     "homepage": "https://github.com/PHPCSStandards/PHP_CodeSniffer/graphs/contributors"
                 }
             ],
-            "description": "PHP_CodeSniffer tokenizes PHP, JavaScript and CSS files and detects violations of a defined set of coding standards.",
+            "description": "PHP_CodeSniffer tokenizes PHP files and detects violations of a defined set of coding standards.",
             "homepage": "https://github.com/PHPCSStandards/PHP_CodeSniffer",
             "keywords": [
                 "phpcs",
@@ -9214,7 +9287,7 @@
                     "type": "thanks_dev"
                 }
             ],
-            "time": "2026-08-06T00:17:32+00:00"
+            "time": "2026-08-06T02:45:27+00:00"
         },
         {
             "name": "staabm/side-effects-detector",

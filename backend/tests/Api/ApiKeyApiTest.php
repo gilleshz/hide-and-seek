@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Api;
 
-use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
+use ApiPlatform\Test\ApiTestCase;
 use PHPUnit\Framework\Attributes\Test;
 
 final class ApiKeyApiTest extends ApiTestCase

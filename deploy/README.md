@@ -175,6 +175,25 @@ docker compose up -d
 For production, pin a version in `docker-compose.yaml`
 (`image: ghcr.io/gilleshz/hide-and-seek:1.2.3`) instead of `:latest`.
 
+### PostGIS extension on an existing volume
+
+Swapping the image does not upgrade an existing database volume. Back up
+first, then upgrade the extension once per database:
+
+```bash
+docker compose exec db psql -U jetlag jetlag -c 'ALTER EXTENSION postgis UPDATE;'
+```
+
+If PostgreSQL reports a collation version mismatch, run `REINDEX DATABASE`
+and `ALTER DATABASE ... REFRESH COLLATION VERSION` in the same maintenance
+window.
+
+### Mercure 1.0
+
+The hub now speaks Mercure 1.0. Deploy the new image first, then install the
+updated APK (or restart the app) so it fetches a 1.0 access token. An old APK
+cannot receive live events from the new hub; REST calls keep working.
+
 ## Backups
 
 - Database (essential):

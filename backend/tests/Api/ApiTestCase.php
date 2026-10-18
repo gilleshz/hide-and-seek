@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Api;
 
-use ApiPlatform\Symfony\Bundle\Test\ApiTestCase as PlatformApiTestCase;
-use ApiPlatform\Symfony\Bundle\Test\Client;
+use ApiPlatform\Test\ApiTestCase as PlatformApiTestCase;
+use ApiPlatform\Test\Client;
 use App\Service\IdentityResolver;
 use App\Service\MercureJwtService;
 use Doctrine\ORM\EntityManagerInterface;

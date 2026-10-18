@@ -43,7 +43,7 @@ services:
     cpus: "4.0"
 
   db:
-    image: postgis/postgis:16-3.4
+    image: postgis/postgis:16-3.6
     restart: unless-stopped
     logging:
       driver: json-file
