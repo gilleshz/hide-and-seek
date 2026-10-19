@@ -33,7 +33,7 @@ use App\Service\TimeTrapPublisher;
 use App\Service\TimeTrapService;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use App\TimeTrapRules;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
@@ -194,7 +194,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itTestsTheSegmentBetweenTheTwoLatestPingsSoAFastFlyByIsNotMissed(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $station = new Point(self::STATION_LNG, self::STATION_LAT);
         $before = new Point(13.3980, self::STATION_LAT);
         $after = new Point(13.4120, self::STATION_LAT);
@@ -236,7 +236,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itIgnoresTheSegmentWhenTheTwoPingsAreTooFarApartInTime(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $resurfaced = new Point(13.4120, self::STATION_LAT);
         $submerged = new Point(13.3080, self::STATION_LAT);
 
@@ -257,7 +257,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itIgnoresTheSegmentWhenBothPingsShareATimestamp(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $here = new Point(13.4120, self::STATION_LAT);
         $there = new Point(13.3080, self::STATION_LAT);
 
@@ -278,7 +278,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itFallsBackToAPointTestWhenTheSeekerHasNoEarlierPing(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $point = new Point(self::STATION_LNG, self::STATION_LAT);
 
         $traps = $this->trapsMock();
@@ -294,7 +294,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itFreezesTheValueAtTheMomentOfThePassAndPostsTheEvidence(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $trap = self::trap($round);
         $point = new Point(self::STATION_LNG, self::STATION_LAT);
 
@@ -337,7 +337,7 @@ final class TimeTrapServiceTest extends TestCase
 
         $this->service($round)->checkTrip(
             $round,
-            new Player($game, AccountFactory::create('Bob', 'test-password')),
+            new Player($game, IdentityFactory::create('Bob', 'test-password')),
             new Point(self::STATION_LNG, self::STATION_LAT),
         );
     }
@@ -346,7 +346,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itStaysQuietForASeekerWhoLeftTheGame(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $seeker->markLeft(new \DateTimeImmutable());
 
         $traps = $this->trapsMock();
@@ -388,7 +388,7 @@ final class TimeTrapServiceTest extends TestCase
     public function itPostsNothingWhenAnotherSeekerAlreadyClaimedTheDetection(): void
     {
         $round = self::huntedRound();
-        $seeker = new Player($round->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $trap = self::trap($round);
 
         $this->traps = $this->trapsLosingTheClaim($trap);
@@ -499,7 +499,7 @@ final class TimeTrapServiceTest extends TestCase
         $trap->setStatus(TimeTrapStatus::Pending)
             ->setFrozenValueSeconds(360)
             ->setDetectedAt(new \DateTimeImmutable())
-            ->setDetectedByPlayer(new Player($round->getGame(), AccountFactory::create('Bob', 'test-password')));
+            ->setDetectedByPlayer(new Player($round->getGame(), IdentityFactory::create('Bob', 'test-password')));
 
         $this->side = Side::Seeker;
         $this->traps = $this->trapsFinding($trap);
@@ -566,7 +566,7 @@ final class TimeTrapServiceTest extends TestCase
 
     private static function trap(Round $round): TimeTrap
     {
-        return new TimeTrap($round, new Player($round->getGame(), AccountFactory::create('Alice', 'test-password')), self::station($round->getGame()));
+        return new TimeTrap($round, new Player($round->getGame(), IdentityFactory::create('Alice', 'test-password')), self::station($round->getGame()));
     }
 
     private function stationsFinding(?GameTransitStation $station): GameTransitStationRepository
@@ -641,7 +641,7 @@ final class TimeTrapServiceTest extends TestCase
 
     private function service(Round $round): TimeTrapService
     {
-        $player = new Player($round->getGame(), AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($round->getGame(), IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->rounds;
         if ($rounds === null) {

@@ -26,7 +26,7 @@ use App\Service\RateLimits;
 use App\State\ChatMessageProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -44,7 +44,7 @@ final class ChatMessageProcessorTest extends TestCase
     public function theSenderIsTheTokenIdentity(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())->method('save')->with(self::callback(
@@ -63,7 +63,7 @@ final class ChatMessageProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Small, Edition::Metric);
-        $player = new Player($otherGame, AccountFactory::create('Eve', 'test-password'));
+        $player = new Player($otherGame, IdentityFactory::create('Eve', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::never())->method('save');
@@ -92,7 +92,7 @@ final class ChatMessageProcessorTest extends TestCase
     public function itRejectsAnUnknownGame(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn(null);
@@ -107,7 +107,7 @@ final class ChatMessageProcessorTest extends TestCase
     public function anExhaustedChatLimiterRejectsTheMessage(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $limiter = $this->limiter(1);
         $limiter->chatSend($player->getUuid());
 

@@ -19,12 +19,10 @@
     <string name="connect_api_url_label">API-URL</string>
     <string name="connect_api_key_label">API-Schlüssel</string>
     <string name="connect_account_name_label">Dein Name</string>
-    <string name="connect_account_password_label">Dein Passwort</string>
     <string name="connect_button">Verbinden</string>
     <string name="connect_plain_http_warning">Unverschlüsseltes HTTP ist nicht sicher. Verwenden Sie nach Möglichkeit https.</string>
     <string name="connect_location_shared">Dein Standort wird mit dem Server geteilt, mit dem du dich verbindest. Verbinde dich nur mit einem Host, dem du vertraust.</string>
-    <string name="connect_account_helper">Zum ersten Mal? Beim Verbinden wird dein Konto erstellt. Melde dich später mit demselben Namen und Passwort wieder an.</string>
-    <string name="error_server_too_old">Dieser Server unterstützt keine Konten. Aktualisiere den Server oder frage den Host.</string>
+    <string name="connect_account_helper">Nutze denselben Namen auf diesem Gerät, um wieder beizutreten. Frag den Host, wenn du das Telefon wechselst.</string>
     <string name="form_error_blank">Bitte alle erforderlichen Felder ausfüllen.</string>
 
     <string name="home_create_game">Spiel erstellen</string>
@@ -69,6 +67,10 @@
     <string name="lobby_hide_qr">QR-Code ausblenden</string>
     <string name="lobby_roster_title">Mitspielende</string>
     <string name="lobby_pick_side_title">Wähle deine Seite</string>
+    <string name="lobby_location_disclosure_title">Standort teilen?</string>
+    <string name="lobby_location_disclosure_body">Während einer Runde sendet diese App deinen Live-Standort an den Spielserver, damit die anderen Spieler dich auf der Karte sehen. Das gilt auch, wenn die App im Hintergrund läuft oder dein Telefon gesperrt ist. Der Standort wird nur für das Spiel verwendet.</string>
+    <string name="lobby_location_disclosure_continue">Weiter</string>
+    <string name="lobby_location_disclosure_later">Nicht jetzt</string>
     <string name="lobby_side_hider">Versteckende</string>
     <string name="lobby_side_seeker">Suchende</string>
     <string name="lobby_side_unassigned">Nicht zugewiesen</string>
@@ -619,14 +621,6 @@
     <string name="settings_theme_system_default">Systemstandard</string>
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
-    <string name="settings_account_section_title">Konto</string>
-    <string name="settings_account_logged_in_as">Angemeldet als <xliff:g example="Alice">%1$s</xliff:g></string>
-    <string name="settings_account_current_password_label">Aktuelles Passwort</string>
-    <string name="settings_account_new_password_label">Neues Passwort</string>
-    <string name="settings_account_save">Passwort ändern</string>
-    <string name="settings_account_success">Passwort geändert.</string>
-    <string name="settings_account_wrong_password">Das aktuelle Passwort ist für diesen Namen falsch.</string>
-    <string name="settings_account_short_password">Passwörter müssen 4 bis 64 Zeichen lang sein.</string>
 
     <!-- Backend-Fehlermeldungen -->
     <string name="error_seeker_only">Nur die suchende Person kann Fragen stellen.</string>
@@ -735,14 +729,17 @@
     <string name="error_time_trap_limit_reached">Diese Runde hat schon so viele Zeitfallen, wie sie halten kann.</string>
     <string name="error_time_trap_not_pending">Diese Zeitfalle wartet nicht mehr auf eine Entscheidung.</string>
     <string name="error_session_expired">Ihre Sitzung ist abgelaufen. Treten Sie dem Spiel wieder mit demselben Namen bei.</string>
-    <string name="error_join_password_required">Dieser Name wird bereits von einer anderen Person verwendet. Wenn es dein Name ist, gib das Passwort ein. Sonst wähle einen anderen Namen.</string>
-    <string name="error_join_password_invalid">Falsches Passwort für diesen Namen. Wenn es nicht dein Name ist, wähle einen anderen Namen.</string>
-    <string name="error_account_name_taken">Dieser Name wird bereits verwendet. Wenn es deiner ist, prüfe das Passwort. Sonst wähle einen anderen Namen.</string>
     <string name="error_rate_limit">Zu viele Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.</string>
     <string name="error_heavy_work_busy">Der Server ist beschäftigt. Warten Sie einen Moment und versuchen Sie es erneut.</string>
 <string name="lobby_remove_player_action">Aus dem Spiel entfernen</string>
     <string name="lobby_remove_player_dialog_title">%1$s aus dem Spiel entfernen?</string>
-    <string name="lobby_remove_player_dialog_body">Sie können später mit ihrem Passwort zurückkehren.</string>
+    <string name="lobby_remove_player_dialog_body">Die Person kann später mit demselben Namen wieder beitreten.</string>
     <string name="lobby_remove_player_confirm">Entfernen</string>
     <string name="system_player_removed">%1$s wurde aus dem Spiel entfernt.</string>
+    <string name="error_join_device_mismatch">Dieser Name wird bereits auf einem anderen Gerät verwendet. Bitte die Person, die euren Spielserver betreibt, ein neues Gerät zuzulassen, oder wähle einen anderen Namen.</string>
+    <string name="lobby_precise_location_title">Genaue Position erforderlich</string>
+    <string name="lobby_precise_location_body">Das Spiel braucht deinen genauen Standort, damit die anderen Spieler dich auf der Karte finden. Aktiviere den genauen Standort in den Einstellungen.</string>
+    <string name="lobby_precise_location_settings">Einstellungen öffnen</string>
+    <string name="lobby_location_off">Standortfreigabe ist aus. Andere Spieler können dich nicht sehen.</string>
+    <string name="lobby_location_enable">Aktivieren</string>
 </resources>

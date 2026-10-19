@@ -28,7 +28,7 @@ use App\Service\MercureJwtService;
 use App\Service\OverpassHttpClient;
 use App\Service\StreetNetworkService;
 use App\State\StreetNetworkProvider;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -48,7 +48,7 @@ final class StreetNetworkProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
         $network = new RoundStreetNetwork($round, $zone->getStationPoint(), 500.0);
         $network->setStatus(StreetNetworkStatus::Ready)
@@ -73,7 +73,7 @@ final class StreetNetworkProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         try {
             $this->provider(
@@ -94,7 +94,7 @@ final class StreetNetworkProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $zones = $this->createStub(HidingZoneRepository::class);
         $zones->method('findOneByRound')->willReturn(null);

@@ -24,10 +24,6 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
     public function __construct(
         #[Autowire(service: 'limiter.join')]
         private RateLimiterFactory $join,
-        #[Autowire(service: 'limiter.account_connect')]
-        private RateLimiterFactory $accountConnect,
-        #[Autowire(service: 'limiter.account_password_change')]
-        private RateLimiterFactory $accountPasswordChange,
         #[Autowire(service: 'limiter.game_create')]
         private RateLimiterFactory $gameCreate,
         #[Autowire(service: 'limiter.token_mint')]
@@ -49,12 +45,17 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
 
     public function onKernelRequest(RequestEvent $event): void
     {
-        if (!$event->isMainRequest() || !$this->isGuarded($event->getRequest()->getPathInfo())) {
+        if (!$event->isMainRequest()) {
             return;
         }
 
         $request = $event->getRequest();
-        $path = $request->getPathInfo();
+        // Same decode as the router, or encoded action paths miss their specific limiter.
+        $path = rawurldecode($request->getPathInfo());
+        if (!$this->isGuarded($path)) {
+            return;
+        }
+
         $limiter = $this->limiterFor($request, $path);
         if (!$limiter->create('ip:' . $request->getClientIp())->consume()->isAccepted()) {
             throw new RateLimitExceededException('Too many requests.');
@@ -69,14 +70,6 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
 
         if (preg_match('#^/api/games/[^/]+/join$#', $path) === 1) {
             return $this->join;
-        }
-
-        if (preg_match('#^/api/accounts$#', $path) === 1) {
-            return $this->accountConnect;
-        }
-
-        if (preg_match('#^/api/account/password$#', $path) === 1) {
-            return $this->accountPasswordChange;
         }
 
         if (

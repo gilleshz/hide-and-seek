@@ -13,7 +13,7 @@ use App\Enum\GameSize;
 use App\Enum\QuestionCategory;
 use App\Enum\QuestionStatus;
 use App\Repository\AskedQuestionRepository;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -119,7 +119,7 @@ final class QuestionClaimTest extends KernelTestCase
     {
         $game = new Game('Berlin ' . uniqid(), GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $askerAccount = AccountFactory::create('Seeker ' . uniqid(), 'test-password');
+        $askerAccount = IdentityFactory::create('Seeker ' . uniqid(), 'test-password');
         $asker = new Player($game, $askerAccount);
         $question = new AskedQuestion($round, $asker, QuestionCategory::Radar, new \DateTimeImmutable('+5 minutes'));
         $this->em->persist($game);

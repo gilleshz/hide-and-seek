@@ -60,7 +60,7 @@ interface GameRepository {
         fullDay: Boolean = false,
     ): TransitDepartures
     suspend fun getTransitOverlay(gameUuid: String): String?
-    suspend fun joinGame(gameUuid: String, displayName: String, password: String): JoinResult
+    suspend fun joinGame(gameUuid: String, displayName: String): JoinResult
     suspend fun removePlayer(gameUuid: String, playerUuid: String)
     suspend fun listPlayers(gameUuid: String): List<Player>
     suspend fun leaderboard(gameUuid: String): List<LeaderboardEntry>

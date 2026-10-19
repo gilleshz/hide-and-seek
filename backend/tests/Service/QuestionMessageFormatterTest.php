@@ -19,7 +19,7 @@ use App\Enum\QuestionCategory;
 use App\Enum\ThermometerResult;
 use App\Repository\FeatureRepository;
 use App\Service\QuestionMessageFormatter;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -532,7 +532,7 @@ final class QuestionMessageFormatterTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, $edition);
         $round = new Round($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         return new AskedQuestion($round, $asker, $category, new \DateTimeImmutable('+5 minutes'));
     }

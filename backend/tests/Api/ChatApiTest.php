@@ -22,7 +22,7 @@ final class ChatApiTest extends ApiTestCase
         $gameUuid = $game['uuid'];
 
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);
@@ -319,7 +319,7 @@ final class ChatApiTest extends ApiTestCase
         [$gameUuid] = $this->createGameWithPlayer($client);
 
         $carol = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Carol', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Carol', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($carol['playerUuid']);
         self::assertIsString($carol['mercureToken']);
@@ -330,7 +330,7 @@ final class ChatApiTest extends ApiTestCase
         $client->request('POST', "/api/games/{$gameUuid}/leave", $this->headersWithToken($carol['mercureToken']));
 
         $returned = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Carol', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Carol', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
 
         // The password proves the identity: coming back must not orphan what she already wrote.
@@ -353,11 +353,11 @@ final class ChatApiTest extends ApiTestCase
     public function itAnnouncesARejoinButNotAPlainReconnect(): void
     {
         $client = static::createClient();
-        [$gameUuid, $playerUuid, $token, $password] = $this->createGameWithPlayer($client);
+        [$gameUuid, $playerUuid, $token, $deviceKey] = $this->createGameWithPlayer($client);
 
         // Rejoining without having left is a reconnect and must not touch the log.
         $reconnect = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => $password],
+            'json' => ['name' => 'Alice', 'deviceKey' => $deviceKey],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertSame($playerUuid, $reconnect['playerUuid']);
@@ -365,7 +365,7 @@ final class ChatApiTest extends ApiTestCase
 
         $client->request('POST', "/api/games/{$gameUuid}/leave", $this->headersWithToken($token));
         $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => $password],
+            'json' => ['name' => 'Alice', 'deviceKey' => $deviceKey],
         ]);
         self::assertResponseIsSuccessful();
 
@@ -401,13 +401,13 @@ final class ChatApiTest extends ApiTestCase
         self::assertIsString($game['uuid']);
 
         $join = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);
         self::assertArrayNotHasKey('joinSecret', $join);
 
-        return [$game['uuid'], $join['playerUuid'], $join['mercureToken'], self::JOIN_PASSWORD];
+        return [$game['uuid'], $join['playerUuid'], $join['mercureToken'], self::DEVICE_KEY];
     }
 
     private function createPngUpload(): UploadedFile

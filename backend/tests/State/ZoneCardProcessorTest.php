@@ -41,7 +41,7 @@ use App\Service\ZoneCardMessageBuilder;
 use App\State\ZoneCardProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -64,7 +64,7 @@ final class ZoneCardProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $hider, Side::Hider);
         $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
 
@@ -86,7 +86,7 @@ final class ZoneCardProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $membership = new RoundMembership($round, $seeker, Side::Seeker);
 
         $zones = $this->createMock(HidingZoneRepository::class);
@@ -108,7 +108,7 @@ final class ZoneCardProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $request = $this->multipartRequest(['card' => 'not-a-card']);
         $request->headers->set(
@@ -142,7 +142,7 @@ final class ZoneCardProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         try {
             $this->processorWithRequest($round, $hider, null, $this->multipartRequest(['card' => 'tiny_home']))

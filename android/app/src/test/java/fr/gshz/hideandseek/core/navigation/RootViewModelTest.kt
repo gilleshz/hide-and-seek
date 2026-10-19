@@ -1,6 +1,5 @@
 package fr.gshz.hideandseek.core.navigation
 
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.util.ERROR_KEY_PLAYER_LEFT
@@ -40,7 +39,7 @@ class RootViewModelTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         every { connectionRepository.observeConnection() } returns
             flowOf(ConnectionConfig("https://example.test", "api-key"))
-        coEvery { connectionRepository.accountCredential() } returns AccountCredential("Alice", "p@ss")
+        coEvery { connectionRepository.playerName() } returns "Alice"
     }
 
     @AfterEach
@@ -65,7 +64,7 @@ class RootViewModelTest {
     )
 
     @Test
-    fun `a silent rejoin with the account credential returns Rejoined and saves the session`() = runTest {
+    fun `a silent rejoin with the player name returns Rejoined and saves the session`() = runTest {
         sessionRepository.seed(session())
         gameRepository.joinGameResult = Result.success(
             JoinResult("player-1", "Alice", "game-1", "round-1", "token", listOf("t")),
@@ -77,7 +76,7 @@ class RootViewModelTest {
         assertEquals("game-1", (outcome as SessionExpiredOutcome.Rejoined).gameUuid)
         assertEquals("game-1", sessionRepository.currentSession()?.gameUuid)
         assertEquals("game-1", gameRepository.lastJoinGameUuid)
-        assertEquals("p@ss", gameRepository.lastPassword)
+        assertEquals("Alice", gameRepository.lastJoinDisplayName)
         assertNull(navigationRequestStore.sessionExpiredRequest.value)
     }
 
@@ -108,31 +107,31 @@ class RootViewModelTest {
         val outcome = createViewModel().handleSessionExpired(ERROR_KEY_PLAYER_LEFT)
 
         assertEquals(SessionExpiredOutcome.NeedsJoin("game-1", ERROR_KEY_PLAYER_LEFT), outcome)
-        assertNull(gameRepository.lastPassword)
+        assertNull(gameRepository.lastJoinDisplayName)
         assertNull(sessionRepository.currentSession())
     }
 
     @Test
-    fun `without an account credential the user lands on the join screen blank`() = runTest {
-        coEvery { connectionRepository.accountCredential() } returns null
+    fun `without a player name the user lands on the join screen blank`() = runTest {
+        coEvery { connectionRepository.playerName() } returns null
         sessionRepository.seed(session())
 
         val outcome = createViewModel().handleSessionExpired()
 
         assertEquals(SessionExpiredOutcome.NeedsJoin("game-1", null), outcome)
-        assertNull(gameRepository.lastPassword)
+        assertNull(gameRepository.lastJoinDisplayName)
         assertNull(sessionRepository.currentSession())
     }
 
     @Test
-    fun `a rejected account credential sends the user back with the error key`() = runTest {
+    fun `a rejected device sends the user back with the error key`() = runTest {
         sessionRepository.seed(session())
         gameRepository.joinGameResult =
-            Result.failure(httpException(400, """{"errorKey":"join.password_invalid"}"""))
+            Result.failure(httpException(400, """{"errorKey":"join.device_mismatch"}"""))
 
         val outcome = createViewModel().handleSessionExpired()
 
-        assertEquals(SessionExpiredOutcome.NeedsJoin("game-1", "join.password_invalid"), outcome)
+        assertEquals(SessionExpiredOutcome.NeedsJoin("game-1", "join.device_mismatch"), outcome)
         assertNull(sessionRepository.currentSession())
     }
 
@@ -166,8 +165,8 @@ class RootViewModelTest {
     }
 
     @Test
-    fun `start destination is connect when the connection has no account`() = runTest {
-        coEvery { connectionRepository.accountCredential() } returns null
+    fun `start destination is connect when the connection has no player name`() = runTest {
+        coEvery { connectionRepository.playerName() } returns null
 
         val viewModel = createViewModel()
 
@@ -175,7 +174,7 @@ class RootViewModelTest {
     }
 
     @Test
-    fun `start destination is home with an account and no session`() = runTest {
+    fun `start destination is home with a player name and no session`() = runTest {
         val viewModel = createViewModel()
 
         assertEquals(HideAndSeekDestinations.HOME, viewModel.startDestination.value)

@@ -42,7 +42,7 @@ use App\Service\StreetNetworkService;
 use App\Service\ZoneCardMessageBuilder;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -133,7 +133,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -158,7 +158,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -182,7 +182,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
         $existing = new HidingZone($round, new Point(0.0, 0.0), 500.0);
 
@@ -209,7 +209,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Seeker);
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -232,7 +232,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -632,7 +632,7 @@ final class HidingZoneServiceTest extends TestCase
         ?HidingZone $existing = null,
         ?ChatMessageRepository $messages = null,
     ): HidingZoneService {
-        $player = new Player($round->getGame(), AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($round->getGame(), IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);

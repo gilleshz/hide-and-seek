@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.data
 
 import fr.gshz.hideandseek.core.data.ConnectionStore
+import fr.gshz.hideandseek.core.device.DeviceIdentity
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.data.remote.HideAndSeekApi
 import io.mockk.coEvery
@@ -40,7 +41,7 @@ class GameRepositoryImplTest {
         val connectionStore = mockk<ConnectionStore>()
         coEvery { connectionStore.current() } returns
             ConnectionConfig(server.url("/").toString().trimEnd('/'), "key")
-        repository = GameRepositoryImpl(api, api, connectionStore)
+        repository = GameRepositoryImpl(api, api, connectionStore, FakeDeviceIdentity)
     }
 
     @AfterEach
@@ -73,4 +74,23 @@ class GameRepositoryImplTest {
         assertTrue(exception is HttpException)
         assertEquals(401, (exception as HttpException).code())
     }
+    @Test
+    fun `joinGame sends the player name and device key`() = runTest {
+        val joinBody = """
+            {"playerUuid":"p1","displayName":"Alice","gameUuid":"g1",
+             "roundUuid":"r1","mercureToken":"t","topics":[]}
+        """.trimIndent()
+        server.enqueue(MockResponse().setResponseCode(201).setBody(joinBody))
+
+        repository.joinGame("g1", "Alice")
+
+        assertEquals(
+            """{"name":"Alice","deviceKey":"test-device-key"}""",
+            server.takeRequest().body.readUtf8(),
+        )
+    }
+}
+
+private object FakeDeviceIdentity : DeviceIdentity {
+    override val key: String = "test-device-key"
 }

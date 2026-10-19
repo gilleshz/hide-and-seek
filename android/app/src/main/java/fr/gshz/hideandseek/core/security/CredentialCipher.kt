@@ -1,8 +1,8 @@
 package fr.gshz.hideandseek.core.security
 
 /**
- * Encrypts the player's join password at rest. The password is the only secret in the stored
- * credential; the display name and game uuid are public information anyway.
+ * Encrypts credentials at rest. The connection API key and the chat image key flow through it;
+ * the player identity is derived from the device and stores no secret.
  */
 interface CredentialCipher {
     /** Returns base64(iv + ciphertext), or null when the keystore is unavailable. */

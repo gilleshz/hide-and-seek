@@ -71,8 +71,9 @@ a `.env` file with the `${VAR}` placeholders left in place).
 2. In the app, connect with:
    - API URL: your `PUBLIC_URL`, for example `https://play.example.com`
    - API key: the value above
-   - Name and password: the first connect creates the account, the same
-     name and password sign back in.
+   - Name: your server-wide identity, bound to this device. The same name on
+     the same device rejoins; a new phone needs
+     `docker compose exec app php bin/console jetlag:identity:allow-new-device <name>`.
 
 ## TLS and reverse proxy
 

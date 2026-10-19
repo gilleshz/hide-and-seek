@@ -21,7 +21,7 @@ use App\Service\MercureJwtService;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
 use App\Service\TeamService;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -58,7 +58,7 @@ final class TeamServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -81,7 +81,7 @@ final class TeamServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $existing = new RoundMembership($round, $player, Side::Seeker);
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -105,7 +105,7 @@ final class TeamServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -127,7 +127,7 @@ final class TeamServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -150,7 +150,7 @@ final class TeamServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Hiding);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $existing = new RoundMembership($round, $player, Side::Hider);
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -174,7 +174,7 @@ final class TeamServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Hiding);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $existing = new RoundMembership($round, $player, Side::Seeker);
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -197,7 +197,7 @@ final class TeamServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Ended);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -220,7 +220,7 @@ final class TeamServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($otherGame, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($otherGame, IdentityFactory::create('Bob', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -240,7 +240,7 @@ final class TeamServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $left = new Player($game, AccountFactory::create('Gone', 'test-password'))->markLeft(new \DateTimeImmutable());
+        $left = new Player($game, IdentityFactory::create('Gone', 'test-password'))->markLeft(new \DateTimeImmutable());
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);

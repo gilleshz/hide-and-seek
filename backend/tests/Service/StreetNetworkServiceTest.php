@@ -29,7 +29,7 @@ use App\Service\MercureJwtService;
 use App\Service\OverpassHttpClient;
 use App\Service\StreetNetworkService;
 use App\StreetNetworkRules;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -599,7 +599,7 @@ final class StreetNetworkServiceTest extends TestCase
     private function hiderToken(Game $game): string
     {
         $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
-        $this->subscriber ??= new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $this->subscriber ??= new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         return $mercure->issueSubscriberToken(
             [$mercure->playerEndgameTopic($this->subscriber->getUuid())],

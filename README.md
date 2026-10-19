@@ -27,7 +27,7 @@ compose.yaml, compose.override.yaml   dev stack, builds from source
 ## How it works
 
 The app talks to the server over HTTPS (API and map tiles) and keeps a live
-connection open for real-time updates. The server stores accounts, games,
+connection open for real-time updates. The server stores player names, games,
 positions, messages and photos in PostgreSQL, and caches map tiles on disk.
 At game setup it fetches the area's map features from Overpass, and at game
 creation it builds the transit overlay from OpenStreetMap data.
@@ -51,8 +51,9 @@ key the app needs. TLS, a reverse proxy and the full guide are in
 
 1. Download the APK from the Releases page (Android 11 or newer).
 2. Connect to the server: API URL (for example `https://play.example.com`),
-   the API key from your host, your name and a password. The first connect
-   creates your account; use the same name and password to sign back in.
+   the API key from your host, and your name. The name is your identity on
+   that server, bound to this phone; the same name on the same phone rejoins
+   your games. If you change phones, ask the host to allow your new device.
 3. Create or join a game. The host picks the area and the transit lines; the
    others join with the game code or by scanning the host's QR code.
 4. Play: hiders hide, seekers find them. The map shows live positions, zones

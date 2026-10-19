@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.data.GameStateCache
+import fr.gshz.hideandseek.core.data.SettingsStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
@@ -48,6 +49,7 @@ class LobbyViewModel @Inject constructor(
     private val roundRepository: RoundRepository,
     private val connectionStore: ConnectionStore,
     private val gameStateCache: GameStateCache,
+    private val settingsStore: SettingsStore,
     private val navigationRequestStore: NavigationRequestStore,
     gameEventRepository: GameEventRepository,
     savedStateHandle: SavedStateHandle,
@@ -60,6 +62,11 @@ class LobbyViewModel @Inject constructor(
 
     init {
         load()
+        viewModelScope.launch {
+            settingsStore.locationDisclosureAccepted.collect { accepted ->
+                _uiState.update { it.copy(locationDisclosureAccepted = accepted) }
+            }
+        }
         // A timer event for a brand-new round means resync; otherwise another device just started or
         // stopped the current round, so swap this lobby's buttons.
         viewModelScope.launch {
@@ -430,6 +437,11 @@ class LobbyViewModel @Inject constructor(
 
     fun onNavigatedHome() {
         _uiState.update { it.copy(navigatedHome = false) }
+    }
+
+    fun onLocationDisclosureAccepted() {
+        _uiState.update { it.copy(locationDisclosureAccepted = true) }
+        viewModelScope.launch { settingsStore.saveLocationDisclosureAccepted() }
     }
 
     fun onPlayerLongPress(player: Player) {

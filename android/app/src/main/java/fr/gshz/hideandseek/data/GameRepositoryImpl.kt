@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.data
 
 import fr.gshz.hideandseek.core.data.ConnectionStore
+import fr.gshz.hideandseek.core.device.DeviceIdentity
 import fr.gshz.hideandseek.core.model.NotConnectedException
 import fr.gshz.hideandseek.data.mapper.toDomain
 import fr.gshz.hideandseek.data.remote.HideAndSeekApi
@@ -36,6 +37,8 @@ import fr.gshz.hideandseek.domain.repository.GameBoundary
 import fr.gshz.hideandseek.domain.repository.GameRepository
 import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
 import java.net.URLEncoder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -48,6 +51,7 @@ class GameRepositoryImpl @Inject constructor(
     private val api: HideAndSeekApi,
     @Named("longTimeout") private val longTimeoutApi: HideAndSeekApi,
     private val connectionStore: ConnectionStore,
+    private val deviceIdentity: DeviceIdentity,
 ) : GameRepository {
 
     @Suppress("LongParameterList")
@@ -199,11 +203,14 @@ class GameRepositoryImpl @Inject constructor(
         return body.string().takeIf { it.isNotBlank() }
     }
 
-    override suspend fun joinGame(gameUuid: String, displayName: String, password: String): JoinResult =
-        api.joinGame(
+    override suspend fun joinGame(gameUuid: String, displayName: String): JoinResult {
+        val deviceKey = withContext(Dispatchers.IO) { deviceIdentity.key }
+
+        return api.joinGame(
             url = urlFor("/api/games/$gameUuid/join"),
-            body = JoinRequest(name = displayName, password = password),
+            body = JoinRequest(name = displayName, deviceKey = deviceKey),
         ).toDomain()
+    }
 
     override suspend fun removePlayer(gameUuid: String, playerUuid: String) {
         api.removePlayer(url = urlFor("/api/games/$gameUuid/players/$playerUuid/remove"))

@@ -3,8 +3,8 @@ package fr.gshz.hideandseek.core.data
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.fake.FakeCredentialCipher
 import java.io.File
@@ -35,7 +35,7 @@ class ConnectionStoreTest {
             tempFile
         }
         cipher = FakeCredentialCipher()
-        store = ConnectionStore(dataStore, cipher, cipher)
+        store = ConnectionStore(dataStore, cipher)
     }
 
     @AfterEach
@@ -96,56 +96,44 @@ class ConnectionStoreTest {
     }
 
     @Test
-    fun `account save round-trips through the cipher`() = runTest {
-        store.save(AccountCredential("alice", "s3cret"))
+    fun `the player name round-trips and stays plaintext`() = runTest {
+        store.savePlayerName("Alice")
 
-        assertEquals(AccountCredential("alice", "s3cret"), store.currentAccount())
-        assertEquals(AccountCredential("alice", "s3cret"), store.accountCredential.first())
+        assertEquals("Alice", store.currentPlayerName())
+        assertEquals("Alice", store.playerName.first())
+        assertEquals("Alice", dataStore.data.first()[stringPreferencesKey("account_name")])
     }
 
     @Test
-    fun `the stored account password is ciphertext, not plaintext`() = runTest {
-        store.save(AccountCredential("alice", "s3cret"))
+    fun `saving a connection does not wipe the player name`() = runTest {
+        store.savePlayerName("Alice")
 
-        val stored = dataStore.data.first()[stringPreferencesKey("account_password")]
-        assertEquals("enc:s3cret", stored)
-        assertNotEquals("s3cret", stored)
+        store.save(ConnectionConfig("https://api.example.com", "secret"))
+
+        assertEquals("Alice", store.currentPlayerName())
     }
 
     @Test
-    fun `the account name stays in plaintext`() = runTest {
-        store.save(AccountCredential("alice", "s3cret"))
-
-        assertEquals("alice", dataStore.data.first()[stringPreferencesKey("account_name")])
-    }
-
-    @Test
-    fun `a lost keystore key reads the account back as absent`() = runTest {
-        store.save(AccountCredential("alice", "s3cret"))
-        cipher.failureMode = true
-
-        assertNull(store.currentAccount())
-        assertNull(store.accountCredential.first())
-    }
-
-    @Test
-    fun `an account encrypt failure aborts the save instead of wiping the stored account`() = runTest {
-        store.save(AccountCredential("alice", "s3cret"))
-        cipher.failureMode = true
-
-        store.save(AccountCredential("bob", "other-secret"))
-
-        assertEquals("alice", dataStore.data.first()[stringPreferencesKey("account_name")])
-        assertEquals("enc:s3cret", dataStore.data.first()[stringPreferencesKey("account_password")])
-    }
-
-    @Test
-    fun `clear wipes the stored account too`() = runTest {
-        store.save(AccountCredential("alice", "s3cret"))
+    fun `clear wipes the player name too`() = runTest {
+        store.savePlayerName("Alice")
 
         store.clear()
 
-        assertNull(store.currentAccount())
-        assertNull(store.accountCredential.first())
+        assertNull(store.currentPlayerName())
+        assertNull(store.playerName.first())
+    }
+
+    @Test
+    fun `legacy password cleanup keeps the player name and wipes the old secret`() = runTest {
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("account_name")] = "Alice"
+            prefs[stringPreferencesKey("account_password")] = "enc:old-password"
+        }
+
+        store.clearLegacyPassword()
+
+        val prefs = dataStore.data.first()
+        assertEquals("Alice", prefs[stringPreferencesKey("account_name")])
+        assertNull(prefs[stringPreferencesKey("account_password")])
     }
 }

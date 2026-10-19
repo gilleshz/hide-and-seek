@@ -7,19 +7,18 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.data.ConnectionStore
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.model.withoutLocationTopics
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_PASSWORD_INVALID
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_PASSWORD_REQUIRED
+import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_DEVICE_MISMATCH
 import fr.gshz.hideandseek.core.util.serverDetail
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
@@ -127,17 +126,18 @@ class CreateGameViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorKey = null, errorArgs = null) }
-            val account = connectionStore.currentAccount()
-            if (account == null) {
-                _uiState.update { it.copy(isLoading = false, needsAccount = true) }
+            val name = connectionStore.currentPlayerName()
+            if (name == null) {
+                _uiState.update { it.copy(isLoading = false, needsConnect = true) }
                 return@launch
             }
-            performCreate(state, account)
+            performCreate(state, name)
         }
     }
 
     @Suppress("LongMethod")
-    private suspend fun performCreate(state: CreateGameUiState, account: AccountCredential) {
+    private suspend fun performCreate(state: CreateGameUiState, name: String) {
+        var created: GameSummary? = null
         try {
             val expandedIds = state.expandedSelectedLineIds
             val selectedLines = state.transitLines.filter {
@@ -161,7 +161,8 @@ class CreateGameViewModel @Inject constructor(
                 selectedTransitLines = selectedLines,
                 selectedGtfsLines = selectedGtfs,
             )
-            val join = gameRepository.joinGame(game.uuid, account.name, account.password)
+            created = game
+            val join = gameRepository.joinGame(game.uuid, name)
             sessionRepository.saveSession(
                 PlayerSession(
                     gameUuid = game.uuid,
@@ -176,14 +177,34 @@ class CreateGameViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, createdGameUuid = game.uuid) }
         } catch (e: IOException) {
             Log.w(TAG, "Failed to create or join game", e)
-            _uiState.update { it.copy(isLoading = false, error = ErrorType.Network) }
+            val createdGame = created
+            _uiState.update {
+                if (createdGame != null) {
+                    it.copy(
+                        isLoading = false,
+                        needsConnect = true,
+                        needConnectErrorKey = null,
+                        needConnectJoinCode = createdGame.joinCode,
+                    )
+                } else {
+                    it.copy(isLoading = false, error = ErrorType.Network)
+                }
+            }
         } catch (e: HttpException) {
             Log.w(TAG, "Failed to create or join game", e)
             val errorKey = e.serverErrorKey()
-            if (errorKey == ERROR_KEY_JOIN_PASSWORD_REQUIRED || errorKey == ERROR_KEY_JOIN_PASSWORD_INVALID) {
-                _uiState.update { it.copy(isLoading = false, needsAccount = true, needAccountErrorKey = errorKey) }
-            } else {
-                _uiState.update {
+            val createdGame = created
+            _uiState.update {
+                if (createdGame != null) {
+                    it.copy(
+                        isLoading = false,
+                        needsConnect = true,
+                        needConnectErrorKey = errorKey,
+                        needConnectJoinCode = createdGame.joinCode,
+                    )
+                } else if (errorKey == ERROR_KEY_JOIN_DEVICE_MISMATCH) {
+                    it.copy(isLoading = false, needsConnect = true, needConnectErrorKey = errorKey)
+                } else {
                     it.copy(
                         isLoading = false,
                         error = e.toErrorType(),

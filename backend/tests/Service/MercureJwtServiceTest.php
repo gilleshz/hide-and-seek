@@ -157,6 +157,16 @@ final class MercureJwtServiceTest extends TestCase
     }
 
     #[Test]
+    public function subscriberClaimsReadsTheTokenEpoch(): void
+    {
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
+
+        $token = $service->issueSubscriberToken(['game/x/roster'], 'player-42', 7);
+
+        self::assertSame(['playerUuid' => 'player-42', 'tokenEpoch' => 7], $service->subscriberClaims($token));
+    }
+
+    #[Test]
     public function subscriberPlayerUuidRejectsForeignSignedAndMalformedTokens(): void
     {
         $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);

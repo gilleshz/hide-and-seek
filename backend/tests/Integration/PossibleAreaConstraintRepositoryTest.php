@@ -17,7 +17,7 @@ use App\Enum\GameSize;
 use App\Enum\Side;
 use App\Exception\FunctionalException;
 use App\Repository\PossibleAreaConstraintRepository;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\Test;
@@ -460,7 +460,7 @@ final class PossibleAreaConstraintRepositoryTest extends KernelTestCase
 
     private function persistCreator(Round $round): RoundMembership
     {
-        $account = AccountFactory::create('Seeker ' . bin2hex(random_bytes(4)), 'test-password');
+        $account = IdentityFactory::create('Seeker ' . bin2hex(random_bytes(4)), 'test-password');
         $player = new Player($round->getGame(), $account);
         $membership = new RoundMembership($round, $player, Side::Seeker);
         $this->em->persist($account);

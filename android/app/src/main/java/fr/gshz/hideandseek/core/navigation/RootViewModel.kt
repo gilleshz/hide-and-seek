@@ -50,7 +50,7 @@ class RootViewModel @Inject constructor(
                 return@launch
             }
 
-            if (connectionRepository.accountCredential() == null) {
+            if (connectionRepository.playerName() == null) {
                 _startDestination.value = HideAndSeekDestinations.CONNECT
                 return@launch
             }
@@ -69,20 +69,21 @@ class RootViewModel @Inject constructor(
     }
 
     /**
-     * A server-side identity rejection wipes the session and tries to rejoin silently with the account
-     * credential; when that fails (wrong password, game gone, offline) the user lands on the join screen.
+     * A server-side identity rejection wipes the session and tries to rejoin silently with the stored
+     * player name; when that fails (device mismatch, game gone, offline) the user lands on the join
+     * screen.
      */
     @Suppress("SwallowedException")
     suspend fun handleSessionExpired(errorKey: String? = null): SessionExpiredOutcome {
         val gameUuid = sessionRepository.currentSession()?.gameUuid
         sessionRepository.clear()
         navigationRequestStore.consumeSessionExpired()
-        val account = connectionRepository.accountCredential()
-        if (account == null || errorKey == ERROR_KEY_PLAYER_LEFT || gameUuid == null) {
-            return SessionExpiredOutcome.NeedsJoin(gameUuid, if (account == null) null else errorKey)
+        val name = connectionRepository.playerName()
+        if (name == null || errorKey == ERROR_KEY_PLAYER_LEFT || gameUuid == null) {
+            return SessionExpiredOutcome.NeedsJoin(gameUuid, if (name == null) null else errorKey)
         }
         return try {
-            val join = gameRepository.joinGame(gameUuid, account.name, account.password)
+            val join = gameRepository.joinGame(gameUuid, name)
             sessionRepository.saveSession(
                 PlayerSession(
                     gameUuid = join.gameUuid,

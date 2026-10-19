@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
@@ -26,29 +25,12 @@ import kotlinx.serialization.json.Json
 @Serializable
 private data class QrConnectPayload(val apiUrl: String, val apiKey: String, val joinCode: String? = null)
 
-@Serializable
-private data class AccountBody(val name: String, val password: String)
-
-@Serializable
-private data class ProblemBody(val errorKey: String? = null)
-
 private val qrJson = Json { ignoreUnknownKeys = true }
-private val problemJson = Json { ignoreUnknownKeys = true }
 
 sealed interface ProbeResult {
     data object Connected : ProbeResult
     data object WrongKey : ProbeResult
     data object Unreachable : ProbeResult
-}
-
-sealed interface ConnectAttemptResult {
-    data object Connected : ConnectAttemptResult
-    data object WrongKey : ConnectAttemptResult
-    data object Unreachable : ConnectAttemptResult
-    /** The server rejected the account; [errorKey] comes from the problem document. */
-    data class AccountError(val errorKey: String?) : ConnectAttemptResult
-    /** 404 on /api/accounts: the server predates server-wide accounts. */
-    data object ServerTooOld : ConnectAttemptResult
 }
 
 /**
@@ -78,67 +60,11 @@ internal suspend fun probeConnection(baseUrl: String, apiKey: String): ProbeResu
         }
     }
 
-/** Creates-or-verifies the account: 2xx means the pair is accepted, 404 means a pre-account server. */
-private suspend fun verifyAccount(
-    baseUrl: String,
-    apiKey: String,
-    name: String,
-    password: String,
-): ConnectAttemptResult = withContext(Dispatchers.IO) {
-        try {
-            val url = URL("${baseUrl.trimEnd('/')}/api/accounts")
-            val conn = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json")
-                setRequestProperty("X-API-Key", apiKey)
-                connectTimeout = PROBE_TIMEOUT_MS
-                readTimeout = PROBE_TIMEOUT_MS
-                instanceFollowRedirects = false
-            }
-            conn.outputStream.use { stream ->
-                stream.write(problemJson.encodeToString(AccountBody(name, password)).toByteArray())
-            }
-            val code = conn.responseCode
-            val problem = if (code in HTTP_OK..HTTP_OK_RANGE_END) {
-                null
-            } else {
-                conn.errorStream?.readBytes()?.decodeToString()
-            }
-            conn.disconnect()
-            when {
-                code in HTTP_OK..HTTP_OK_RANGE_END -> ConnectAttemptResult.Connected
-                code == HTTP_NOT_FOUND -> ConnectAttemptResult.ServerTooOld
-                code == HTTP_BAD_REQUEST || code == HTTP_UNAUTHORIZED || code == HTTP_FORBIDDEN ->
-                    ConnectAttemptResult.AccountError(parseErrorKey(problem))
-                else -> ConnectAttemptResult.Unreachable
-            }
-        } catch (_: Exception) {
-            ConnectAttemptResult.Unreachable
-        }
-    }
-
-private fun parseErrorKey(body: String?): String? =
-    body?.let { runCatching { problemJson.decodeFromString<ProblemBody>(it) }.getOrNull()?.errorKey }
-
-internal suspend fun attemptConnection(
-    baseUrl: String,
-    apiKey: String,
-    name: String,
-    password: String,
-): ConnectAttemptResult = when (probeConnection(baseUrl, apiKey)) {
-        ProbeResult.Connected -> verifyAccount(baseUrl, apiKey, name, password)
-        ProbeResult.WrongKey -> ConnectAttemptResult.WrongKey
-        ProbeResult.Unreachable -> ConnectAttemptResult.Unreachable
-    }
-
 private const val PROBE_TIMEOUT_MS = 5_000
 private const val HTTP_OK = 200
 private const val HTTP_OK_RANGE_END = 299
-private const val HTTP_BAD_REQUEST = 400
 private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_FORBIDDEN = 403
-private const val HTTP_NOT_FOUND = 404
 
 @HiltViewModel
 class ConnectViewModel @Inject constructor(
@@ -147,7 +73,7 @@ class ConnectViewModel @Inject constructor(
 ) : ViewModel() {
 
     // Injectable seam so tests can stub the whole attempt without a live server.
-    internal var connectAttempt: suspend (String, String, String, String) -> ConnectAttemptResult = ::attemptConnection
+    internal var connectAttempt: suspend (String, String) -> ProbeResult = ::probeConnection
 
     private val _uiState = MutableStateFlow(ConnectUiState())
     val uiState: StateFlow<ConnectUiState> = _uiState.asStateFlow()
@@ -157,22 +83,33 @@ class ConnectViewModel @Inject constructor(
             ?.takeIf { it.isNotBlank() }
             ?.let { key -> _uiState.update { it.copy(error = ErrorType.Validation, errorKey = key) } }
 
-        // Legacy update path: existing installs land here with a connection but no account stored.
+        savedStateHandle.get<String>(HideAndSeekDestinations.CONNECT_JOIN_CODE_ARG)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { code -> _uiState.update { it.copy(pendingJoinCode = code) } }
+
+        // Legacy update path: existing installs land here with a connection but no player name.
         viewModelScope.launch {
             val connection = connectionRepository.observeConnection().first()
-            val account = connectionRepository.accountCredential()
+            val name = connectionRepository.playerName()
             _uiState.update {
                 it.copy(
                     apiUrl = connection?.apiUrl ?: it.apiUrl,
                     apiKey = connection?.apiKey ?: it.apiKey,
-                    displayName = account?.name ?: it.displayName,
+                    displayName = name ?: it.displayName,
                 )
             }
         }
     }
 
     fun onApiUrlChange(value: String) {
-        _uiState.update { it.copy(apiUrl = value, error = null, errorKey = null) }
+        _uiState.update {
+            it.copy(
+                apiUrl = value,
+                isPlainHttp = value.trim().startsWith("http://"),
+                error = null,
+                errorKey = null,
+            )
+        }
     }
 
     fun onApiKeyChange(value: String) {
@@ -180,11 +117,7 @@ class ConnectViewModel @Inject constructor(
     }
 
     fun onDisplayNameChange(value: String) {
-        _uiState.update { it.copy(displayName = value, error = null, errorKey = null) }
-    }
-
-    fun onPasswordChange(value: String) {
-        _uiState.update { it.copy(passwordInput = value.take(PASSWORD_MAX_LENGTH), error = null, errorKey = null) }
+        _uiState.update { it.copy(displayName = value.take(NAME_MAX_LENGTH), error = null, errorKey = null) }
     }
 
     fun connect() {
@@ -192,14 +125,13 @@ class ConnectViewModel @Inject constructor(
         val url = state.apiUrl.trim()
         val key = state.apiKey.trim()
         val name = state.displayName.trim()
-        val password = state.passwordInput
 
-        if (listOf(url, key, name, password).any { it.isBlank() }) {
+        if (listOf(url, key, name).any { it.isBlank() } || name.length > NAME_MAX_LENGTH) {
             _uiState.update { it.copy(error = ErrorType.Validation, errorKey = null) }
             return
         }
 
-        performConnect(url, key, name, password, scannedGameCode = state.pendingJoinCode)
+        performConnect(url, key, name, scannedGameCode = state.pendingJoinCode)
     }
 
     fun onQrScanned(raw: String) {
@@ -211,20 +143,26 @@ class ConnectViewModel @Inject constructor(
         }
         val url = payload.apiUrl.trim()
         val key = payload.apiKey.trim()
-        val state = _uiState.value
-        val name = state.displayName.trim()
-        val password = state.passwordInput
+        val name = _uiState.value.displayName.trim()
         val code = payload.joinCode?.trim()?.uppercase()?.ifBlank { null }
-        // A QR only carries the server and the game; the account fields are the user's to type.
+        val isPlainHttp = url.lowercase().startsWith("http://")
+        // A QR only carries the server and the game; the player name is the user's to type.
         _uiState.update {
-            it.copy(apiUrl = url, apiKey = key, pendingJoinCode = code, error = null, errorKey = null)
+            it.copy(
+                apiUrl = url,
+                apiKey = key,
+                pendingJoinCode = code,
+                isPlainHttp = isPlainHttp,
+                error = null,
+                errorKey = null,
+            )
         }
-        if (name.isBlank() || password.isBlank()) return
+        if (name.isBlank() || isPlainHttp) return
 
-        performConnect(url, key, name, password, scannedGameCode = code)
+        performConnect(url, key, name, scannedGameCode = code)
     }
 
-    private fun performConnect(url: String, key: String, name: String, password: String, scannedGameCode: String?) {
+    private fun performConnect(url: String, key: String, name: String, scannedGameCode: String?) {
         val normalized = normalizedUrl(url)
         if (normalized == null) {
             _uiState.update { it.copy(error = ErrorType.Validation, errorKey = null) }
@@ -242,12 +180,10 @@ class ConnectViewModel @Inject constructor(
                     errorKey = null,
                 )
             }
-            when (val result = connectAttempt(normalized, key, name, password)) {
-                ConnectAttemptResult.Connected -> onAttemptSuccess(normalized, key, name, password, scannedGameCode)
-                ConnectAttemptResult.WrongKey -> onAttemptError(ErrorType.Unauthorized)
-                ConnectAttemptResult.Unreachable -> onAttemptError(ErrorType.Network)
-                is ConnectAttemptResult.AccountError -> onAttemptError(ErrorType.Unknown, result.errorKey)
-                ConnectAttemptResult.ServerTooOld -> onAttemptError(ErrorType.Unknown, SERVER_TOO_OLD_KEY)
+            when (connectAttempt(normalized, key)) {
+                ProbeResult.Connected -> onAttemptSuccess(normalized, key, name, scannedGameCode)
+                ProbeResult.WrongKey -> onAttemptError(ErrorType.Unauthorized)
+                ProbeResult.Unreachable -> onAttemptError(ErrorType.Network)
             }
         }
     }
@@ -256,11 +192,10 @@ class ConnectViewModel @Inject constructor(
         normalized: String,
         key: String,
         name: String,
-        password: String,
         scannedGameCode: String?,
     ) {
         connectionRepository.connect(ConnectionConfig(apiUrl = normalized, apiKey = key))
-        connectionRepository.saveAccount(AccountCredential(name = name.trim(), password = password))
+        connectionRepository.savePlayerName(name)
         // A QR with a join code navigates to join, not to the home screen.
         _uiState.update {
             it.copy(
@@ -283,7 +218,6 @@ class ConnectViewModel @Inject constructor(
     }
 
     private companion object {
-        const val PASSWORD_MAX_LENGTH = 64
-        const val SERVER_TOO_OLD_KEY = "connect.server_too_old"
+        const val NAME_MAX_LENGTH = 80
     }
 }

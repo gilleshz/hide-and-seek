@@ -17,7 +17,7 @@ use App\Repository\PossibleAreaConstraintRepository;
 use App\Service\MercureJwtService;
 use App\Service\PossibleAreaService;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -32,7 +32,7 @@ final class PossibleAreaServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Radar, new \DateTimeImmutable('+5 minutes'));
         $question
@@ -60,7 +60,7 @@ final class PossibleAreaServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Radar, new \DateTimeImmutable('+5 minutes'));
         $question
@@ -88,7 +88,7 @@ final class PossibleAreaServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Imperial);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Charlie', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Charlie', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Thermometer, new \DateTimeImmutable('+5 minutes'));
         $question
@@ -116,7 +116,7 @@ final class PossibleAreaServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Imperial);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Diana', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Diana', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Thermometer, new \DateTimeImmutable('+5 minutes'));
         $question
@@ -144,7 +144,7 @@ final class PossibleAreaServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Frank', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Frank', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('+5 minutes'));
         $question->setTransitLineUuid('11111111-1111-4111-8111-111111111111')
@@ -164,7 +164,7 @@ final class PossibleAreaServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Frank', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Frank', 'test-password'));
 
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('+5 minutes'));
         $question->setFeatureType(FeatureType::TransitStation)
@@ -213,7 +213,7 @@ final class PossibleAreaServiceTest extends TestCase
 
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Eve', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Eve', 'test-password'));
 
         $radarQuestion = new AskedQuestion($round, $player, QuestionCategory::Radar, new \DateTimeImmutable('+5 minutes'));
         $radarQuestion

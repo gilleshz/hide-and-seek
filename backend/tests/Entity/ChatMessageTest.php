@@ -10,7 +10,7 @@ use App\Entity\Player;
 use App\Enum\ChatMessageType;
 use App\Enum\Edition;
 use App\Enum\GameSize;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -22,7 +22,7 @@ final class ChatMessageTest extends TestCase
     public function itStoresATextMessageFromASender(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $message = new ChatMessage($game, $player, ChatMessageType::Text, 'Hello!');
 
@@ -37,7 +37,7 @@ final class ChatMessageTest extends TestCase
     public function itAnswersWhoSentItWithoutTheCallerWalkingTheRelation(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $message = new ChatMessage($game, $player, ChatMessageType::Text, 'Hello!');
 

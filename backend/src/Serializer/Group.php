@@ -9,9 +9,6 @@ final class Group
     public const string GAME_READ = 'game:read';
     public const string GAME_WRITE = 'game:write';
     public const string PLAYER_READ = 'player:read';
-    public const string ACCOUNT_READ = 'account:read';
-    public const string ACCOUNT_WRITE = 'account:write';
-    public const string ACCOUNT_PASSWORD_WRITE = 'account-password:write';
     public const string JOIN_READ = 'join:read';
     public const string JOIN_WRITE = 'join:write';
     public const string TEAM_READ = 'team:read';

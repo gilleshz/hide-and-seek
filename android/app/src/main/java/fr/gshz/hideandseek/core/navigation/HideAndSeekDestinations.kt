@@ -4,7 +4,10 @@ import android.net.Uri
 
 object HideAndSeekDestinations {
     const val CONNECT_ERROR_KEY_ARG = "errorKey"
-    const val CONNECT = "connect?$CONNECT_ERROR_KEY_ARG={$CONNECT_ERROR_KEY_ARG}"
+    const val CONNECT_JOIN_CODE_ARG = "joinCode"
+    const val CONNECT =
+        "connect?$CONNECT_ERROR_KEY_ARG={$CONNECT_ERROR_KEY_ARG}" +
+            "&$CONNECT_JOIN_CODE_ARG={$CONNECT_JOIN_CODE_ARG}"
     const val SCANNER = "scanner"
     const val HOME = "home"
     const val SETTINGS = "settings"
@@ -21,9 +24,10 @@ object HideAndSeekDestinations {
     const val CHAT_ARG = "gameUuid"
     const val CHAT = "chat/{$CHAT_ARG}"
 
-    fun connectRoute(errorKey: String? = null): String {
+    fun connectRoute(errorKey: String? = null, joinCode: String? = null): String {
         val args = buildList {
             if (!errorKey.isNullOrBlank()) add("$CONNECT_ERROR_KEY_ARG=${encode(errorKey)}")
+            if (!joinCode.isNullOrBlank()) add("$CONNECT_JOIN_CODE_ARG=${encode(joinCode)}")
         }
         return if (args.isEmpty()) "connect" else "connect?" + args.joinToString("&")
     }

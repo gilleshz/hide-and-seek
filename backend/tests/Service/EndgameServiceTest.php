@@ -20,7 +20,7 @@ use App\Repository\RoundRepository;
 use App\Service\EndgameService;
 use App\Service\MercureJwtService;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -56,7 +56,7 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $stationPoint = new Point(13.405, 52.52);
         $seekerPoint = new Point(13.41, 52.53); // ~1.2km away, zone radius 500m
@@ -84,7 +84,7 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $stationPoint = new Point(13.405, 52.52);
         $seekerPoint = new Point(13.40501, 52.52001); // ~1.5m away, zone radius 500m
@@ -115,7 +115,7 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $stationPoint = new Point(13.405, 52.52);
         $seekerPoint = new Point(13.405, 52.521); // ~111m away
@@ -146,7 +146,7 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $left = new Player($game, AccountFactory::create('Bob', 'test-password'))->markLeft(new \DateTimeImmutable());
+        $left = new Player($game, IdentityFactory::create('Bob', 'test-password'))->markLeft(new \DateTimeImmutable());
 
         $stationPoint = new Point(13.405, 52.52);
         $zone = new HidingZone($round, $stationPoint, 500.0);
@@ -172,7 +172,7 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $stationPoint = new Point(13.405, 52.52);
         $hiderPoint = new Point(13.405, 52.52); // at the station, but ignored
@@ -200,8 +200,8 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $first = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $second = new Player($game, AccountFactory::create('Ada', 'test-password'));
+        $first = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $second = new Player($game, IdentityFactory::create('Ada', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findHidersByRound')->willReturn([
@@ -244,7 +244,7 @@ final class EndgameServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findHidersByRound')->willReturn([

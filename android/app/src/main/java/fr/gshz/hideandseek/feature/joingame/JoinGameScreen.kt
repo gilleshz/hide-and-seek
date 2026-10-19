@@ -44,7 +44,7 @@ import fr.gshz.hideandseek.core.ui.theme.Spacing
 @Composable
 fun JoinGameScreen(
     onJoined: (gameUuid: String) -> Unit,
-    onNeedAccount: (errorKey: String?) -> Unit,
+    onNeedConnect: (errorKey: String?) -> Unit,
     onScanClick: () -> Unit = {},
     viewModel: JoinGameViewModel = hiltViewModel(),
 ) {
@@ -54,8 +54,8 @@ fun JoinGameScreen(
         uiState.joinedGameUuid?.let(onJoined)
     }
 
-    LaunchedEffect(uiState.needsAccount) {
-        if (uiState.needsAccount) onNeedAccount(uiState.needAccountErrorKey)
+    LaunchedEffect(uiState.needsConnect) {
+        if (uiState.needsConnect) onNeedConnect(uiState.needConnectErrorKey)
     }
 
     JoinGameContent(

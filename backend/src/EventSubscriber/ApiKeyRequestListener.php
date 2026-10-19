@@ -30,11 +30,16 @@ final readonly class ApiKeyRequestListener implements EventSubscriberInterface
 
     public function onKernelRequest(RequestEvent $event): void
     {
-        if (!$event->isMainRequest() || !$this->isGuarded($event->getRequest()->getPathInfo())) {
+        if (!$event->isMainRequest()) {
             return;
         }
 
         $request = $event->getRequest();
+        // Mirror the router's decode; encoded prefixes would otherwise skip the key.
+        if (!$this->isGuarded(rawurldecode($request->getPathInfo()))) {
+            return;
+        }
+
         $provided = (string) $request->headers->get(self::HEADER, '');
 
         if ($this->apiKey === '' || !hash_equals($this->apiKey, $provided)) {

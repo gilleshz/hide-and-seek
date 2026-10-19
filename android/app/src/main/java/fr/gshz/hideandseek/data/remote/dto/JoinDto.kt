@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class JoinRequest(
     val name: String,
-    val password: String,
+    val deviceKey: String,
 )
 
 @Serializable

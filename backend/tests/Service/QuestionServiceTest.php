@@ -46,7 +46,7 @@ use App\Service\RoundClock;
 use App\Service\TransitLineResolver;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -98,7 +98,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -137,7 +137,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Hider));
@@ -158,7 +158,7 @@ final class QuestionServiceTest extends TestCase
     public function aSeekerCannotAskWhileTheHidingPeriodIsStillRunning(): void
     {
         $round = $this->roundStillHiding($game = new Game('Berlin', GameSize::Small, Edition::Metric));
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $errorKey = $this->askAndCaptureErrorKey($round, $asker);
 
@@ -170,8 +170,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->roundStillHiding($game)->setHidingPeriodEndsAt(new \DateTimeImmutable('-1 second'));
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $hiderPlayer = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $hiderPlayer = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -192,7 +192,7 @@ final class QuestionServiceTest extends TestCase
     {
         $round = $this->roundStillHiding($game = new Game('Berlin', GameSize::Small, Edition::Metric))
             ->setInMovePeriod(true);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $errorKey = $this->askAndCaptureErrorKey($round, $asker);
 
@@ -204,7 +204,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $errorKey = $this->askAndCaptureErrorKey($round, $asker);
 
@@ -216,7 +216,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game)->setStatus(RoundStatus::Ended);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $errorKey = $this->askAndCaptureErrorKey($round, $asker);
 
@@ -228,7 +228,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $outstanding = $this->radarQuestion($round, $asker, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -252,8 +252,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $hiderPlayer = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $hiderPlayer = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $outstanding = $this->radarQuestion($round, $asker, new \DateTimeImmutable('-1 minute'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -281,7 +281,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->radarQuestion($round, $seeker, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -302,7 +302,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('+5 minutes'));
         $question->setRevealedAt(new \DateTimeImmutable());
 
@@ -324,7 +324,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -347,7 +347,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -380,7 +380,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $overdue = $this->radarQuestion($round, $hider, new \DateTimeImmutable('-1 minute'));
 
         $askedQuestions = $this->askedQuestionsStub();
@@ -404,7 +404,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('-1 minute'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -431,7 +431,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('-1 minute'));
 
         $askedQuestions = $this->createMock(AskedQuestionRepository::class);
@@ -458,7 +458,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = new AskedQuestion($round, $hider, QuestionCategory::Photos, new \DateTimeImmutable('+10 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -490,7 +490,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -515,7 +515,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->photoQuestion($round, $hider);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -552,7 +552,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         self::assertSame(
             'question.cannot_answer_only_photos',
@@ -569,7 +569,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->photoQuestion($round, $hider)->setRevealedAt(new \DateTimeImmutable());
 
         self::assertSame('question.already_revealed', $this->cannotAnswerErrorKey($question, $hider, Side::Hider));
@@ -580,7 +580,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->photoQuestion($round, $hider)->setStatus(QuestionStatus::Randomized);
 
         self::assertSame('question.reveal_only_open', $this->cannotAnswerErrorKey($question, $hider, Side::Hider));
@@ -591,7 +591,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         self::assertSame(
             'question.hider_only',
@@ -604,7 +604,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->photoQuestion($round, $hider);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -634,7 +634,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $hider, new \DateTimeImmutable('+5 minutes'));
 
         $askedQuestions = $this->createMock(AskedQuestionRepository::class);
@@ -655,7 +655,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -689,7 +689,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -715,7 +715,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Metz', GameSize::Small, Edition::Metric, RulesVariant::Compact);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -744,7 +744,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Metz', GameSize::Small, Edition::Metric, RulesVariant::Compact);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $input = $this->thermometerInput($asker->getUuid());
         $input->distanceMeters = 5000.0;
@@ -757,7 +757,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $input = $this->thermometerInput($asker->getUuid());
         $input->distanceMeters = 2000.0;
@@ -770,7 +770,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->travelingThermometer($round, $asker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -805,8 +805,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $other = new Player($game, AccountFactory::create('Carol', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $other = new Player($game, IdentityFactory::create('Carol', 'test-password'));
         $question = $this->travelingThermometer($round, $asker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -827,7 +827,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->radarQuestion($round, $asker, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -848,8 +848,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->travelingThermometer($round, $asker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -870,7 +870,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->travelingThermometer($round, $asker);
 
         $askedQuestions = $this->createMock(AskedQuestionRepository::class);
@@ -891,7 +891,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -914,7 +914,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -937,7 +937,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -972,7 +972,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $input = new AskQuestionInput();
         $input->category = QuestionCategory::Tentacles;
@@ -987,7 +987,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $input = $this->radarInput($asker->getUuid());
         $input->radiusMeters = 12345.0;
@@ -1000,7 +1000,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $input = $this->radarInput($asker->getUuid());
         $input->radiusMeters = 2_000_000.0;
@@ -1014,7 +1014,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $input = new AskQuestionInput();
         $input->category = QuestionCategory::Measuring;
@@ -1031,8 +1031,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturnCallback(
@@ -1067,7 +1067,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -1095,7 +1095,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->radarQuestion($round, $asker, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1131,7 +1131,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $park = new Feature($game, FeatureType::Park, 'Central Park', new Point(0.0, 0.0006));
 
         $features = $this->createStub(FeatureRepository::class);
@@ -1153,7 +1153,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $near = new Feature($game, FeatureType::Hospital, 'Near Clinic', new Point(0.0, 0.001));
         $far = new Feature($game, FeatureType::Hospital, 'Far Hospital', new Point(0.0, 0.02));
 
@@ -1176,7 +1176,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         /** @var list<ChatMessage> $messages */
         $messages = [];
@@ -1193,7 +1193,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         /** @var list<ChatMessage> $messages */
         $messages = [];
@@ -1209,7 +1209,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         /** @var list<ChatMessage> $messages */
         $messages = [];
@@ -1224,7 +1224,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         /** @var list<ChatMessage> $messages */
         $messages = [];
@@ -1239,7 +1239,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         /** @var list<ChatMessage> $messages */
         $messages = [];
@@ -1254,8 +1254,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $question = $this->radarQuestion($round, $asker, new \DateTimeImmutable('-1 minute'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1280,8 +1280,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $bob = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $carol = new Player($game, AccountFactory::create('Carol', 'test-password'));
+        $bob = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $carol = new Player($game, IdentityFactory::create('Carol', 'test-password'));
         $question = $this->radarQuestion($round, $bob, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1309,7 +1309,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->travelingThermometer($round, $asker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1331,7 +1331,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $features = $this->createStub(FeatureRepository::class);
         $features->method('countByGameAndType')->willReturn(1);
@@ -1351,7 +1351,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $unnamed = new Feature($game, FeatureType::Museum, null, new Point(0.0, 0.0006));
 
         $features = $this->createStub(FeatureRepository::class);
@@ -1373,7 +1373,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $museum = new Feature($game, FeatureType::Museum, 'City Museum', new Point(0.0, 0.0006));
 
         $features = $this->createStub(FeatureRepository::class);
@@ -1395,7 +1395,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $features = $this->createStub(FeatureRepository::class);
         $features->method('findNearestWithin')->willReturn([]);
@@ -1428,8 +1428,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $original = $this->travelingThermometer($round, $seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1461,8 +1461,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $end = new Point(0.0, 0.02);
         $original = new AskedQuestion($round, $seeker, QuestionCategory::Thermometer, new \DateTimeImmutable('+5 minutes'));
         $original->setStartPoint(new Point(0.0, 0.0))->setDistanceMeters(5000.0)->setEndPoint($end);
@@ -1492,8 +1492,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $end = new Point(0.0, 0.005);
         $original = new AskedQuestion($round, $seeker, QuestionCategory::Thermometer, new \DateTimeImmutable('+5 minutes'));
         $original->setStartPoint(new Point(0.0, 0.0))->setDistanceMeters(1000.0)->setEndPoint($end);
@@ -1523,8 +1523,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $original = $this->travelingThermometer($round, $seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1555,8 +1555,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $original = $this->travelingThermometer($round, $seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1587,8 +1587,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->radarQuestion($round, $seeker, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1613,8 +1613,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = $this->radarQuestion($round, $seeker, new \DateTimeImmutable('+5 minutes'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1639,8 +1639,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $original = $this->travelingThermometer($round, $seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1668,8 +1668,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $original = $this->travelingThermometer($round, $seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1699,8 +1699,8 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $traveling = $this->travelingThermometer($round, $seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1724,7 +1724,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $line = new ResolvedTransitLine('11111111-1111-4111-8111-111111111111', 'S1', 'S1: Airport Line');
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1759,7 +1759,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $line = new ResolvedTransitLine('22222222-2222-4222-8222-222222222222', 'RE 1', 'RE 1: Basel - Mulhouse');
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -1796,7 +1796,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));
@@ -1824,7 +1824,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $line = new ResolvedTransitLine('11111111-1111-4111-8111-111111111111', 'S1', 'S1: Airport Line');
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('-1 minute'));
         $question->setTransitLineUuid($line->uuid)->setTransitLineLabel($line->label);
@@ -1845,7 +1845,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $line = new ResolvedTransitLine('11111111-1111-4111-8111-111111111111', 'S1', 'S1: Airport Line');
         $question = new AskedQuestion($round, $hider, QuestionCategory::Matching, new \DateTimeImmutable('-1 minute'));
         $question->setTransitLineUuid($line->uuid)->setTransitLineLabel($line->label);
@@ -1893,7 +1893,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $hiderStation = new Feature($game, FeatureType::TransitStation, 'Alpha', new Point(0.0, 0.0006));
         $seekerStation = new Feature($game, FeatureType::TransitStation, 'Bravo', new Point(0.0, 0.0));
 
@@ -1915,7 +1915,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $hiderStation = new Feature($game, FeatureType::TransitStation, 'Alpha', new Point(0.0, 0.0006));
         $seekerStation = new Feature($game, FeatureType::TransitStation, 'Charlie', new Point(0.0, 0.0));
 
@@ -1936,7 +1936,7 @@ final class QuestionServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = $this->seekingRound($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(new RoundMembership($round, $asker, Side::Seeker));

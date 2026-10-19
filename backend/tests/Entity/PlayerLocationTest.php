@@ -10,7 +10,7 @@ use App\Entity\PlayerLocation;
 use App\Entity\Round;
 use App\Enum\Edition;
 use App\Enum\GameSize;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -24,7 +24,7 @@ final class PlayerLocationTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $point = new Point(13.405, 52.52);
 
         $location = new PlayerLocation($round, $player, $point);
@@ -42,7 +42,7 @@ final class PlayerLocationTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $point = new Point(13.405, 52.52);
 
         $location = new PlayerLocation($round, $player, $point, -12.5);

@@ -45,7 +45,7 @@ final class GameApiTest extends ApiTestCase
         $uuid = $created['uuid'];
 
         $join = $client->request('POST', "/api/games/{$uuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);
@@ -59,7 +59,7 @@ final class GameApiTest extends ApiTestCase
         self::assertArrayNotHasKey('joinSecret', $join);
 
         $rejoin = $client->request('POST', "/api/games/{$uuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
 
         self::assertSame($join['playerUuid'], $rejoin['playerUuid']);
@@ -104,11 +104,11 @@ final class GameApiTest extends ApiTestCase
         self::assertSame(30, $game['defaultHidingPeriodMinutes']);
 
         $alice = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($alice['mercureToken']);
         $bob = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Bob', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Bob', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($bob['mercureToken']);
 
@@ -176,7 +176,7 @@ final class GameApiTest extends ApiTestCase
         self::assertIsString($roundUuid);
 
         $alice = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($alice['mercureToken']);
 
@@ -222,7 +222,7 @@ final class GameApiTest extends ApiTestCase
     public function itReturns404JoiningAnUnknownGame(): void
     {
         static::createClient()->request('POST', '/api/games/00000000-0000-0000-0000-000000000000/join', self::AUTH + [
-            'json' => ['name' => 'Ghost'],
+            'json' => ['name' => 'Ghost', 'deviceKey' => self::DEVICE_KEY],
         ]);
 
         self::assertResponseStatusCodeSame(404);
@@ -304,7 +304,7 @@ final class GameApiTest extends ApiTestCase
         self::assertIsString($roundUuid);
 
         $alice = $client->request('POST', "/api/games/{$uuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($alice['mercureToken']);
         $client->request('POST', "/api/rounds/{$roundUuid}/team", $this->headersWithToken($alice['mercureToken']) + [
@@ -340,7 +340,7 @@ final class GameApiTest extends ApiTestCase
         self::assertIsString($roundUuid);
 
         $alice = $client->request('POST', "/api/games/{$uuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($alice['mercureToken']);
         $client->request('POST', "/api/rounds/{$roundUuid}/team", $this->headersWithToken($alice['mercureToken']) + [

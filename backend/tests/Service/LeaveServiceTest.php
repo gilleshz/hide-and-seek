@@ -22,7 +22,7 @@ use App\Service\MercureJwtService;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
 use App\Storage\ImageStorageInterface;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -38,7 +38,7 @@ final class LeaveServiceTest extends TestCase
     public function itAnnouncesTheDepartureAndMarksThePlayerWithoutDeletingThem(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Charlie', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Charlie', 'test-password'));
 
         $posted = null;
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -83,7 +83,7 @@ final class LeaveServiceTest extends TestCase
     public function aHostRemovalAnnouncesPlayerRemoved(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Charlie', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Charlie', 'test-password'));
 
         $posted = null;
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -107,7 +107,7 @@ final class LeaveServiceTest extends TestCase
     public function aSelfRemovalIsAnnouncedAsALeave(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Charlie', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Charlie', 'test-password'));
 
         $posted = null;
         $messages = $this->createMock(ChatMessageRepository::class);

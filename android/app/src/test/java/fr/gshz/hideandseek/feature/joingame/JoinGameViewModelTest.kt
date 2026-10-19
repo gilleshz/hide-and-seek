@@ -2,7 +2,6 @@ package fr.gshz.hideandseek.feature.joingame
 
 import androidx.lifecycle.SavedStateHandle
 import fr.gshz.hideandseek.core.data.ConnectionStore
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.domain.model.JoinResult
@@ -37,7 +36,7 @@ class JoinGameViewModelTest {
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        coEvery { connectionStore.currentAccount() } returns AccountCredential("Alice", "p@ss")
+        coEvery { connectionStore.currentPlayerName() } returns "Alice"
         viewModel = JoinGameViewModel(gameRepository, sessionRepository, connectionStore, SavedStateHandle())
     }
 
@@ -78,11 +77,10 @@ class JoinGameViewModelTest {
     }
 
     @Test
-    fun `join sends the stored account name and password`() = runTest {
+    fun `join sends the stored player name`() = runTest {
         viewModel.onGameKeyChange("game-1")
         viewModel.join()
 
-        assertEquals("p@ss", gameRepository.lastPassword)
         assertEquals("Alice", gameRepository.lastJoinDisplayName)
         assertEquals("game-1", gameRepository.lastJoinGameUuid)
     }
@@ -108,11 +106,11 @@ class JoinGameViewModelTest {
     @Test
     fun `prefills the error key from the nav arguments`() = runTest {
         val handle = SavedStateHandle(
-            mapOf(HideAndSeekDestinations.JOIN_GAME_ERROR_KEY_ARG to "join.password_invalid"),
+            mapOf(HideAndSeekDestinations.JOIN_GAME_ERROR_KEY_ARG to "join.device_mismatch"),
         )
         val prefilled = JoinGameViewModel(gameRepository, sessionRepository, connectionStore, handle)
 
-        assertEquals("join.password_invalid", prefilled.uiState.value.errorKey)
+        assertEquals("join.device_mismatch", prefilled.uiState.value.errorKey)
         assertEquals(ErrorType.Validation, prefilled.uiState.value.error)
     }
 
@@ -121,33 +119,33 @@ class JoinGameViewModelTest {
         viewModel.join()
 
         assertEquals(ErrorType.Validation, viewModel.uiState.value.error)
-        assertNull(gameRepository.lastPassword)
+        assertNull(gameRepository.lastJoinDisplayName)
     }
 
     @Test
-    fun `without an account credential the join asks for one`() = runTest {
-        coEvery { connectionStore.currentAccount() } returns null
+    fun `without a player name the join asks for one`() = runTest {
+        coEvery { connectionStore.currentPlayerName() } returns null
         viewModel.onGameKeyChange("game-1")
 
         viewModel.join()
 
-        assertTrue(viewModel.uiState.value.needsAccount)
-        assertNull(viewModel.uiState.value.needAccountErrorKey)
-        assertNull(gameRepository.lastPassword)
+        assertTrue(viewModel.uiState.value.needsConnect)
+        assertNull(viewModel.uiState.value.needConnectErrorKey)
+        assertNull(gameRepository.lastJoinDisplayName)
         assertNull(viewModel.uiState.value.joinedGameUuid)
     }
 
     @Test
-    fun `a rejected account credential asks for one with the error key`() = runTest {
+    fun `a rejected device asks for a reconnect with the error key`() = runTest {
         gameRepository.joinGameResult = Result.failure(
-            httpException(400, """{"errorKey":"join.password_invalid"}"""),
+            httpException(400, """{"errorKey":"join.device_mismatch"}"""),
         )
         viewModel.onGameKeyChange("game-1")
 
         viewModel.join()
 
-        assertTrue(viewModel.uiState.value.needsAccount)
-        assertEquals("join.password_invalid", viewModel.uiState.value.needAccountErrorKey)
+        assertTrue(viewModel.uiState.value.needsConnect)
+        assertEquals("join.device_mismatch", viewModel.uiState.value.needConnectErrorKey)
         assertEquals("game-1", gameRepository.lastJoinGameUuid)
     }
 
@@ -159,7 +157,7 @@ class JoinGameViewModelTest {
         viewModel.join()
 
         assertEquals(ErrorType.NotFound, viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.needsAccount)
+        assertFalse(viewModel.uiState.value.needsConnect)
     }
 
     @Test
@@ -170,6 +168,6 @@ class JoinGameViewModelTest {
         viewModel.join()
 
         assertEquals(ErrorType.Network, viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.needsAccount)
+        assertFalse(viewModel.uiState.value.needsConnect)
     }
 }

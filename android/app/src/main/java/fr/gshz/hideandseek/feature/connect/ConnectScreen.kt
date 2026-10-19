@@ -72,7 +72,6 @@ fun ConnectScreen(
         onApiUrlChange = viewModel::onApiUrlChange,
         onApiKeyChange = viewModel::onApiKeyChange,
         onDisplayNameChange = viewModel::onDisplayNameChange,
-        onPasswordChange = viewModel::onPasswordChange,
         onConnectClick = viewModel::connect,
         onScanClick = onScanClick,
         onOpenSettings = onOpenSettings,
@@ -86,7 +85,6 @@ internal fun ConnectContent(
     onApiUrlChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onDisplayNameChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
     onConnectClick: () -> Unit,
     onScanClick: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
@@ -120,7 +118,6 @@ internal fun ConnectContent(
                 onApiUrlChange = onApiUrlChange,
                 onApiKeyChange = onApiKeyChange,
                 onDisplayNameChange = onDisplayNameChange,
-                onPasswordChange = onPasswordChange,
                 onConnectClick = onConnectClick,
                 onScanClick = onScanClick,
             )
@@ -155,7 +152,6 @@ private fun ConnectForm(
     onApiUrlChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onDisplayNameChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
     onConnectClick: () -> Unit,
     onScanClick: () -> Unit = {},
 ) {
@@ -190,11 +186,9 @@ private fun ConnectForm(
                 onNext = { focusManager.moveFocus(FocusDirection.Down) },
             )
 
-            AccountFields(
+            PlayerNameField(
                 displayName = uiState.displayName,
-                passwordInput = uiState.passwordInput,
                 onDisplayNameChange = onDisplayNameChange,
-                onPasswordChange = onPasswordChange,
                 onConnectClick = onConnectClick,
             )
 
@@ -238,33 +232,18 @@ private fun ApiKeyField(
 }
 
 @Composable
-private fun AccountFields(
+private fun PlayerNameField(
     displayName: String,
-    passwordInput: String,
     onDisplayNameChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
     onConnectClick: () -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
-
     OutlinedTextField(
         value = displayName,
         onValueChange = onDisplayNameChange,
         label = { Text(stringResource(R.string.connect_account_name_label)) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-    )
-
-    OutlinedTextField(
-        value = passwordInput,
-        onValueChange = onPasswordChange,
-        label = { Text(stringResource(R.string.connect_account_password_label)) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { onConnectClick() }),
     )
 }
@@ -332,12 +311,10 @@ private fun ConnectContentPreview() {
                 apiUrl = "https://example.com",
                 apiKey = "secret",
                 displayName = "Alice",
-                passwordInput = "hunter2",
             ),
             onApiUrlChange = {},
             onApiKeyChange = {},
             onDisplayNameChange = {},
-            onPasswordChange = {},
             onConnectClick = {},
         )
     }

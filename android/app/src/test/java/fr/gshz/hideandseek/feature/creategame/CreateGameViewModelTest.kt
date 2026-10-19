@@ -2,7 +2,6 @@ package fr.gshz.hideandseek.feature.creategame
 
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.data.ConnectionStore
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.domain.model.GameSize
@@ -43,7 +42,7 @@ class CreateGameViewModelTest {
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        coEvery { connectionStore.currentAccount() } returns AccountCredential("Alice", "p@ss")
+        coEvery { connectionStore.currentPlayerName() } returns "Alice"
     }
 
     @AfterEach
@@ -346,32 +345,47 @@ class CreateGameViewModelTest {
         viewModel.createGame()
 
         assertEquals(ErrorType.Validation, viewModel.uiState.value.error)
-        assertNull(gameRepository.lastPassword)
+        assertNull(gameRepository.lastJoinDisplayName)
     }
 
     @Test
-    fun `creating a game joins as host with the stored account credential`() = runTest {
+    fun `creating a game joins as host with the stored player name`() = runTest {
         val viewModel = createViewModel()
         viewModel.onNameChange("Berlin")
 
         viewModel.createGame()
 
-        assertEquals("p@ss", gameRepository.lastPassword)
         assertEquals("Alice", gameRepository.lastJoinDisplayName)
         assertEquals("game-1", viewModel.uiState.value.createdGameUuid)
         assertNull(viewModel.uiState.value.error)
     }
 
     @Test
-    fun `without an account credential the create asks for one`() = runTest {
-        coEvery { connectionStore.currentAccount() } returns null
+    fun `without a player name the create asks for one`() = runTest {
+        coEvery { connectionStore.currentPlayerName() } returns null
         val viewModel = createViewModel()
         viewModel.onNameChange("Berlin")
 
         viewModel.createGame()
 
-        assertTrue(viewModel.uiState.value.needsAccount)
-        assertNull(gameRepository.lastPassword)
+        assertTrue(viewModel.uiState.value.needsConnect)
+        assertNull(gameRepository.lastJoinDisplayName)
+        assertNull(viewModel.uiState.value.createdGameUuid)
+    }
+
+    @Test
+    fun `a join failure after create keeps the game code for the reconnect`() = runTest {
+        gameRepository.joinGameResult = Result.failure(
+            httpException(400, """{"errorKey":"join.device_mismatch"}"""),
+        )
+        val viewModel = createViewModel()
+        viewModel.onNameChange("Berlin")
+
+        viewModel.createGame()
+
+        assertTrue(viewModel.uiState.value.needsConnect)
+        assertEquals("join.device_mismatch", viewModel.uiState.value.needConnectErrorKey)
+        assertEquals("ABCDEF", viewModel.uiState.value.needConnectJoinCode)
         assertNull(viewModel.uiState.value.createdGameUuid)
     }
 

@@ -95,17 +95,29 @@ class NavigationSmokeTest {
 
     @Test
     fun connectRoute_withErrorKeyOnly_returnsRouteWithErrorKey() {
-        val result = HideAndSeekDestinations.connectRoute("join.password_invalid")
-        assertTrue(result == "connect?errorKey=join.password_invalid")
+        val result = HideAndSeekDestinations.connectRoute("join.device_mismatch")
+        assertTrue(result == "connect?errorKey=join.device_mismatch")
+    }
+
+    @Test
+    fun connectRoute_withErrorKeyAndJoinCode_returnsBothArguments() {
+        val result = HideAndSeekDestinations.connectRoute("join.device_mismatch", "ABC123")
+        assertTrue(result == "connect?errorKey=join.device_mismatch&joinCode=ABC123")
+    }
+
+    @Test
+    fun connectRoute_withJoinCodeOnly_returnsRouteWithJoinCode() {
+        val result = HideAndSeekDestinations.connectRoute(joinCode = "ABC123")
+        assertTrue(result == "connect?joinCode=ABC123")
     }
 
     @Test
     fun connectRoute_percentEncodesAmpersandInErrorKey() {
-        val route = HideAndSeekDestinations.connectRoute("join.password_invalid&x")
+        val route = HideAndSeekDestinations.connectRoute("join.device_mismatch&x")
 
-        assertTrue(route == "connect?errorKey=join.password_invalid%26x")
+        assertTrue(route == "connect?errorKey=join.device_mismatch%26x")
         assertEquals(
-            listOf("join.password_invalid&x"),
+            listOf("join.device_mismatch&x"),
             extractArg(route, HideAndSeekDestinations.CONNECT_ERROR_KEY_ARG),
         )
     }
@@ -130,14 +142,14 @@ class NavigationSmokeTest {
 
     @Test
     fun joinGameRoute_withErrorKeyOnly_returnsRouteWithErrorKey() {
-        val result = HideAndSeekDestinations.joinGameRoute(errorKey = "join.password_invalid")
-        assertTrue(result == "joinGame?errorKey=join.password_invalid")
+        val result = HideAndSeekDestinations.joinGameRoute(errorKey = "join.device_mismatch")
+        assertTrue(result == "joinGame?errorKey=join.device_mismatch")
     }
 
     @Test
     fun joinGameRoute_withAllArgs_returnsRouteWithAllArgsInOrder() {
-        val result = HideAndSeekDestinations.joinGameRoute("game-1", "join.password_invalid")
-        assertTrue(result == "joinGame?code=game-1&errorKey=join.password_invalid")
+        val result = HideAndSeekDestinations.joinGameRoute("game-1", "join.device_mismatch")
+        assertTrue(result == "joinGame?code=game-1&errorKey=join.device_mismatch")
     }
 
     @Test

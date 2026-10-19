@@ -25,7 +25,7 @@ use App\Service\RosterService;
 use App\State\LeaveProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -42,7 +42,7 @@ final class LeaveProcessorTest extends TestCase
     public function theCallerLeavesWithTheirOwnToken(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -62,8 +62,8 @@ final class LeaveProcessorTest extends TestCase
     public function itCannotLeaveAsAnotherPlayerBecauseIdentityComesFromTheToken(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $other = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $caller = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $other = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $caller = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -93,7 +93,7 @@ final class LeaveProcessorTest extends TestCase
     public function itRejectsAnUnknownGame(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn(null);

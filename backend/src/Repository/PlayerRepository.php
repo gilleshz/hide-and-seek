@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Entity\Account;
 use App\Entity\Game;
+use App\Entity\Identity;
 use App\Entity\Player;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -23,9 +23,9 @@ class PlayerRepository extends ServiceEntityRepository
     /**
      * Deliberately finds players who have left too: this is the lookup that reinstates them.
      */
-    public function findOneByGameAndAccount(Game $game, Account $account): ?Player
+    public function findOneByGameAndIdentity(Game $game, Identity $identity): ?Player
     {
-        return $this->findOneBy(['game' => $game, 'account' => $account]);
+        return $this->findOneBy(['game' => $game, 'identity' => $identity]);
     }
 
     public function findOneByUuid(string $uuid): ?Player
@@ -48,11 +48,11 @@ class PlayerRepository extends ServiceEntityRepository
     public function findByGameOrdered(Game $game): array
     {
         // createdAt has second precision, and roster[0] is the host: the id keeps that deterministic.
-        // The account join keeps the derived name getter free of lazy-loading.
+        // The identity join keeps the derived name getter free of lazy-loading.
         /** @var list<Player> $players */
         $players = $this->createQueryBuilder('p')
-            ->addSelect('acct')
-            ->innerJoin('p.account', 'acct')
+            ->addSelect('ident')
+            ->innerJoin('p.identity', 'ident')
             ->where('p.game = :game')
             ->andWhere('p.leftAt IS NULL')
             ->orderBy('p.createdAt', \SortDirection::Ascending)

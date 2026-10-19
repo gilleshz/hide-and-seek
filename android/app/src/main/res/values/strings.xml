@@ -19,12 +19,10 @@
     <string name="connect_api_url_label">API URL</string>
     <string name="connect_api_key_label">API key</string>
     <string name="connect_account_name_label">Your name</string>
-    <string name="connect_account_password_label">Your password</string>
     <string name="connect_button">Connect</string>
     <string name="connect_plain_http_warning">Plain HTTP is not encrypted. Prefer https when possible.</string>
     <string name="connect_location_shared">Your location will be shared with the server you connect to. Only connect to a host you trust.</string>
-    <string name="connect_account_helper">First time? Connecting creates your account. Use the same name and password to sign back in.</string>
-    <string name="error_server_too_old">This server does not support accounts. Update the server, or ask the host.</string>
+    <string name="connect_account_helper">Use the same name on this device to rejoin. Ask the host if you change phones.</string>
     <string name="form_error_blank">Fill in all required fields.</string>
 
     <string name="home_create_game">Create game</string>
@@ -69,6 +67,10 @@
     <string name="lobby_hide_qr">Hide QR code</string>
     <string name="lobby_roster_title">Players</string>
     <string name="lobby_pick_side_title">Pick your side</string>
+    <string name="lobby_location_disclosure_title">Share your location?</string>
+    <string name="lobby_location_disclosure_body">During a round, this app sends your live location to the game server so the other players can see you on the map. This includes while the app is in the background or your phone is locked. Location is only used for the game.</string>
+    <string name="lobby_location_disclosure_continue">Continue</string>
+    <string name="lobby_location_disclosure_later">Not now</string>
     <string name="lobby_side_hider">Hider</string>
     <string name="lobby_side_seeker">Seeker</string>
     <string name="lobby_side_unassigned">Unassigned</string>
@@ -622,14 +624,6 @@
     <string name="settings_theme_system_default">System default</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_account_section_title">Account</string>
-    <string name="settings_account_logged_in_as">Logged in as <xliff:g example="Alice">%1$s</xliff:g></string>
-    <string name="settings_account_current_password_label">Current password</string>
-    <string name="settings_account_new_password_label">New password</string>
-    <string name="settings_account_save">Change password</string>
-    <string name="settings_account_success">Password changed.</string>
-    <string name="settings_account_wrong_password">The current password is wrong for this name.</string>
-    <string name="settings_account_short_password">Passwords must be 4 to 64 characters.</string>
 
     <!-- Backend error message keys -->
     <string name="error_seeker_only">Only the seeker can ask questions.</string>
@@ -735,14 +729,17 @@
     <string name="error_time_trap_limit_reached">This round already has as many time traps as it can hold.</string>
     <string name="error_time_trap_not_pending">This time trap is not awaiting a decision any more.</string>
     <string name="error_session_expired">Your session has expired. Rejoin the game with the same name.</string>
-    <string name="error_join_password_required">This name is already used by another player. If it\'s yours, enter its password. Otherwise, pick a different name.</string>
-    <string name="error_join_password_invalid">Wrong password for this name. If it\'s not your name, pick a different one.</string>
-    <string name="error_account_name_taken">This name is already in use. If it\'s yours, check the password. Otherwise, pick a different name.</string>
     <string name="error_rate_limit">Too many requests. Wait a moment and try again.</string>
     <string name="error_heavy_work_busy">The server is busy. Wait a moment and try again.</string>
 <string name="lobby_remove_player_action">Remove from game</string>
     <string name="lobby_remove_player_dialog_title">Remove %1$s from the game?</string>
-    <string name="lobby_remove_player_dialog_body">They can rejoin later with their password.</string>
+    <string name="lobby_remove_player_dialog_body">They can rejoin later with the same name.</string>
     <string name="lobby_remove_player_confirm">Remove</string>
     <string name="system_player_removed">%1$s was removed from the game.</string>
+    <string name="error_join_device_mismatch">This name is already used on another device. Ask the person who runs your game server to allow a new device, or pick a different name.</string>
+    <string name="lobby_precise_location_title">Precise location required</string>
+    <string name="lobby_precise_location_body">The game needs precise location so the other players can find you on the map. Enable precise location in Settings.</string>
+    <string name="lobby_precise_location_settings">Open settings</string>
+    <string name="lobby_location_off">Location sharing is off. Other players cannot see you.</string>
+    <string name="lobby_location_enable">Enable</string>
 </resources>

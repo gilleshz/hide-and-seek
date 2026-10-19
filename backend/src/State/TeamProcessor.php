@@ -54,7 +54,11 @@ final readonly class TeamProcessor implements ProcessorInterface
 
         return TeamResource::create(
             $membership,
-            $this->mercure->issueSubscriberToken($topics, $membership->getPlayer()->getUuid()),
+            $this->mercure->issueSubscriberToken(
+                $topics,
+                $membership->getPlayer()->getUuid(),
+                $membership->getPlayer()->getIdentity()->getTokenEpoch(),
+            ),
             $topics,
         );
     }

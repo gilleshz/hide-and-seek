@@ -6,16 +6,6 @@ framework:
             limit: 30
             interval: '10 minutes'
             cache_pool: 'rate_limiter.cache'
-        account_connect:
-            policy: 'sliding_window'
-            limit: 30
-            interval: '10 minutes'
-            cache_pool: 'rate_limiter.cache'
-        account_password_change:
-            policy: 'sliding_window'
-            limit: 10
-            interval: '10 minutes'
-            cache_pool: 'rate_limiter.cache'
         game_create:
             policy: 'sliding_window'
             limit: 3

@@ -12,7 +12,7 @@ use App\Exception\IdentityRequiredException;
 use App\Repository\PlayerRepository;
 use App\Service\IdentityResolver;
 use App\Service\MercureJwtService;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -74,16 +74,43 @@ final class IdentityResolverTest extends TestCase
         $resolver->requirePlayer();
     }
 
-    private function player(): Player
+    #[Test]
+    public function aTokenFromBeforeACredentialReplacementIsRejected(): void
     {
-        return new Player(new Game('Berlin', GameSize::Small, Edition::Metric), AccountFactory::create('Alice'));
+        $player = $this->player();
+        $stale = $this->tokenFor($player);
+        $player->getIdentity()->replaceCredential('new-device-key');
+        $resolver = $this->resolver($player, $this->requestWith($stale));
+
+        $this->expectException(IdentityRequiredException::class);
+        $this->expectExceptionMessage('superseded');
+        $resolver->requirePlayer();
     }
 
-    private function tokenFor(Player $player): string
+    #[Test]
+    public function aTokenMintedAfterTheReplacementWorks(): void
+    {
+        $player = $this->player();
+        $player->getIdentity()->replaceCredential('new-device-key');
+        $resolver = $this->resolver($player, $this->requestWith($this->tokenFor($player, 2)));
+
+        self::assertSame($player, $resolver->requirePlayer());
+    }
+
+    private function player(): Player
+    {
+        return new Player(new Game('Berlin', GameSize::Small, Edition::Metric), IdentityFactory::create('Alice'));
+    }
+
+    private function tokenFor(Player $player, int $tokenEpoch = 1): string
     {
         $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
 
-        return $mercure->issueSubscriberToken([$mercure->playerEndgameTopic($player->getUuid())], $player->getUuid());
+        return $mercure->issueSubscriberToken(
+            [$mercure->playerEndgameTopic($player->getUuid())],
+            $player->getUuid(),
+            $tokenEpoch,
+        );
     }
 
     private function requestWith(string $token): RequestStack

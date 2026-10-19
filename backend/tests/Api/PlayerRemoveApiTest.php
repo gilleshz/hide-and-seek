@@ -22,7 +22,8 @@ final class PlayerRemoveApiTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame($bob['playerUuid'], $removed['playerUuid']);
         self::assertSame('Bob', $removed['displayName']);
-        self::assertArrayNotHasKey('password', $removed);
+        self::assertArrayNotHasKey('deviceKey', $removed);
+        self::assertArrayNotHasKey('credentialHash', $removed);
 
         // The removed player's subscriber token is dead for every action.
         $client->request('POST', "/api/rounds/{$game['roundUuid']}/location", $this->headersWithToken($bob['token']) + [
@@ -33,7 +34,7 @@ final class PlayerRemoveApiTest extends ApiTestCase
 
         // Option A semantics: the removed player can come back with their password, same identity.
         $returned = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Bob', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Bob', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertSame($bob['playerUuid'], $returned['playerUuid']);
@@ -125,7 +126,7 @@ final class PlayerRemoveApiTest extends ApiTestCase
     private function joinAs(Client $client, string $gameUuid, string $name): array
     {
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => $name, 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => $name, 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertIsString($join['playerUuid']);

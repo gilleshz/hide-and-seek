@@ -73,7 +73,7 @@ final readonly class MercureJwtService
     /**
      * @param list<string> $topics
      */
-    public function issueSubscriberToken(array $topics, string $playerUuid): string
+    public function issueSubscriberToken(array $topics, string $playerUuid, int $tokenEpoch = 1): string
     {
         return $this->factory->create(
             [new Grant(actions: [Grant::ACTION_SUBSCRIBE], topics: $topics)],
@@ -81,6 +81,7 @@ final readonly class MercureJwtService
                 'iss' => $this->publicUrl,
                 'aud' => $this->publicUrl . '/.well-known/mercure',
                 'sub' => $playerUuid,
+                'token_epoch' => $tokenEpoch,
                 'client_id' => self::CLIENT_ID,
                 'exp' => new \DateTimeImmutable(sprintf('+%d seconds', self::TOKEN_TTL_SECONDS)),
             ],
@@ -183,7 +184,10 @@ final readonly class MercureJwtService
         return "player/{$playerUuid}/endgame";
     }
 
-    public function subscriberPlayerUuid(string $token): ?string
+    /**
+     * @return array{playerUuid: string, tokenEpoch: ?int}|null
+     */
+    public function subscriberClaims(string $token): ?array
     {
         $parsed = $this->parse($token);
         if ($parsed === null) {
@@ -191,8 +195,18 @@ final readonly class MercureJwtService
         }
 
         $sub = $parsed->claims()->get('sub');
+        if (!is_string($sub) || $sub === '') {
+            return null;
+        }
 
-        return is_string($sub) && $sub !== '' ? $sub : null;
+        $epoch = $parsed->claims()->get('token_epoch');
+
+        return ['playerUuid' => $sub, 'tokenEpoch' => is_int($epoch) ? $epoch : null];
+    }
+
+    public function subscriberPlayerUuid(string $token): ?string
+    {
+        return $this->subscriberClaims($token)['playerUuid'] ?? null;
     }
 
     public function possibleAreaTopic(Game $game, Round $round): string

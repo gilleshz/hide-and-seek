@@ -30,7 +30,7 @@ use App\Service\MercureJwtService;
 use App\Service\RoundService;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -204,7 +204,7 @@ final class RoundServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $sideless = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $sideless = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -235,7 +235,7 @@ final class RoundServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -621,8 +621,8 @@ final class RoundServiceTest extends TestCase
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findHidersByRound')->willReturn([
-            new RoundMembership($round, new Player($game, AccountFactory::create('Alice', 'test-password')), Side::Hider),
-            new RoundMembership($round, new Player($game, AccountFactory::create('Bob', 'test-password')), Side::Hider),
+            new RoundMembership($round, new Player($game, IdentityFactory::create('Alice', 'test-password')), Side::Hider),
+            new RoundMembership($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), Side::Hider),
         ]);
 
         $hub = $this->createStub(HubInterface::class);

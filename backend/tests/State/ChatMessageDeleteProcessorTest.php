@@ -23,7 +23,7 @@ use App\Service\MercureJwtService;
 use App\State\ChatMessageDeleteProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +39,7 @@ final class ChatMessageDeleteProcessorTest extends TestCase
     public function onlyTheTokenOwnerDeletesTheirOwnMessage(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $owner = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $owner = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $message = new ChatMessage($game, $owner, ChatMessageType::Text, 'hello');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -59,8 +59,8 @@ final class ChatMessageDeleteProcessorTest extends TestCase
     public function itRefusesAnotherPlayersToken(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $owner = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $other = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $owner = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $other = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $message = new ChatMessage($game, $owner, ChatMessageType::Text, 'hello');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -83,7 +83,7 @@ final class ChatMessageDeleteProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Small, Edition::Metric);
-        $player = new Player($otherGame, AccountFactory::create('Eve', 'test-password'));
+        $player = new Player($otherGame, IdentityFactory::create('Eve', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::never())->method('save');
@@ -114,7 +114,7 @@ final class ChatMessageDeleteProcessorTest extends TestCase
     public function itRejectsAnUnknownGame(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn(null);

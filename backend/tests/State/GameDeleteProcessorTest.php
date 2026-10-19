@@ -43,7 +43,7 @@ use App\Service\TransitTileService;
 use App\Service\TransitTimetableBuilder;
 use App\State\GameDeleteProcessor;
 use App\Storage\ImageStorageInterface;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -66,8 +66,8 @@ final class GameDeleteProcessorTest extends TestCase
     public function theHostDeletesTheGameWithTheirToken(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $host = new Player($game, AccountFactory::create('Host', 'test-password'));
-        $other = new Player($game, AccountFactory::create('Other', 'test-password'));
+        $host = new Player($game, IdentityFactory::create('Host', 'test-password'));
+        $other = new Player($game, IdentityFactory::create('Other', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -92,8 +92,8 @@ final class GameDeleteProcessorTest extends TestCase
     public function aNonHostTokenIsRefusedAndNothingIsPurged(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $host = new Player($game, AccountFactory::create('Host', 'test-password'));
-        $other = new Player($game, AccountFactory::create('Other', 'test-password'));
+        $host = new Player($game, IdentityFactory::create('Host', 'test-password'));
+        $other = new Player($game, IdentityFactory::create('Other', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -126,7 +126,7 @@ final class GameDeleteProcessorTest extends TestCase
     public function itRejectsAnUnknownGame(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn(null);

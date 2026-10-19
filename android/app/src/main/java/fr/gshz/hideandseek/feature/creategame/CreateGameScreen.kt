@@ -66,7 +66,7 @@ import fr.gshz.hideandseek.domain.repository.AreaInfo
 @Composable
 fun CreateGameScreen(
     onGameCreated: (gameUuid: String) -> Unit,
-    onNeedAccount: (errorKey: String?) -> Unit,
+    onNeedConnect: (errorKey: String?, joinCode: String?) -> Unit,
     viewModel: CreateGameViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -83,8 +83,8 @@ fun CreateGameScreen(
         uiState.createdGameUuid?.let(onGameCreated)
     }
 
-    LaunchedEffect(uiState.needsAccount) {
-        if (uiState.needsAccount) onNeedAccount(uiState.needAccountErrorKey)
+    LaunchedEffect(uiState.needsConnect) {
+        if (uiState.needsConnect) onNeedConnect(uiState.needConnectErrorKey, uiState.needConnectJoinCode)
     }
 
     CreateGameContent(

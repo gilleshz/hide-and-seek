@@ -12,7 +12,7 @@ use App\Enum\Edition;
 use App\Enum\GameSize;
 use App\Enum\QuestionCategory;
 use App\Enum\ThermometerResult;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,7 +26,7 @@ final class AskedQuestionTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $deadline = new \DateTimeImmutable('+5 minutes');
 
         $question = new AskedQuestion($round, $asker, QuestionCategory::Radar, $deadline);
@@ -56,7 +56,7 @@ final class AskedQuestionTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $question = new AskedQuestion($round, $asker, QuestionCategory::Thermometer, new \DateTimeImmutable());
         $question
@@ -81,7 +81,7 @@ final class AskedQuestionTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $asker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $asker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $question = new AskedQuestion($round, $asker, QuestionCategory::Measuring, new \DateTimeImmutable());
 

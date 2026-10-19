@@ -21,7 +21,7 @@ final class FeaturesApiTest extends ApiTestCase
         self::assertIsString($game['uuid']);
 
         $join = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => $name, 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => $name, 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);

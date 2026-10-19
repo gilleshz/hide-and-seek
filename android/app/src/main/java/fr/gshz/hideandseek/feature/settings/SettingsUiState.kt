@@ -1,7 +1,6 @@
 package fr.gshz.hideandseek.feature.settings
 
 import fr.gshz.hideandseek.R
-import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 
 data class SettingsUiState(
@@ -9,13 +8,6 @@ data class SettingsUiState(
     val availableLocales: List<LocaleOption> = defaultLocales,
     val selectedTheme: String = "system",
     val availableThemes: List<ThemeOption> = defaultThemes,
-    val accountName: String? = null,
-    val currentPasswordInput: String = "",
-    val newPasswordInput: String = "",
-    val isChangingPassword: Boolean = false,
-    val passwordError: ErrorType? = null,
-    val passwordErrorKey: String? = null,
-    val passwordChanged: Boolean = false,
 )
 
 data class LocaleOption(

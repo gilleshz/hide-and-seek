@@ -15,9 +15,9 @@ use App\Enum\GameSize;
 use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
 use App\Exception\FunctionalException;
-use App\Repository\AccountRepository;
 use App\Repository\ChatMessageRepository;
 use App\Repository\GameRepository;
+use App\Repository\IdentityRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\RoundMembershipRepository;
 use App\Repository\RoundRepository;
@@ -29,7 +29,7 @@ use App\Service\RosterService;
 use App\State\JoinProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -39,7 +39,8 @@ use PHPUnit\Framework\TestCase;
 final class JoinProcessorTest extends TestCase
 {
     private const string SECRET = 'test-mercure-secret-at-least-32-bytes-long!';
-    private const string PASSWORD = 'correct-password';
+    private const string DEVICE_KEY = 'test-device-key';
+    private const string OTHER_DEVICE_KEY = 'other-device-key';
 
     #[Test]
     public function theJoinResponseNeverExposesACredential(): void
@@ -49,44 +50,44 @@ final class JoinProcessorTest extends TestCase
         $game->setJoinCode('ABCDEF');
 
         $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndAccount')->willReturn(null);
+        $players->method('findOneByGameAndIdentity')->willReturn(null);
 
-        $accounts = $this->createStub(AccountRepository::class);
-        $accounts->method('findByName')->willReturn(null);
+        $identities = $this->createStub(IdentityRepository::class);
+        $identities->method('findByName')->willReturn(null);
 
-        $processor = $this->processor($game, $round, $players, $accounts);
+        $processor = $this->processor($game, $round, $players, $identities);
         $input = new JoinInput();
         $input->name = 'Alice';
-        $input->password = self::PASSWORD;
+        $input->deviceKey = self::DEVICE_KEY;
 
         $resource = $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
 
         self::assertSame('Alice', $resource->displayName);
         self::assertSame($round->getUuid(), $resource->roundUuid);
         self::assertObjectNotHasProperty('joinSecret', $resource);
-        self::assertObjectNotHasProperty('password', $resource);
-        self::assertObjectNotHasProperty('passwordHash', $resource);
+        self::assertObjectNotHasProperty('deviceKey', $resource);
+        self::assertObjectNotHasProperty('credentialHash', $resource);
     }
 
     #[Test]
-    public function aRejoinWithThePasswordReturnsTheSamePlayer(): void
+    public function aRejoinWithTheSameDeviceReturnsTheSamePlayer(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $account = AccountFactory::create('Alice', self::PASSWORD);
-        $player = new Player($game, $account);
+        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
+        $player = new Player($game, $identity);
         $game->setJoinCode('ABCDEF');
 
         $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndAccount')->willReturn($player);
+        $players->method('findOneByGameAndIdentity')->willReturn($player);
 
-        $accounts = $this->createStub(AccountRepository::class);
-        $accounts->method('findByName')->willReturn($account);
+        $identities = $this->createStub(IdentityRepository::class);
+        $identities->method('findByName')->willReturn($identity);
 
-        $processor = $this->processor($game, $round, $players, $accounts);
+        $processor = $this->processor($game, $round, $players, $identities);
         $input = new JoinInput();
         $input->name = 'Alice';
-        $input->password = self::PASSWORD;
+        $input->deviceKey = self::DEVICE_KEY;
 
         $resource = $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
 
@@ -95,55 +96,30 @@ final class JoinProcessorTest extends TestCase
     }
 
     #[Test]
-    public function aRejoinWithoutThePasswordIsRefused(): void
+    public function aRejoinWithADifferentDeviceIsRefused(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $account = AccountFactory::create('Alice', self::PASSWORD);
-        $player = new Player($game, $account);
+        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
+        $player = new Player($game, $identity);
         $game->setJoinCode('ABCDEF');
 
         $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndAccount')->willReturn($player);
+        $players->method('findOneByGameAndIdentity')->willReturn($player);
 
-        $accounts = $this->createStub(AccountRepository::class);
-        $accounts->method('findByName')->willReturn($account);
+        $identities = $this->createStub(IdentityRepository::class);
+        $identities->method('findByName')->willReturn($identity);
 
-        $this->expectException(FunctionalException::class);
-        $this->expectExceptionMessage('enter its password');
-
-        $processor = $this->processor($game, $round, $players, $accounts);
+        $processor = $this->processor($game, $round, $players, $identities);
         $input = new JoinInput();
         $input->name = 'Alice';
-
-        $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
-    }
-
-    #[Test]
-    public function aRejoinWithAWrongPasswordIsRefused(): void
-    {
-        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $round = new Round($game);
-        $account = AccountFactory::create('Alice', self::PASSWORD);
-        $player = new Player($game, $account);
-        $game->setJoinCode('ABCDEF');
-
-        $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndAccount')->willReturn($player);
-
-        $accounts = $this->createStub(AccountRepository::class);
-        $accounts->method('findByName')->willReturn($account);
+        $input->deviceKey = self::OTHER_DEVICE_KEY;
 
         try {
-            $processor = $this->processor($game, $round, $players, $accounts);
-            $input = new JoinInput();
-            $input->name = 'Alice';
-            $input->password = 'wrong-password';
-
             $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
-            self::fail('Expected a FunctionalException for a wrong password.');
+            self::fail('Expected a FunctionalException for a different device.');
         } catch (FunctionalException $e) {
-            self::assertSame(ErrorKey::JOIN_PASSWORD_INVALID, $e->getErrorKey());
+            self::assertSame(ErrorKey::JOIN_DEVICE_MISMATCH, $e->getErrorKey());
         }
     }
 
@@ -163,7 +139,7 @@ final class JoinProcessorTest extends TestCase
             $game,
             $round,
             $this->createStub(PlayerRepository::class),
-            $this->createStub(AccountRepository::class),
+            $this->createStub(IdentityRepository::class),
             games: $games,
         )->process(new JoinInput(), new Post(), ['gameKey' => 'UNKNOWN']);
     }
@@ -172,7 +148,7 @@ final class JoinProcessorTest extends TestCase
         Game $game,
         Round $round,
         PlayerRepository $players,
-        AccountRepository $accounts,
+        IdentityRepository $identities,
         ?GameRepository $games = null,
     ): JoinProcessor {
         $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
@@ -202,7 +178,7 @@ final class JoinProcessorTest extends TestCase
             $resolvedGames,
             $rounds,
             $players,
-            $accounts,
+            $identities,
             $entityManager,
             new RosterNotifier($hub, $mercure, new RosterService($players, $rounds, $memberships)),
             $chat,

@@ -22,8 +22,7 @@ import androidx.navigation.navArgument
 import kotlinx.coroutines.flow.filter
 import fr.gshz.hideandseek.core.scanner.QR_SCAN_RESULT_KEY
 import fr.gshz.hideandseek.core.scanner.QrScannerScreen
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_PASSWORD_INVALID
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_PASSWORD_REQUIRED
+import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_DEVICE_MISMATCH
 import fr.gshz.hideandseek.feature.chat.ChatScreen
 import fr.gshz.hideandseek.feature.connect.ConnectScreen
 import fr.gshz.hideandseek.feature.connect.ConnectViewModel
@@ -58,11 +57,18 @@ fun HideAndSeekNavHost(rootViewModel: RootViewModel = hiltViewModel()) {
                     nullable = true
                     defaultValue = null
                 },
+                navArgument(HideAndSeekDestinations.CONNECT_JOIN_CODE_ARG) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
             ),
         ) { ConnectRoute(navController) }
         composable(HideAndSeekDestinations.SCANNER) { QrScannerRoute(navController) }
         composable(HideAndSeekDestinations.HOME) { HomeRoute(navController) }
-        composable(HideAndSeekDestinations.SETTINGS) { SettingsScreen(onBackClick = { navController.popBackStack() }) }
+        composable(HideAndSeekDestinations.SETTINGS) {
+            SettingsScreen(onBackClick = { navController.popBackStack() })
+        }
         composable(HideAndSeekDestinations.CREATE_GAME) { CreateGameRoute(navController) }
         composable(
             route = HideAndSeekDestinations.JOIN_GAME,
@@ -123,8 +129,7 @@ private fun SessionExpiredEffect(navController: NavController, rootViewModel: Ro
                         }
                         is SessionExpiredOutcome.NeedsJoin -> {
                             val errorKey = outcome.errorKey
-                            val needsConnect = errorKey == ERROR_KEY_JOIN_PASSWORD_REQUIRED ||
-                                errorKey == ERROR_KEY_JOIN_PASSWORD_INVALID ||
+                            val needsConnect = errorKey == ERROR_KEY_JOIN_DEVICE_MISMATCH ||
                                 errorKey == null && outcome.gameUuid == null
                             navController.navigate(
                                 if (needsConnect) {
@@ -189,8 +194,8 @@ private fun CreateGameRoute(navController: NavController) {
                 popUpTo(HideAndSeekDestinations.HOME) { inclusive = true }
             }
         },
-        onNeedAccount = { errorKey ->
-            navController.navigate(HideAndSeekDestinations.connectRoute(errorKey)) {
+        onNeedConnect = { errorKey, joinCode ->
+            navController.navigate(HideAndSeekDestinations.connectRoute(errorKey, joinCode)) {
                 popUpTo(0) { inclusive = true }
             }
         },
@@ -207,7 +212,7 @@ private fun JoinGameRoute(navController: NavController) {
                 popUpTo(HideAndSeekDestinations.HOME) { inclusive = true }
             }
         },
-        onNeedAccount = { errorKey ->
+        onNeedConnect = { errorKey ->
             navController.navigate(HideAndSeekDestinations.connectRoute(errorKey)) {
                 popUpTo(0) { inclusive = true }
             }

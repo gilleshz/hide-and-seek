@@ -12,7 +12,7 @@ use App\Entity\Round;
 use App\Enum\Edition;
 use App\Enum\GameSize;
 use App\Enum\RoundStatus;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\Test;
@@ -83,7 +83,7 @@ final class LocationPurgeCommandTest extends KernelTestCase
         $game = new Game('Purge Game', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus($status);
-        $account = AccountFactory::create('Alice ' . uniqid(), 'test-password');
+        $account = IdentityFactory::create('Alice ' . uniqid(), 'test-password');
         $player = new Player($game, $account);
         $location = new PlayerLocation($round, $player, new Point(13.405, 52.52));
         $em->persist($game);

@@ -41,10 +41,28 @@ final class ApiKeyApiTest extends ApiTestCase
     }
 
     #[Test]
-    public function accountCreationWithoutApiKeyIsRejected(): void
+    public function encodedApiPrefixDoesNotBypassTheApiKey(): void
     {
         $client = static::createClient();
-        $client->request('POST', '/api/accounts', ['json' => ['name' => 'no-key-user', 'password' => 'secret-pass']]);
+        $client->request('GET', '/ap%69/client-config');
+        self::assertResponseStatusCodeSame(401);
+
+        $client->request('GET', '/ap%69/client-config', self::AUTH);
+        self::assertResponseStatusCodeSame(200);
+    }
+
+    #[Test]
+    public function joinWithoutApiKeyIsRejected(): void
+    {
+        $client = static::createClient();
+        $game = $client->request('POST', '/api/games', self::AUTH + [
+            'json' => ['name' => 'Berlin', 'size' => 'M', 'edition' => 'metric'],
+        ])->toArray();
+        self::assertIsString($game['uuid']);
+
+        $client->request('POST', "/api/games/{$game['uuid']}/join", [
+            'json' => ['name' => 'no-key-user', 'deviceKey' => 'test-device-key'],
+        ]);
 
         self::assertResponseStatusCodeSame(401);
     }

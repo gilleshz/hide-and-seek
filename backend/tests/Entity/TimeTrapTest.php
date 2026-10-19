@@ -12,7 +12,7 @@ use App\Entity\TimeTrap;
 use App\Enum\Edition;
 use App\Enum\GameSize;
 use App\Enum\TimeTrapStatus;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -46,7 +46,7 @@ final class TimeTrapTest extends TestCase
     public function itRecordsADetectionAndItsResolution(): void
     {
         $trap = self::trap(GameSize::Medium);
-        $seeker = new Player($trap->getRound()->getGame(), AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($trap->getRound()->getGame(), IdentityFactory::create('Bob', 'test-password'));
         $detectedAt = new \DateTimeImmutable('2026-07-31 12:00:00');
 
         $trap->setStatus(TimeTrapStatus::Pending)
@@ -146,6 +146,6 @@ final class TimeTrapTest extends TestCase
             ['U2'],
         );
 
-        return new TimeTrap($round, new Player($game, AccountFactory::create('Alice', 'test-password')), $station);
+        return new TimeTrap($round, new Player($game, IdentityFactory::create('Alice', 'test-password')), $station);
     }
 }

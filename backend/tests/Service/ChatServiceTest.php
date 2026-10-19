@@ -15,7 +15,7 @@ use App\Repository\ChatMessageRepository;
 use App\Service\ChatService;
 use App\Service\MercureJwtService;
 use App\Storage\ImageStorageInterface;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -46,7 +46,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsATextMessageFromASenderAndPublishesIt(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())->method('save');
@@ -74,7 +74,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsATextMessageWithAReplyToUuidAndPublishesIt(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $referencedMessage = new ChatMessage($game, $player, ChatMessageType::Text, 'Original message');
 
@@ -106,7 +106,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsATextMessageWithoutReplyToUuidWhenOmitted(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())->method('save');
@@ -122,7 +122,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsAnImageMessageCarryingBothACaptionAndAReplyTarget(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $referenced = new ChatMessage($game, $player, ChatMessageType::Text, 'Original message');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -145,7 +145,7 @@ final class ChatServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $foreign = new ChatMessage($otherGame, null, ChatMessageType::Text, 'Elsewhere');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -188,7 +188,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsAQuestionMessageCarryingTheQuestionUuid(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())->method('save');
@@ -217,7 +217,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsAQuestionInfoMessageCarryingTheQuestionUuid(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())->method('save');
@@ -234,8 +234,8 @@ final class ChatServiceTest extends TestCase
     public function itPostsAnAnswerReplyingToTheAskMessage(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $askMessage = new ChatMessage($game, $seeker, ChatMessageType::Question, 'Are you within 500 m of me?');
         $askMessage->setQuestionUuid('question-uuid-1');
 
@@ -258,7 +258,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsAnAnswerWithoutAReplyWhenTheAskMessageIsMissing(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->method('findOneByQuestionUuidAndType')->willReturn(null);
@@ -275,7 +275,7 @@ final class ChatServiceTest extends TestCase
     public function itPostsACancellationNoticeReplyingToTheLatestQuestionMessage(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $latest = new ChatMessage($game, $seeker, ChatMessageType::Question, 'Are you within 500 m of me?');
         $latest->setQuestionUuid('question-uuid-1');
 
@@ -285,7 +285,7 @@ final class ChatServiceTest extends TestCase
             ->willReturn($latest);
         $messages->expects(self::once())->method('save');
 
-        $canceller = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $canceller = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $message = $this->serviceWithSilentHub($messages)
             ->postQuestionCancelled($game, $canceller, 'Question cancelled.', 'question-uuid-1');
 
@@ -299,7 +299,7 @@ final class ChatServiceTest extends TestCase
     public function itScrubsADeletedMessageAndPublishesTheRetraction(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $sender = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $sender = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $target = new ChatMessage($game, $sender, ChatMessageType::Text, 'Regretted');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -327,8 +327,8 @@ final class ChatServiceTest extends TestCase
     public function itRefusesToDeleteAMessageSentBySomeoneElse(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $sender = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $other = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $sender = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $other = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $target = new ChatMessage($game, $sender, ChatMessageType::Text, 'Mine');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -343,7 +343,7 @@ final class ChatServiceTest extends TestCase
     public function itRefusesToDeleteAQuestionMessage(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $target = new ChatMessage($game, $seeker, ChatMessageType::Question, 'Are you within 500 m of me?');
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -358,7 +358,7 @@ final class ChatServiceTest extends TestCase
     public function itDeletesTheStoredImageOfADeletedImageMessage(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $sender = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $sender = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $target = new ChatMessage($game, $sender, ChatMessageType::Image, null);
         $target->setImageRef('photo.jpg');
 

@@ -30,7 +30,7 @@ use App\Service\RoundService;
 use App\State\RoundStopProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -49,7 +49,7 @@ final class RoundStopProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking)->setHidingPeriodEndsAt(new \DateTimeImmutable('-1 hour'));
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createMock(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -73,7 +73,7 @@ final class RoundStopProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking)->setHidingPeriodEndsAt(new \DateTimeImmutable('-1 hour'));
-        $seeker = new Player($game, AccountFactory::create('Sam', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Sam', 'test-password'));
 
         $rounds = $this->createMock(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -97,7 +97,7 @@ final class RoundStopProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking)->setHidingPeriodEndsAt(new \DateTimeImmutable('-1 hour'));
-        $seeker = new Player($game, AccountFactory::create('Sam', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Sam', 'test-password'));
 
         $rounds = $this->createMock(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -116,7 +116,7 @@ final class RoundStopProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($otherGame, AccountFactory::create('Eve', 'test-password'));
+        $player = new Player($otherGame, IdentityFactory::create('Eve', 'test-password'));
 
         $rounds = $this->createMock(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -136,7 +136,7 @@ final class RoundStopProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createMock(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -171,7 +171,7 @@ final class RoundStopProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn(null);

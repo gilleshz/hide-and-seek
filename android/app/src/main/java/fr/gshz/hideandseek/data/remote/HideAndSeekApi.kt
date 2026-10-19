@@ -3,7 +3,6 @@ package fr.gshz.hideandseek.data.remote
 import fr.gshz.hideandseek.data.remote.dto.AskQuestionRequest
 import fr.gshz.hideandseek.data.remote.dto.AskedQuestionDto
 import fr.gshz.hideandseek.data.remote.dto.CancelQuestionRequest
-import fr.gshz.hideandseek.data.remote.dto.ChangeAccountPasswordRequest
 import fr.gshz.hideandseek.data.remote.dto.ChatMessageDto
 import fr.gshz.hideandseek.data.remote.dto.ChatMessageReadDto
 import fr.gshz.hideandseek.data.remote.dto.ChatReadCursorDto
@@ -306,13 +305,6 @@ interface HideAndSeekApi {
     // The backend answers 204 No Content; a DTO return type would make the deserializer throw on the empty body.
     @POST
     suspend fun removePlayer(@Url url: String)
-
-    // The backend answers 204 No Content; a DTO return type would make the deserializer throw on the empty body.
-    @POST
-    suspend fun changeAccountPassword(
-        @Url url: String,
-        @Body body: ChangeAccountPasswordRequest,
-    )
 
     @POST
     suspend fun refreshSubscriberToken(@Url url: String): SubscriberTokenDto

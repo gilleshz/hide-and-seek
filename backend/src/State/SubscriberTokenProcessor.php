@@ -67,7 +67,11 @@ final readonly class SubscriberTokenProcessor implements ProcessorInterface
         return SubscriberTokenResource::create(
             $player->getUuid(),
             $round->getUuid(),
-            $this->mercure->issueSubscriberToken($topics, $player->getUuid()),
+            $this->mercure->issueSubscriberToken(
+                $topics,
+                $player->getUuid(),
+                $player->getIdentity()->getTokenEpoch(),
+            ),
             $topics,
         );
     }

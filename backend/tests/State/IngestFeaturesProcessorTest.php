@@ -20,7 +20,7 @@ use App\Service\IdentityResolver;
 use App\Service\MercureJwtService;
 use App\Service\OverpassService;
 use App\State\IngestFeaturesProcessor;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -36,7 +36,7 @@ final class IngestFeaturesProcessorTest extends TestCase
     public function aMemberOfTheGameTriggersTheIngest(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -54,7 +54,7 @@ final class IngestFeaturesProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Small, Edition::Metric);
-        $player = new Player($otherGame, AccountFactory::create('Eve', 'test-password'));
+        $player = new Player($otherGame, IdentityFactory::create('Eve', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -88,7 +88,7 @@ final class IngestFeaturesProcessorTest extends TestCase
     public function itRejectsAnUnknownGame(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn(null);

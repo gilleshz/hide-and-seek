@@ -39,7 +39,7 @@ use App\Service\ZoneCardMessageBuilder;
 use App\State\HidingZoneProvider;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -60,7 +60,7 @@ final class HidingZoneProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
 
         $zones = $this->createStub(HidingZoneRepository::class);
@@ -80,7 +80,7 @@ final class HidingZoneProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         try {
             $this->provider($round, $seeker, Side::Seeker, $this->createStub(HidingZoneRepository::class))

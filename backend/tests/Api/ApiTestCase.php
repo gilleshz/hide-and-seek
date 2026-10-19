@@ -17,8 +17,11 @@ abstract class ApiTestCase extends PlatformApiTestCase
     /** Matches phpunit.dist.xml APP_API_KEY. */
     protected const array AUTH = ['headers' => ['X-API-KEY' => 'test-key']];
 
-    /** Every test join shares this password; a dedicated test exercises a custom one. */
-    protected const string JOIN_PASSWORD = 'test-password';
+    /** Every test join shares this device key; dedicated tests use OTHER_DEVICE_KEY. */
+    protected const string DEVICE_KEY = 'test-device-key';
+
+    /** A second device, for the mismatch and reset tests. */
+    protected const string OTHER_DEVICE_KEY = 'other-device-key';
 
     protected static ?bool $alwaysBootKernel = true;
 
@@ -26,10 +29,10 @@ abstract class ApiTestCase extends PlatformApiTestCase
     {
         parent::setUp();
 
-        // Account names are unique server-wide: a reset in one test would poison later same-name joins.
+        // Identity names are unique server-wide: a reset in one test would poison later same-name joins.
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
-        $entityManager->getConnection()->executeStatement('TRUNCATE TABLE accounts RESTART IDENTITY CASCADE');
+        $entityManager->getConnection()->executeStatement('TRUNCATE TABLE identities RESTART IDENTITY CASCADE');
 
         // Limiter state persists in the filesystem pool across tests in one kernel; each case starts clean.
         $cache = self::getContainer()->get('rate_limiter.cache');
@@ -60,8 +63,9 @@ abstract class ApiTestCase extends PlatformApiTestCase
         string $roundUuid,
         string $name,
         string $side,
+        string $deviceKey = self::DEVICE_KEY,
     ): array {
-        $join = $this->joinOn($client, $gameUuid, $name);
+        $join = $this->joinOn($client, $gameUuid, $name, $deviceKey);
         $team = $this->pickSideOn($client, $roundUuid, $join['playerUuid'], $side, $join['mercureToken']);
 
         return [
@@ -121,9 +125,9 @@ abstract class ApiTestCase extends PlatformApiTestCase
      *
      * @return array{playerUuid: string, mercureToken: string}
      */
-    protected function joinGame(array $game, string $name): array
+    protected function joinGame(array $game, string $name, string $deviceKey = self::DEVICE_KEY): array
     {
-        return $this->joinOn($this->client(), $game['uuid'], $name);
+        return $this->joinOn($this->client(), $game['uuid'], $name, $deviceKey);
     }
 
     /**
@@ -149,9 +153,20 @@ abstract class ApiTestCase extends PlatformApiTestCase
      *
      * @return array{playerUuid: string, token: string}
      */
-    protected function newPlayer(array $game, string $name, string $side): array
-    {
-        $session = $this->joinAndPickSide($this->client(), $game['uuid'], $game['roundUuid'], $name, $side);
+    protected function newPlayer(
+        array $game,
+        string $name,
+        string $side,
+        string $deviceKey = self::DEVICE_KEY,
+    ): array {
+        $session = $this->joinAndPickSide(
+            $this->client(),
+            $game['uuid'],
+            $game['roundUuid'],
+            $name,
+            $side,
+            $deviceKey,
+        );
 
         return ['playerUuid' => $session['playerUuid'], 'token' => $session['token']];
     }
@@ -173,10 +188,14 @@ abstract class ApiTestCase extends PlatformApiTestCase
     /**
      * @return array{playerUuid: string, mercureToken: string, roundUuid: string}
      */
-    private function joinOn(Client $client, string $gameUuid, string $name): array
-    {
+    private function joinOn(
+        Client $client,
+        string $gameUuid,
+        string $name,
+        string $deviceKey = self::DEVICE_KEY,
+    ): array {
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => $name, 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => $name, 'deviceKey' => $deviceKey],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);

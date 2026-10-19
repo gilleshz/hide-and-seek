@@ -7,6 +7,7 @@
 <full-backup-content>
     <exclude domain="file" path="datastore/connection.preferences_pb" />
     <exclude domain="file" path="datastore/session.preferences_pb" />
+    <exclude domain="sharedpref" path="device_identity.xml" />
     <exclude domain="database" path="hideandseek.db" />
     <exclude domain="database" path="hideandseek.db-wal" />
     <exclude domain="database" path="hideandseek.db-shm" />

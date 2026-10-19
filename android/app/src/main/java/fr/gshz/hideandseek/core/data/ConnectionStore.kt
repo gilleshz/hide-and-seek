@@ -4,10 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.security.CredentialCipher
-import fr.gshz.hideandseek.di.AccountPasswordCipher
 import fr.gshz.hideandseek.di.ApiKeyCipher
 import fr.gshz.hideandseek.di.ConnectionDataStore
 import javax.inject.Inject
@@ -18,13 +16,13 @@ import kotlinx.coroutines.flow.map
 class ConnectionStore @Inject constructor(
     @ConnectionDataStore private val dataStore: DataStore<Preferences>,
     @ApiKeyCipher private val apiKeyCipher: CredentialCipher,
-    @AccountPasswordCipher private val accountPasswordCipher: CredentialCipher,
 ) {
     private object Keys {
         val API_URL = stringPreferencesKey("api_url")
         val API_KEY = stringPreferencesKey("api_key")
-        val ACCOUNT_NAME = stringPreferencesKey("account_name")
-        val ACCOUNT_PASSWORD = stringPreferencesKey("account_password")
+
+        // Kept as "account_name" so an existing install keeps its name across the identity change.
+        val PLAYER_NAME = stringPreferencesKey("account_name")
     }
 
     val connectionConfig: Flow<ConnectionConfig?> = dataStore.data.map { prefs ->
@@ -33,15 +31,11 @@ class ConnectionStore @Inject constructor(
         if (apiUrl != null && apiKey != null) ConnectionConfig(apiUrl, apiKey) else null
     }
 
-    val accountCredential: Flow<AccountCredential?> = dataStore.data.map { prefs ->
-        val name = prefs[Keys.ACCOUNT_NAME]
-        val password = prefs[Keys.ACCOUNT_PASSWORD]?.let(accountPasswordCipher::decrypt)
-        if (name != null && password != null) AccountCredential(name, password) else null
-    }
+    val playerName: Flow<String?> = dataStore.data.map { it[Keys.PLAYER_NAME] }
 
     suspend fun current(): ConnectionConfig? = connectionConfig.first()
 
-    suspend fun currentAccount(): AccountCredential? = accountCredential.first()
+    suspend fun currentPlayerName(): String? = playerName.first()
 
     suspend fun save(config: ConnectionConfig) {
         val encodedKey = apiKeyCipher.encrypt(config.apiKey) ?: return
@@ -51,15 +45,20 @@ class ConnectionStore @Inject constructor(
         }
     }
 
-    suspend fun save(credential: AccountCredential) {
-        val encodedPassword = accountPasswordCipher.encrypt(credential.password) ?: return
-        dataStore.edit { prefs ->
-            prefs[Keys.ACCOUNT_NAME] = credential.name
-            prefs[Keys.ACCOUNT_PASSWORD] = encodedPassword
-        }
+    suspend fun savePlayerName(name: String) {
+        dataStore.edit { prefs -> prefs[Keys.PLAYER_NAME] = name }
     }
 
     suspend fun clear() {
         dataStore.edit { it.clear() }
+    }
+
+    /** One-time upgrade cleanup: the password is no longer read, never leave its ciphertext behind. */
+    suspend fun clearLegacyPassword() {
+        dataStore.edit { prefs -> prefs.remove(LEGACY_ACCOUNT_PASSWORD) }
+    }
+
+    private companion object {
+        val LEGACY_ACCOUNT_PASSWORD = stringPreferencesKey("account_password")
     }
 }

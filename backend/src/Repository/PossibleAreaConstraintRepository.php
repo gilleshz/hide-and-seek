@@ -83,11 +83,11 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
         $sql = <<<'SQL'
             SELECT pac.uuid AS uuid, pac.mode AS mode, pac.source AS source, pac.label AS label,
                    ST_AsGeoJSON(pac.draw_geometry::geometry) AS geo_json,
-                   accounts.name AS created_by_name
+                   identities.name AS created_by_name
             FROM possible_area_constraints pac
             LEFT JOIN round_memberships rm ON rm.id = pac.created_by_membership_id
             LEFT JOIN players p ON p.id = rm.player_id
-            LEFT JOIN accounts ON accounts.id = p.account_id
+            LEFT JOIN identities ON identities.id = p.identity_id
             WHERE pac.round_id = :roundId AND pac.source = 'manual'
             ORDER BY pac.created_at ASC, pac.id ASC
         SQL;

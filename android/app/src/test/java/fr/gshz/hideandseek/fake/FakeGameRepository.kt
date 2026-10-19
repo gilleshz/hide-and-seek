@@ -34,8 +34,6 @@ class FakeGameRepository : GameRepository {
         private set
     var lastJoinDisplayName: String? = null
         private set
-    var lastPassword: String? = null
-        private set
     var listPlayersResult: Result<List<Player>> = Result.success(emptyList())
     var listPlayersCalls = 0
     var leaderboardResult: Result<List<LeaderboardEntry>> = Result.success(emptyList())
@@ -146,10 +144,9 @@ class FakeGameRepository : GameRepository {
 
     override suspend fun getTransitOverlay(gameUuid: String): String? = getTransitOverlayResult.getOrThrow()
 
-    override suspend fun joinGame(gameUuid: String, displayName: String, password: String): JoinResult {
+    override suspend fun joinGame(gameUuid: String, displayName: String): JoinResult {
         lastJoinGameUuid = gameUuid
         lastJoinDisplayName = displayName
-        lastPassword = password
         return joinGameResult.getOrThrow()
     }
 

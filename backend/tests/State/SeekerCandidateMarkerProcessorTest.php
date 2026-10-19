@@ -26,7 +26,7 @@ use App\Service\MercureJwtService;
 use App\Service\SeekerCandidateMarkerService;
 use App\State\SeekerCandidateMarkerProcessor;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -52,7 +52,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Seeker);
 
         $markerRepo = $this->createMock(SeekerCandidateMarkerRepository::class);
@@ -75,7 +75,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
         $markerRepo = $this->createMock(SeekerCandidateMarkerRepository::class);
@@ -99,7 +99,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $markerRepo = $this->createMock(SeekerCandidateMarkerRepository::class);
         $markerRepo->expects(self::never())->method('save');
@@ -119,7 +119,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $markerRepo = $this->createMock(SeekerCandidateMarkerRepository::class);
         $markerRepo->expects(self::never())->method('save');
@@ -139,7 +139,7 @@ final class SeekerCandidateMarkerProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn(null);

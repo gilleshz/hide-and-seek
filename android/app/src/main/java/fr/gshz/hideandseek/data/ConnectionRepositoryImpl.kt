@@ -1,7 +1,6 @@
 package fr.gshz.hideandseek.data
 
 import fr.gshz.hideandseek.core.data.ConnectionStore
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.domain.repository.ConnectionRepository
 import javax.inject.Inject
@@ -17,7 +16,7 @@ class ConnectionRepositoryImpl @Inject constructor(
 
     override suspend fun disconnect() = connectionStore.clear()
 
-    override suspend fun saveAccount(credential: AccountCredential) = connectionStore.save(credential)
+    override suspend fun savePlayerName(name: String) = connectionStore.savePlayerName(name)
 
-    override suspend fun accountCredential(): AccountCredential? = connectionStore.currentAccount()
+    override suspend fun playerName(): String? = connectionStore.currentPlayerName()
 }

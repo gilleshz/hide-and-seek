@@ -22,7 +22,7 @@ final class TeamApiTest extends ApiTestCase
         $roundUuid = $game['roundUuid'];
 
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);
@@ -68,7 +68,7 @@ final class TeamApiTest extends ApiTestCase
         $gameUuidB = $gameB['uuid'];
 
         $joinB = $client->request('POST', "/api/games/{$gameUuidB}/join", self::AUTH + [
-            'json' => ['name' => 'Bob', 'password' => self::JOIN_PASSWORD],
+            'json' => ['name' => 'Bob', 'deviceKey' => self::DEVICE_KEY],
         ])->toArray();
         self::assertIsString($joinB['playerUuid']);
         self::assertIsString($joinB['mercureToken']);

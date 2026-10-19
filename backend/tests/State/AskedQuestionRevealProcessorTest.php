@@ -40,7 +40,7 @@ use App\Service\TransitLineResolver;
 use App\State\AskedQuestionRevealProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -61,9 +61,9 @@ final class AskedQuestionRevealProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $hider, Side::Hider);
-        $question = new AskedQuestion($round, new Player($game, AccountFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
+        $question = new AskedQuestion($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
         $question->setSeekerPoint(new Point(13.405, 52.52))->setRadiusMeters(500.0);
 
         $asked = $this->createMock(AskedQuestionRepository::class);
@@ -83,9 +83,9 @@ final class AskedQuestionRevealProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $hider, Side::Hider);
-        $question = new AskedQuestion($round, new Player($game, AccountFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
+        $question = new AskedQuestion($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
         $question->setSeekerPoint(new Point(13.405, 52.52))->setRadiusMeters(500.0);
 
         $asked = $this->createMock(AskedQuestionRepository::class);
@@ -108,7 +108,7 @@ final class AskedQuestionRevealProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = new AskedQuestion($round, $seeker, QuestionCategory::Radar, null);
 
         $asked = $this->createMock(AskedQuestionRepository::class);
@@ -129,8 +129,8 @@ final class AskedQuestionRevealProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
-        $question = new AskedQuestion($round, new Player($game, AccountFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $question = new AskedQuestion($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
         $question->setRevealedAt(new \DateTimeImmutable('-1 minute'));
 
         $asked = $this->createStub(AskedQuestionRepository::class);
@@ -150,7 +150,7 @@ final class AskedQuestionRevealProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $asked = $this->createStub(AskedQuestionRepository::class);
         $asked->method('findOneByUuid')->willReturn(null);
@@ -166,7 +166,7 @@ final class AskedQuestionRevealProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $question = new AskedQuestion($round, new Player($game, AccountFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
+        $question = new AskedQuestion($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
 
         $asked = $this->createStub(AskedQuestionRepository::class);
         $asked->method('findOneByUuid')->willReturn($question);

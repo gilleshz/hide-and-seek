@@ -6,14 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.core.data.ConnectionStore
-import fr.gshz.hideandseek.core.model.AccountCredential
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.model.withoutLocationTopics
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_PASSWORD_INVALID
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_PASSWORD_REQUIRED
+import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_DEVICE_MISMATCH
 import fr.gshz.hideandseek.core.util.serverDetail
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
@@ -84,18 +82,18 @@ class JoinGameViewModel @Inject constructor(
             _uiState.update {
                 it.copy(isLoading = true, error = null, errorDetail = null, errorKey = null, errorArgs = null)
             }
-            val account = connectionStore.currentAccount()
-            if (account == null) {
-                _uiState.update { it.copy(isLoading = false, needsAccount = true) }
+            val name = connectionStore.currentPlayerName()
+            if (name == null) {
+                _uiState.update { it.copy(isLoading = false, needsConnect = true) }
                 return@launch
             }
-            performJoin(state.gameKey.trim(), account)
+            performJoin(state.gameKey.trim(), name)
         }
     }
 
-    private suspend fun performJoin(gameKey: String, account: AccountCredential) {
+    private suspend fun performJoin(gameKey: String, name: String) {
         try {
-            val join = gameRepository.joinGame(gameKey, account.name, account.password)
+            val join = gameRepository.joinGame(gameKey, name)
             sessionRepository.saveSession(
                 PlayerSession(
                     gameUuid = join.gameUuid,
@@ -114,8 +112,8 @@ class JoinGameViewModel @Inject constructor(
         } catch (e: HttpException) {
             Log.w(TAG, "Failed to join game", e)
             val errorKey = e.serverErrorKey()
-            if (errorKey == ERROR_KEY_JOIN_PASSWORD_REQUIRED || errorKey == ERROR_KEY_JOIN_PASSWORD_INVALID) {
-                _uiState.update { it.copy(isLoading = false, needsAccount = true, needAccountErrorKey = errorKey) }
+            if (errorKey == ERROR_KEY_JOIN_DEVICE_MISMATCH) {
+                _uiState.update { it.copy(isLoading = false, needsConnect = true, needConnectErrorKey = errorKey) }
             } else {
                 _uiState.update {
                     it.copy(

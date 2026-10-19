@@ -38,7 +38,7 @@ final readonly class JoinProcessor implements ProcessorInterface
             throw new EntityNotFoundException(message: 'Game not found.', errorKey: 'game.not_found');
         }
 
-        $result = $this->joinService->join($gameKey, $data->name, $data->password);
+        $result = $this->joinService->join($gameKey, $data->name, $data->deviceKey);
         $player = $result->player;
         $game = $player->getGame();
         $round = $this->joinService->roundFor($game);
@@ -51,7 +51,11 @@ final readonly class JoinProcessor implements ProcessorInterface
             $player,
             $game,
             $round,
-            $this->mercure->issueSubscriberToken($topics, $player->getUuid()),
+            $this->mercure->issueSubscriberToken(
+                $topics,
+                $player->getUuid(),
+                $player->getIdentity()->getTokenEpoch(),
+            ),
             $topics,
         );
     }

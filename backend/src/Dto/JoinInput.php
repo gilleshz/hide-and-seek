@@ -11,12 +11,13 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class JoinInput
 {
     #[Assert\NotBlank(normalizer: 'trim')]
-    #[Assert\Length(max: 80)]
+    #[Assert\Length(max: 80, normalizer: 'trim')]
     #[Groups([Group::JOIN_WRITE])]
     public string $name = '';
 
-    /** Required for every join, not just reconnects: the player's chosen password. */
-    #[Assert\Length(min: 4, max: 64)]
+    /** Opaque per-device credential; the Android app sends sha256(ANDROID_ID). */
+    #[Assert\NotBlank(normalizer: 'trim')]
+    #[Assert\Length(max: 255)]
     #[Groups([Group::JOIN_WRITE])]
-    public ?string $password = null;
+    public string $deviceKey = '';
 }

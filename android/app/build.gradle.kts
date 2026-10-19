@@ -29,7 +29,7 @@ android {
     defaultConfig {
         applicationId = "fr.gshz.hideandseek"
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 36
         versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
         versionName = project.findProperty("versionName") as? String ?: "1.0"
 

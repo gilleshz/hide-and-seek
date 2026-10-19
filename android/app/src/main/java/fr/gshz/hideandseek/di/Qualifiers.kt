@@ -21,7 +21,3 @@ annotation class ChatCipher
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ApiKeyCipher
-
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
-annotation class AccountPasswordCipher

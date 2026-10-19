@@ -74,9 +74,10 @@ data class CreateGameUiState(
     val errorKey: String? = null,
     val errorArgs: Map<String, String>? = null,
     val createdGameUuid: String? = null,
-    /** The connection has no account credential to join as host with: the user must set it up on connect. */
-    val needsAccount: Boolean = false,
-    val needAccountErrorKey: String? = null,
+    /** The connection has no player name to join as host with: the user must set it up on connect. */
+    val needsConnect: Boolean = false,
+    val needConnectErrorKey: String? = null,
+    val needConnectJoinCode: String? = null,
     val areaSearchQuery: String = "",
     val isSearchingAreas: Boolean = false,
     val areaSearchResults: List<AreaInfo> = emptyList(),

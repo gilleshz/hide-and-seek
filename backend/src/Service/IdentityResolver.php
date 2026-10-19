@@ -36,15 +36,15 @@ final readonly class IdentityResolver
             );
         }
 
-        $playerUuid = $this->mercure->subscriberPlayerUuid($token);
-        if ($playerUuid === null) {
+        $claims = $this->mercure->subscriberClaims($token);
+        if ($claims === null) {
             throw new IdentityRequiredException(
                 message: 'The subscriber token is invalid or expired.',
                 errorKey: ErrorKey::IDENTITY_TOKEN_INVALID,
             );
         }
 
-        $player = $this->players->findOneByUuidIncludingLeft($playerUuid);
+        $player = $this->players->findOneByUuidIncludingLeft($claims['playerUuid']);
         if ($player === null) {
             throw new IdentityRequiredException(
                 message: 'The subscriber token names an unknown player.',
@@ -52,7 +52,14 @@ final readonly class IdentityResolver
             );
         }
 
-        // Leave kills the token for every REST action; rejoining (name + join secret) revives it.
+        if ($claims['tokenEpoch'] !== $player->getIdentity()->getTokenEpoch()) {
+            throw new IdentityRequiredException(
+                message: 'The subscriber token has been superseded by a new device.',
+                errorKey: ErrorKey::IDENTITY_TOKEN_INVALID,
+            );
+        }
+
+        // Leave kills the token for every REST action; rejoining (name + device credential) revives it.
         if ($player->hasLeft()) {
             throw new IdentityRequiredException(
                 message: 'This player has left the game.',

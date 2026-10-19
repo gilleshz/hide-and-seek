@@ -8,7 +8,7 @@ use App\Entity\Game;
 use App\Entity\Player;
 use App\Enum\Edition;
 use App\Enum\GameSize;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -17,15 +17,15 @@ use PHPUnit\Framework\TestCase;
 final class PlayerTest extends TestCase
 {
     #[Test]
-    public function itLinksToItsGameAndAccountAndExposesTheAccountName(): void
+    public function itLinksToItsGameAndIdentityAndExposesTheIdentityName(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Imperial);
-        $account = AccountFactory::create('Alice');
-        $player = new Player($game, $account);
+        $identity = IdentityFactory::create('Alice');
+        $player = new Player($game, $identity);
 
         self::assertNull($player->getId());
         self::assertSame($game, $player->getGame());
-        self::assertSame($account, $player->getAccount());
+        self::assertSame($identity, $player->getIdentity());
         self::assertSame('Alice', $player->getDisplayName());
         self::assertSame(36, \strlen($player->getUuid()));
         self::assertFalse($player->hasLeft());
@@ -35,7 +35,7 @@ final class PlayerTest extends TestCase
     #[Test]
     public function itMarksADepartureAndTakesThePlayerBack(): void
     {
-        $player = new Player(new Game('Berlin', GameSize::Small, Edition::Imperial), AccountFactory::create('Alice'));
+        $player = new Player(new Game('Berlin', GameSize::Small, Edition::Imperial), IdentityFactory::create('Alice'));
         $leftAt = new \DateTimeImmutable('2026-07-27 18:00:00');
 
         $player->markLeft($leftAt);

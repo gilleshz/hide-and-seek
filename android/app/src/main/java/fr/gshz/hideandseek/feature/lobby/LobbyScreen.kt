@@ -3,7 +3,10 @@ package fr.gshz.hideandseek.feature.lobby
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,6 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +83,7 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 
-@Suppress("LongMethod")
+@Suppress("LongMethod", "CyclomaticComplexMethod")
 @Composable
 fun LobbyScreen(
     onOpenMapClick: (gameUuid: String) -> Unit,
@@ -100,12 +104,23 @@ fun LobbyScreen(
 
     // The lobby is the back-stack root: consume back so it never closes the app; the map needs a side.
     BackHandler { if (uiState.mySide != null) onOpenMapClick(uiState.gameUuid) }
-    var backgroundLocationMissing by remember { mutableStateOf(false) }
-    var trackingStarted by remember { mutableStateOf(false) }
+    val openAppSettings = {
+        context.startActivity(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null),
+            ),
+        )
+    }
+    var backgroundLocationMissing by rememberSaveable { mutableStateOf(false) }
+    var trackingStarted by rememberSaveable { mutableStateOf(false) }
+    var showLocationDisclosure by rememberSaveable { mutableStateOf(false) }
+    var preciseLocationMissing by rememberSaveable { mutableStateOf(false) }
 
     fun startTracking() {
         ContextCompat.startForegroundService(context, Intent(context, LocationTrackingService::class.java))
         trackingStarted = true
+        preciseLocationMissing = false
     }
 
     val backgroundPermissionLauncher = rememberLauncherForActivityResult(
@@ -115,22 +130,103 @@ fun LobbyScreen(
         startTracking()
     }
 
-    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { grants ->
-        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            } else {
-                startTracking()
-            }
+    fun requestBackgroundOrStart() {
+        val backgroundGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+        if (backgroundGranted) {
+            startTracking()
+        } else {
+            backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
 
-    LaunchedEffect(uiState.mySide) {
-        if (uiState.mySide != null && !trackingStarted) {
-            foregroundPermissionLauncher.launch(foregroundLocationPermissions())
+    val foregroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        when (
+            locationPermissionOutcome(
+                fineGranted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true,
+                coarseGranted = grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true,
+            )
+        ) {
+            LocationPermissionOutcome.Precise -> requestBackgroundOrStart()
+            LocationPermissionOutcome.CoarseOnly -> preciseLocationMissing = true
+            LocationPermissionOutcome.Denied -> Unit
         }
+    }
+
+    fun requestLocation() {
+        val fine = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        when (locationPermissionOutcome(fine, coarse)) {
+            LocationPermissionOutcome.Precise -> requestBackgroundOrStart()
+            LocationPermissionOutcome.CoarseOnly -> preciseLocationMissing = true
+            LocationPermissionOutcome.Denied -> foregroundPermissionLauncher.launch(foregroundLocationPermissions())
+        }
+    }
+
+    LaunchedEffect(uiState.mySide, uiState.locationDisclosureAccepted) {
+        if (uiState.mySide == null || trackingStarted) return@LaunchedEffect
+        if (uiState.locationDisclosureAccepted) {
+            requestLocation()
+        } else {
+            showLocationDisclosure = true
+        }
+    }
+
+    if (showLocationDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showLocationDisclosure = false },
+            title = { Text(stringResource(R.string.lobby_location_disclosure_title)) },
+            text = { Text(stringResource(R.string.lobby_location_disclosure_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLocationDisclosure = false
+                        viewModel.onLocationDisclosureAccepted()
+                    },
+                ) {
+                    Text(stringResource(R.string.lobby_location_disclosure_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLocationDisclosure = false }) {
+                    Text(stringResource(R.string.lobby_location_disclosure_later))
+                }
+            },
+        )
+    }
+
+    if (preciseLocationMissing) {
+        AlertDialog(
+            onDismissRequest = { preciseLocationMissing = false },
+            title = { Text(stringResource(R.string.lobby_precise_location_title)) },
+            text = { Text(stringResource(R.string.lobby_precise_location_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        preciseLocationMissing = false
+                        openAppSettings()
+                    },
+                ) {
+                    Text(stringResource(R.string.lobby_precise_location_settings))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { preciseLocationMissing = false }) {
+                    Text(stringResource(R.string.lobby_location_disclosure_later))
+                }
+            },
+        )
     }
 
     LaunchedEffect(uiState.navigatedHome) {
@@ -160,6 +256,11 @@ fun LobbyScreen(
             onDismissRemovePlayerConfirm = viewModel::dismissRemovePlayerConfirm,
         ),
         showBackgroundLocationHint = backgroundLocationMissing,
+        showLocationOffHint = uiState.mySide != null && !trackingStarted && !preciseLocationMissing,
+        onEnableLocation = {
+            if (uiState.locationDisclosureAccepted) requestLocation() else showLocationDisclosure = true
+        },
+        onOpenLocationSettings = openAppSettings,
     )
 }
 
@@ -195,12 +296,26 @@ private fun foregroundLocationPermissions(): Array<String> {
     return permissions.toTypedArray()
 }
 
-@Suppress("LongMethod")
+internal enum class LocationPermissionOutcome { Precise, CoarseOnly, Denied }
+
+internal fun locationPermissionOutcome(
+    fineGranted: Boolean,
+    coarseGranted: Boolean,
+): LocationPermissionOutcome = when {
+    fineGranted -> LocationPermissionOutcome.Precise
+    coarseGranted -> LocationPermissionOutcome.CoarseOnly
+    else -> LocationPermissionOutcome.Denied
+}
+
+@Suppress("LongMethod", "LongParameterList")
 @Composable
 internal fun LobbyContent(
     uiState: LobbyUiState,
     actions: LobbyActions,
     showBackgroundLocationHint: Boolean = false,
+    showLocationOffHint: Boolean = false,
+    onEnableLocation: () -> Unit = {},
+    onOpenLocationSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -297,6 +412,32 @@ internal fun LobbyContent(
 
         if (uiState.mySide != null) {
             OpenMapButton(onOpenMapClick = actions.onOpenMapClick, showHint = showBackgroundLocationHint)
+        }
+
+        if (showLocationOffHint) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = stringResource(R.string.lobby_location_off),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = onEnableLocation) {
+                    Text(stringResource(R.string.lobby_location_enable))
+                }
+                TextButton(onClick = onOpenLocationSettings) {
+                    Text(stringResource(R.string.lobby_precise_location_settings))
+                }
+            }
         }
 
         SectionHeader(text = stringResource(R.string.lobby_roster_title), icon = Icons.Filled.Groups)

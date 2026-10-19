@@ -9,6 +9,7 @@ import dagger.hilt.android.HiltAndroidApp
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import fr.gshz.hideandseek.core.data.SettingsStore
+import fr.gshz.hideandseek.core.security.LegacyCredentialCleanup
 import fr.gshz.hideandseek.core.token.TokenRefresher
 import fr.gshz.hideandseek.di.MapLibreHttpClient
 import javax.inject.Inject
@@ -36,6 +37,9 @@ class HideAndSeekApp : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var tokenRefresher: TokenRefresher
 
+    @Inject
+    lateinit var legacyCredentialCleanup: LegacyCredentialCleanup
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -50,6 +54,7 @@ class HideAndSeekApp : Application(), SingletonImageLoader.Factory {
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(locale))
             }
         }
+        applicationScope.launch { legacyCredentialCleanup.run() }
         tokenRefresher.start()
     }
 

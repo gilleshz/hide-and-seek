@@ -29,7 +29,7 @@ use App\Service\TimeTrapPublisher;
 use App\Service\TimeTrapService;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -48,7 +48,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
         $locations = $this->createMock(PlayerLocationRepository::class);
@@ -92,7 +92,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
         $locations = $this->createMock(PlayerLocationRepository::class);
@@ -121,7 +121,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Seeker);
 
         $locations = $this->createStub(PlayerLocationRepository::class);
@@ -159,7 +159,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $seekerMembership = new RoundMembership($round, $seeker, Side::Seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -200,7 +200,7 @@ final class LocationServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setEndgameStartedAt(new \DateTimeImmutable());
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $hider, Side::Hider);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -232,7 +232,7 @@ final class LocationServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setEndgameStartedAt(new \DateTimeImmutable());
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $seekerMembership = new RoundMembership($round, $seeker, Side::Seeker);
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
@@ -264,7 +264,7 @@ final class LocationServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Ended);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
         $locations = $this->createMock(PlayerLocationRepository::class);
@@ -295,7 +295,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $memberships = $this->createStub(RoundMembershipRepository::class);
         $memberships->method('findOneByRoundAndPlayer')->willReturn(null);
@@ -322,7 +322,7 @@ final class LocationServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $otherGame = new Game('Paris', GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $player = new Player($otherGame, AccountFactory::create('Eve', 'test-password'));
+        $player = new Player($otherGame, IdentityFactory::create('Eve', 'test-password'));
 
         $hub = $this->createMock(HubInterface::class);
         $hub->expects(self::never())->method('publish');

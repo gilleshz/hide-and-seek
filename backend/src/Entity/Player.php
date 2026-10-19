@@ -10,7 +10,7 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: PlayerRepository::class)]
 #[ORM\Table(name: 'players')]
-#[ORM\UniqueConstraint(name: 'uniq_player_game_account', columns: ['game_id', 'account_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_player_game_identity', columns: ['game_id', 'identity_id'])]
 class Player
 {
     #[ORM\Id]
@@ -25,25 +25,25 @@ class Player
     #[ORM\JoinColumn(name: 'game_id', nullable: false, onDelete: 'CASCADE')]
     private Game $game;
 
-    #[ORM\ManyToOne(targetEntity: Account::class)]
-    #[ORM\JoinColumn(name: 'account_id', nullable: false, onDelete: 'CASCADE')]
-    private Account $account;
+    #[ORM\ManyToOne(targetEntity: Identity::class)]
+    #[ORM\JoinColumn(name: 'identity_id', nullable: false, onDelete: 'CASCADE')]
+    private Identity $identity;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
     /**
      * Soft-leave: keeps the player's messages, read receipts and side, and
-     * coming back under the same account reinstates the same player.
+     * coming back under the same identity reinstates the same player.
      */
     #[ORM\Column(name: 'left_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $leftAt = null;
 
-    public function __construct(Game $game, Account $account)
+    public function __construct(Game $game, Identity $identity)
     {
         $this->uuid = Uuid::v4()->toRfc4122();
         $this->game = $game;
-        $this->account = $account;
+        $this->identity = $identity;
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -62,17 +62,17 @@ class Player
         return $this->game;
     }
 
-    public function getAccount(): Account
+    public function getIdentity(): Identity
     {
-        return $this->account;
+        return $this->identity;
     }
 
     /**
-     * The name lives on the account; the getter stays so the ~15 call sites keep working.
+     * The name lives on the identity; the getter stays so the ~15 call sites keep working.
      */
     public function getDisplayName(): string
     {
-        return $this->account->getName();
+        return $this->identity->getName();
     }
 
     public function getCreatedAt(): \DateTimeImmutable

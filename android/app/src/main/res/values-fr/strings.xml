@@ -19,12 +19,10 @@
     <string name="connect_api_url_label">URL de l\'API</string>
     <string name="connect_api_key_label">Clé API</string>
     <string name="connect_account_name_label">Votre nom</string>
-    <string name="connect_account_password_label">Votre mot de passe</string>
     <string name="connect_button">Connecter</string>
     <string name="connect_plain_http_warning">Le HTTP simple n\'est pas chiffré. Privilégiez https si possible.</string>
     <string name="connect_location_shared">Votre position sera partagée avec le serveur auquel vous vous connectez. Ne vous connectez qu\'à un hôte de confiance.</string>
-    <string name="connect_account_helper">Première fois ? La connexion crée votre compte. Utilisez le même nom et le même mot de passe pour vous reconnecter.</string>
-    <string name="error_server_too_old">Ce serveur ne prend pas en charge les comptes. Mettez le serveur à jour ou demandez à l\'hôte.</string>
+    <string name="connect_account_helper">Utilisez le même nom sur cet appareil pour rejoindre. Demandez à l\'hôte en cas de changement de téléphone.</string>
     <string name="form_error_blank">Remplissez tous les champs requis.</string>
 
     <string name="home_create_game">Créer une partie</string>
@@ -69,6 +67,10 @@
     <string name="lobby_hide_qr">Masquer le QR code</string>
     <string name="lobby_roster_title">Membres</string>
     <string name="lobby_pick_side_title">Choisissez votre camp</string>
+    <string name="lobby_location_disclosure_title">Partager votre position ?</string>
+    <string name="lobby_location_disclosure_body">Pendant une manche, cette application envoie votre position en direct au serveur de jeu pour que les autres joueurs puissent vous voir sur la carte. Cela inclut lorsque l\'application est en arrière-plan ou que votre téléphone est verrouillé. La position sert uniquement au jeu.</string>
+    <string name="lobby_location_disclosure_continue">Continuer</string>
+    <string name="lobby_location_disclosure_later">Plus tard</string>
     <string name="lobby_side_hider">Cachette</string>
     <string name="lobby_side_seeker">Recherche</string>
     <string name="lobby_side_unassigned">Sans équipe</string>
@@ -416,14 +418,6 @@
     <string name="settings_theme_system_default">Par défaut du système</string>
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
-    <string name="settings_account_section_title">Compte</string>
-    <string name="settings_account_logged_in_as">Connecté en tant que <xliff:g example="Alice">%1$s</xliff:g></string>
-    <string name="settings_account_current_password_label">Mot de passe actuel</string>
-    <string name="settings_account_new_password_label">Nouveau mot de passe</string>
-    <string name="settings_account_save">Changer le mot de passe</string>
-    <string name="settings_account_success">Mot de passe modifié.</string>
-    <string name="settings_account_wrong_password">Le mot de passe actuel est incorrect pour ce nom.</string>
-    <string name="settings_account_short_password">Les mots de passe doivent contenir 4 à 64 caractères.</string>
 
     <!-- Clés de messages backend -->
     <string name="question_radar_ask">Êtes-vous à moins de <xliff:g>%1$s</xliff:g> de moi ?</string>
@@ -735,14 +729,17 @@
     <string name="error_time_trap_limit_reached">Cette manche contient déjà le nombre maximal de pièges temporels.</string>
     <string name="error_time_trap_not_pending">Ce piège temporel n\'attend plus de décision.</string>
     <string name="error_session_expired">Votre session a expiré. Rejoignez la partie avec le même nom.</string>
-    <string name="error_join_password_required">Ce nom est déjà utilisé par une autre personne. Si c\'est le vôtre, saisissez son mot de passe. Sinon, choisissez un autre nom.</string>
-    <string name="error_join_password_invalid">Mot de passe incorrect pour ce nom. Si ce n\'est pas le vôtre, choisissez un autre nom.</string>
-    <string name="error_account_name_taken">Ce nom est déjà utilisé par une autre personne. Si c\'est le vôtre, vérifiez le mot de passe. Sinon, choisissez un autre nom.</string>
     <string name="error_rate_limit">Trop de demandes. Attendez un moment avant de réessayer.</string>
     <string name="error_heavy_work_busy">Le serveur est occupé. Attendez un instant avant de réessayer.</string>
 <string name="lobby_remove_player_action">Retirer de la partie</string>
     <string name="lobby_remove_player_dialog_title">Retirer %1$s de la partie ?</string>
-    <string name="lobby_remove_player_dialog_body">Cette personne pourra revenir avec son mot de passe.</string>
+    <string name="lobby_remove_player_dialog_body">Cette personne pourra rejoindre plus tard avec le même nom.</string>
     <string name="lobby_remove_player_confirm">Retirer</string>
     <string name="system_player_removed">%1$s n\'est plus dans la partie.</string>
+    <string name="error_join_device_mismatch">Ce nom est déjà utilisé sur un autre appareil. Demandez à la personne qui héberge votre serveur de jeu d\'autoriser un nouvel appareil, ou choisissez un autre nom.</string>
+    <string name="lobby_precise_location_title">Position précise requise</string>
+    <string name="lobby_precise_location_body">Le jeu a besoin de votre position précise pour que les autres joueurs puissent vous trouver sur la carte. Activez la position précise dans les réglages.</string>
+    <string name="lobby_precise_location_settings">Ouvrir les réglages</string>
+    <string name="lobby_location_off">Le partage de position est désactivé. Les autres joueurs ne peuvent pas vous voir.</string>
+    <string name="lobby_location_enable">Activer</string>
 </resources>

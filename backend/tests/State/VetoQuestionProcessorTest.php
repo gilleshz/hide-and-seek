@@ -40,7 +40,7 @@ use App\Service\UploadedImageReader;
 use App\State\VetoQuestionProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -61,9 +61,9 @@ final class VetoQuestionProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $hider, Side::Hider);
-        $question = new AskedQuestion($round, new Player($game, AccountFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
+        $question = new AskedQuestion($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
 
         $asked = $this->createMock(AskedQuestionRepository::class);
         $asked->method('findOneByUuid')->willReturn($question);
@@ -89,7 +89,7 @@ final class VetoQuestionProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $seeker = new Player($game, AccountFactory::create('Bob', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $question = new AskedQuestion($round, $seeker, QuestionCategory::Radar, null);
 
         $asked = $this->createMock(AskedQuestionRepository::class);
@@ -120,7 +120,7 @@ final class VetoQuestionProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $question = new AskedQuestion($round, new Player($game, AccountFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
+        $question = new AskedQuestion($round, new Player($game, IdentityFactory::create('Bob', 'test-password')), QuestionCategory::Radar, null);
 
         $asked = $this->createStub(AskedQuestionRepository::class);
         $asked->method('findOneByUuid')->willReturn($question);
@@ -136,7 +136,7 @@ final class VetoQuestionProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $hider = new Player($game, AccountFactory::create('Alice', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $asked = $this->createStub(AskedQuestionRepository::class);
         $asked->method('findOneByUuid')->willReturn(null);

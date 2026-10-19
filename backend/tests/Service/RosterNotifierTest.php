@@ -18,7 +18,7 @@ use App\Service\MercureJwtService;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
 use App\Tests\Fake\FakeMercureHub;
-use App\Tests\Support\AccountFactory;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -87,7 +87,7 @@ final class RosterNotifierTest extends TestCase
     /** The side lookup is keyed on the database id, which only a persisted player would carry. */
     private static function playerWithId(Game $game, string $displayName, int $id): Player
     {
-        $player = new Player($game, AccountFactory::create($displayName, 'test-password'));
+        $player = new Player($game, IdentityFactory::create($displayName, 'test-password'));
         new \ReflectionProperty(Player::class, 'id')->setValue($player, $id);
 
         return $player;

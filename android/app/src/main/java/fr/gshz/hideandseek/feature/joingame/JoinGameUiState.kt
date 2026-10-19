@@ -10,7 +10,7 @@ data class JoinGameUiState(
     val errorKey: String? = null,
     val errorArgs: Map<String, String>? = null,
     val joinedGameUuid: String? = null,
-    /** The connection has no account credential to join with: the user must set it up on connect. */
-    val needsAccount: Boolean = false,
-    val needAccountErrorKey: String? = null,
+    /** The connection has no player name to join with: the user must set it up on connect. */
+    val needsConnect: Boolean = false,
+    val needConnectErrorKey: String? = null,
 )

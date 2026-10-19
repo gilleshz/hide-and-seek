@@ -17,16 +17,20 @@ import fr.gshz.hideandseek.domain.model.TeamResult
 import fr.gshz.hideandseek.domain.repository.TimerEvent
 import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.data.GameStateCache
+import fr.gshz.hideandseek.core.data.SettingsStore
 import fr.gshz.hideandseek.fake.FakeGameEventRepository
 import fr.gshz.hideandseek.fake.FakeGameRepository
 import fr.gshz.hideandseek.fake.FakeRoundRepository
 import fr.gshz.hideandseek.fake.FakeSessionRepository
 import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -56,6 +60,9 @@ class LobbyViewModelTest {
     private val clientConfigRepository =
         mockk<fr.gshz.hideandseek.domain.repository.ClientConfigRepository>(relaxed = true)
     private val gameStateCache = GameStateCache(gameRepository, clientConfigRepository)
+    private val settingsStore = mockk<SettingsStore>(relaxed = true) {
+        every { locationDisclosureAccepted } returns flowOf(false)
+    }
     private val gameEventRepository = FakeGameEventRepository()
     private val navigationRequestStore = NavigationRequestStore()
 
@@ -75,6 +82,7 @@ class LobbyViewModelTest {
         roundRepository,
         connectionStore,
         gameStateCache,
+        settingsStore,
         navigationRequestStore,
         gameEventRepository,
         SavedStateHandle(mapOf(HideAndSeekDestinations.LOBBY_ARG to gameUuid)),
@@ -685,5 +693,15 @@ class LobbyViewModelTest {
 
         assertEquals(callsAfterLoad + 1, gameRepository.leaderboardCalls)
         assertEquals(1, viewModel.uiState.value.leaderboard.size)
+    }
+
+    @Test
+    fun `accepting the location disclosure persists it`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.onLocationDisclosureAccepted()
+
+        assertTrue(viewModel.uiState.value.locationDisclosureAccepted)
+        coVerify { settingsStore.saveLocationDisclosureAccepted() }
     }
 }

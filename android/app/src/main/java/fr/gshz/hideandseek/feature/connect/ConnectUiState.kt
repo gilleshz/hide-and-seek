@@ -6,7 +6,6 @@ data class ConnectUiState(
     val apiUrl: String = "",
     val apiKey: String = "",
     val displayName: String = "",
-    val passwordInput: String = "",
     val isConnecting: Boolean = false,
     val isPlainHttp: Boolean = false,
     val error: ErrorType? = null,
