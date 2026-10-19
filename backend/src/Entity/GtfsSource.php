@@ -33,6 +33,9 @@ class GtfsSource
     #[ORM\Column(type: 'string', length: 1000, nullable: true)]
     private ?string $sourceUrl = null;
 
+    #[ORM\Column(type: 'string', length: 1000, nullable: true)]
+    private ?string $realtimeUrl = null;
+
     #[ORM\Column(type: 'integer')]
     private int $routeCount = 0;
 
@@ -87,6 +90,18 @@ class GtfsSource
     public function setSourceUrl(?string $sourceUrl): self
     {
         $this->sourceUrl = $sourceUrl;
+
+        return $this;
+    }
+
+    public function getRealtimeUrl(): ?string
+    {
+        return $this->realtimeUrl;
+    }
+
+    public function setRealtimeUrl(?string $realtimeUrl): self
+    {
+        $this->realtimeUrl = $realtimeUrl;
 
         return $this;
     }

@@ -28,6 +28,11 @@ class GameTransitStationRepository extends ServiceEntityRepository
         }
     }
 
+    public function findOneByGameAndStationId(Game $game, string $stationId): ?GameTransitStation
+    {
+        return $this->findOneBy(['game' => $game, 'stationId' => $stationId]);
+    }
+
     /**
      * The station a tap snaps to, so every later test runs against an imported station rather than a
      * client-supplied coordinate. A tap with no station in reach snaps to nothing.

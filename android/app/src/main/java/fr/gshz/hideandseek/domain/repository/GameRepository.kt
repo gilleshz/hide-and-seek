@@ -9,6 +9,7 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
+import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.TransitLine
@@ -45,9 +46,19 @@ interface GameRepository {
     suspend fun discoverTransitLines(areas: List<AreaInfo>, routeTypes: List<String>? = null): List<TransitLine>
     suspend fun boundaryPreview(areas: List<AreaInfo>): String
     suspend fun transitLinePreview(osmIds: Set<String>): String
-    suspend fun uploadGtfsFromUrl(url: String, name: String): GtfsSourceState
-    suspend fun uploadGtfsFromFile(fileBytes: ByteArray, fileName: String, name: String): GtfsSourceState
+    suspend fun uploadGtfsFromUrl(url: String, name: String, realtimeUrl: String? = null): GtfsSourceState
+    suspend fun uploadGtfsFromFile(
+        fileBytes: ByteArray,
+        fileName: String,
+        name: String,
+        realtimeUrl: String? = null,
+    ): GtfsSourceState
     suspend fun getGame(gameUuid: String): GameSummary
+    suspend fun getStationDepartures(
+        gameUuid: String,
+        stationId: String,
+        fullDay: Boolean = false,
+    ): TransitDepartures
     suspend fun getTransitOverlay(gameUuid: String): String?
     suspend fun joinGame(gameUuid: String, displayName: String, password: String): JoinResult
     suspend fun removePlayer(gameUuid: String, playerUuid: String)

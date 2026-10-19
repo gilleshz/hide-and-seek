@@ -37,6 +37,7 @@ fun GameDto.toDomain() = GameSummary(
     defaultHidingPeriodMinutes = defaultHidingPeriodMinutes,
     selectedTransitLines = selectedTransitLines.map { it.toTransitLine() } +
         selectedGtfsLines.map { it.toTransitLine() },
+    hasGtfsLines = selectedGtfsLines.isNotEmpty(),
     rulesVariant = RulesVariant.fromWireValue(rulesVariant),
 )
 

@@ -110,6 +110,22 @@
     <string name="map_style_atlas">Atlas</string>    <string name="map_style_ign_plan">IGN Plan</string>
     <string name="map_style_ign_satellite">IGN Satellite</string>
 
+    <string name="timetable_action">Nächste Abfahrten</string>
+    <string name="timetable_title">Abfahrten</string>
+    <string name="timetable_subtitle">Nächste Abfahrten</string>
+    <string name="timetable_error">Abfahrten konnten nicht aktualisiert werden. Prüfe deine Verbindung.</string>
+    <string name="timetable_unavailable">Für diese Haltestelle ist kein Fahrplan verfügbar.</string>
+    <string name="timetable_retry">Erneut versuchen</string>
+    <string name="timetable_empty">Keine bevorstehenden Abfahrten.</string>
+    <string name="timetable_live">Live</string>
+    <string name="timetable_full_day">Ganzer Tag</string>
+    <string name="timetable_now">Jetzt</string>
+    <string name="timetable_in_minutes">in <xliff:g>%1$d</xliff:g> Min.</string>
+    <string name="timetable_due">jetzt</string>
+    <string name="timetable_delay_late"><xliff:g>%1$d</xliff:g> Min. Verspätung</string>
+    <string name="timetable_delay_early"><xliff:g>%1$d</xliff:g> Min. zu früh</string>
+    <string name="timetable_direction">Richtung <xliff:g>%1$d</xliff:g></string>
+
     <string name="round_banner_not_started">Nicht gestartet</string>
     <string name="round_banner_hiding">Verstecken: <xliff:g>%1$s</xliff:g> übrig</string>
     <string name="round_banner_seeking">Suchen: <xliff:g>%1$s</xliff:g></string>
@@ -519,6 +535,8 @@
     <string name="gtfs_upload_url">Hochladen</string>
     <string name="gtfs_url_hint">https://example.com/gtfs.zip</string>
     <string name="gtfs_name_label">Feed-Name</string>
+    <string name="gtfs_realtime_url_label">Echtzeit-Abfahrts-URL (optional)</string>
+    <string name="gtfs_realtime_url_hint">URL des GTFS-RT-Trip-Update-Feeds</string>
     <string name="osm_discovery_button">Verkehrslinien entdecken</string>
     <string name="discovering_transit_label">Verkehrslinien werden entdeckt...</string>
     <string name="transit_discovery_network_error">Suche fehlgeschlagen: Prüfe deine Verbindung und versuche es erneut.</string>
@@ -588,6 +606,7 @@
     <string name="unknown_display_name">Unbekannt</string>
     <string name="unknown_label">Unbekannt</string>
     <string name="gtfs_url_required">URL ist erforderlich</string>
+    <string name="gtfs_realtime_url_invalid">Die Echtzeit-URL muss mit https:// beginnen</string>
     <string name="gtfs_network_error">Netzwerkfehler: <xliff:g>%1$s</xliff:g></string>
     <string name="gtfs_feed_default_name">GTFS-Feed</string>
 

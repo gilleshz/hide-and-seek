@@ -37,12 +37,13 @@ readonly class TransitTilePipeline
         private string $overpassMirrors,
         #[Autowire('%app.tiles_dir%')]
         private string $tilesBaseDir,
+        private TransitTimetableBuilder $timetableBuilder,
     ) {
     }
 
     /**
      * @param int[]                                            $relationIds  OSM relation IDs
-     * @param list<array{path: string, selectedRefs: list<string>}> $gtfsSources  GTFS source specs
+     * @param list<array{path: string, uuid?: string, selectedRefs: list<string>}> $gtfsSources  GTFS source specs
      * @param list<string>                                     $osmRefs      Ref values from selected OSM transit lines
      */
     public function build(
@@ -89,6 +90,9 @@ readonly class TransitTilePipeline
 
         try {
             $process->run();
+            if ($process->isSuccessful() && $gtfsSources !== []) {
+                $this->timetableBuilder->build($gameUuid, $mergedDir, $gtfsSources);
+            }
         } finally {
             @unlink($shFile);
             @unlink($clipFile);
@@ -105,7 +109,7 @@ readonly class TransitTilePipeline
 
     /**
      * @param int[]                                            $relationIds
-     * @param list<array{path: string, selectedRefs: list<string>}> $gtfsSources
+     * @param list<array{path: string, uuid?: string, selectedRefs: list<string>}> $gtfsSources
      */
     private function pipelineScript(
         array $relationIds,

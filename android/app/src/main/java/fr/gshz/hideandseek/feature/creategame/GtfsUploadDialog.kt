@@ -41,10 +41,12 @@ import fr.gshz.hideandseek.core.ui.theme.Spacing
 internal fun GtfsUploadDialog(
     mode: GtfsDialogMode,
     urlInput: String,
+    realtimeUrlInput: String,
     isUploading: Boolean,
     error: UiText?,
     onModeChange: (GtfsDialogMode) -> Unit,
     onUrlChange: (String) -> Unit,
+    onRealtimeUrlChange: (String) -> Unit,
     onUploadUrl: () -> Unit,
     onChooseFile: () -> Unit,
     onDismiss: () -> Unit,
@@ -58,10 +60,12 @@ internal fun GtfsUploadDialog(
             GtfsUploadDialogContent(
                 mode = mode,
                 urlInput = urlInput,
+                realtimeUrlInput = realtimeUrlInput,
                 isUploading = isUploading,
                 error = error,
                 onModeChange = onModeChange,
                 onUrlChange = onUrlChange,
+                onRealtimeUrlChange = onRealtimeUrlChange,
                 onUploadUrl = onUploadUrl,
                 onChooseFile = onChooseFile,
                 onDismiss = onDismiss,
@@ -75,10 +79,12 @@ internal fun GtfsUploadDialog(
 private fun GtfsUploadDialogContent(
     mode: GtfsDialogMode,
     urlInput: String,
+    realtimeUrlInput: String,
     isUploading: Boolean,
     error: UiText?,
     onModeChange: (GtfsDialogMode) -> Unit,
     onUrlChange: (String) -> Unit,
+    onRealtimeUrlChange: (String) -> Unit,
     onUploadUrl: () -> Unit,
     onChooseFile: () -> Unit,
     onDismiss: () -> Unit,
@@ -89,6 +95,11 @@ private fun GtfsUploadDialogContent(
     ) {
         GtfsDialogTitleBar(isUploading = isUploading, onDismiss = onDismiss)
         GtfsModeSelector(mode = mode, isUploading = isUploading, onModeChange = onModeChange)
+        GtfsRealtimeUrlField(
+            urlInput = realtimeUrlInput,
+            isUploading = isUploading,
+            onUrlChange = onRealtimeUrlChange,
+        )
         when (mode) {
             GtfsDialogMode.Url -> GtfsUrlTabContent(
                 urlInput = urlInput,
@@ -157,6 +168,24 @@ private fun GtfsModeSelector(
             Text(stringResource(R.string.gtfs_file_tab))
         }
     }
+}
+
+@Composable
+private fun GtfsRealtimeUrlField(
+    urlInput: String,
+    isUploading: Boolean,
+    onUrlChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = urlInput,
+        onValueChange = onUrlChange,
+        label = { Text(stringResource(R.string.gtfs_realtime_url_label)) },
+        placeholder = { Text(stringResource(R.string.gtfs_realtime_url_hint)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        enabled = !isUploading,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+    )
 }
 
 @Composable

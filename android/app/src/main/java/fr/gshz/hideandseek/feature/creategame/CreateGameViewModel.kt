@@ -396,6 +396,19 @@ class CreateGameViewModel @Inject constructor(
         _uiState.update { it.copy(gtfsUrlInput = value, gtfsError = null) }
     }
 
+    fun onGtfsRealtimeUrlChange(value: String) {
+        _uiState.update { it.copy(gtfsRealtimeUrlInput = value, gtfsError = null) }
+    }
+
+    private fun realtimeUrlIsValid(): Boolean {
+        val value = _uiState.value.gtfsRealtimeUrlInput.trim()
+        if (value.isEmpty() || value.startsWith(REALTIME_URL_PREFIX)) return true
+        _uiState.update { it.copy(gtfsError = UiText.fromResource(R.string.gtfs_realtime_url_invalid)) }
+        return false
+    }
+
+    private fun realtimeUrlOrNull(): String? = _uiState.value.gtfsRealtimeUrlInput.trim().ifBlank { null }
+
     fun onGtfsDialogModeChange(mode: GtfsDialogMode) {
         _uiState.update { it.copy(gtfsDialogMode = mode, gtfsError = null) }
     }
@@ -406,17 +419,19 @@ class CreateGameViewModel @Inject constructor(
             _uiState.update { it.copy(gtfsError = UiText.fromResource(R.string.gtfs_url_required)) }
             return
         }
+        if (!realtimeUrlIsValid()) return
         viewModelScope.launch {
             _uiState.update { it.copy(gtfsUploading = true, gtfsError = null) }
             try {
                 val feedName = url.substringAfterLast("/")
                     .take(GTFS_FEED_NAME_MAX_LENGTH).ifBlank { DEFAULT_GTFS_FEED_NAME }
-                val source = gameRepository.uploadGtfsFromUrl(url, feedName)
+                val source = gameRepository.uploadGtfsFromUrl(url, feedName, realtimeUrlOrNull())
                 _uiState.update { state ->
                     state.copy(
                         gtfsUploading = false,
                         showGtfsDialog = false,
                         gtfsUrlInput = "",
+                        gtfsRealtimeUrlInput = "",
                         gtfsSources = state.gtfsSources + source,
                     )
                 }
@@ -433,16 +448,19 @@ class CreateGameViewModel @Inject constructor(
     }
 
     fun uploadGtfsFromFile(bytes: ByteArray, fileName: String) {
+        if (!realtimeUrlIsValid()) return
+        val realtimeUrl = realtimeUrlOrNull()
         viewModelScope.launch {
             _uiState.update { it.copy(gtfsUploading = true, gtfsError = null) }
             try {
                 val feedName = fileName.removeSuffix(".zip")
                     .take(GTFS_FEED_NAME_MAX_LENGTH).ifBlank { DEFAULT_GTFS_FEED_NAME }
-                val source = gameRepository.uploadGtfsFromFile(bytes, fileName, feedName)
+                val source = gameRepository.uploadGtfsFromFile(bytes, fileName, feedName, realtimeUrl)
                 _uiState.update { state ->
                     state.copy(
                         gtfsUploading = false,
                         showGtfsDialog = false,
+                        gtfsRealtimeUrlInput = "",
                         gtfsSources = state.gtfsSources + source,
                     )
                 }
@@ -578,6 +596,7 @@ class CreateGameViewModel @Inject constructor(
         const val TAG = "CreateGameViewModel"
         const val GTFS_FEED_NAME_MAX_LENGTH = 50
         const val DEFAULT_GTFS_FEED_NAME = "GTFS feed"
+        const val REALTIME_URL_PREFIX = "https://"
 
         /** Long enough to swallow a run of ticks, short enough that the map still feels live. */
         const val PREVIEW_DEBOUNCE_MS = 500L

@@ -4,14 +4,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -36,6 +43,7 @@ import kotlin.math.roundToInt
 
 private val STATION_TOOLTIP_MAX_WIDTH = 200.dp
 
+@Suppress("LongParameterList")
 @Composable
 internal fun StationTooltip(
     label: String,
@@ -44,6 +52,8 @@ internal fun StationTooltip(
     screenY: Float,
     onLineTap: (String) -> Unit,
     onDismiss: () -> Unit,
+    showTimetableAction: Boolean = false,
+    onTimetableTap: () -> Unit = {},
 ) {
     var heightPx by remember { mutableStateOf(0) }
     var widthPx by remember { mutableStateOf(0) }
@@ -69,10 +79,44 @@ internal fun StationTooltip(
         onClick = onDismiss,
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            StationTooltipHeader(
+                label = label,
+                showTimetableAction = showTimetableAction,
+                onTimetableTap = onTimetableTap,
+            )
             if (lines.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 LineBadges(lines, onLineTap)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StationTooltipHeader(
+    label: String,
+    showTimetableAction: Boolean,
+    onTimetableTap: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+        )
+        if (showTimetableAction) {
+            IconButton(
+                onClick = onTimetableTap,
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Schedule,
+                    contentDescription = stringResource(R.string.timetable_action),
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
     }
@@ -86,21 +130,40 @@ private fun LineBadges(lines: List<LineRef>, onLineTap: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         lines.forEach { line ->
-            Surface(
-                onClick = { onLineTap(line.ref) },
-                shape = RoundedCornerShape(4.dp),
-                color = remember(line.color) { toLineColor(line.color) },
-            ) {
-                Text(
-                    line.ref,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            LineBadge(ref = line.ref, color = line.color, onClick = { onLineTap(line.ref) })
         }
     }
+}
+
+@Composable
+internal fun LineBadge(ref: String, color: String, onClick: (() -> Unit)? = null) {
+    if (onClick == null) {
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = remember(color) { toLineColor(color) },
+        ) {
+            LineBadgeText(ref)
+        }
+    } else {
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(4.dp),
+            color = remember(color) { toLineColor(color) },
+        ) {
+            LineBadgeText(ref)
+        }
+    }
+}
+
+@Composable
+private fun LineBadgeText(ref: String) {
+    Text(
+        ref,
+        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        color = Color.White,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+    )
 }
 
 private const val ACTION_TOOLTIP_ALPHA = 0.92f
@@ -229,7 +292,7 @@ private val TOOLTIP_NAMED_COLORS = mapOf(
     "tomato" to "#FF6347",
 )
 
-private fun toLineColor(hex: String): Color = try {
+internal fun toLineColor(hex: String): Color = try {
     Color(android.graphics.Color.parseColor("#FF$hex"))
 } catch (_: IllegalArgumentException) {
     val named = TOOLTIP_NAMED_COLORS[hex.trim().lowercase()]

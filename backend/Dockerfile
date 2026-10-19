@@ -51,6 +51,7 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends python3
     && /opt/osm2gtfs/bin/pip install --no-cache-dir \
        "git+https://github.com/gilleshz/osm2gtfs.git@f90d78eb4a03d91afaa43d8b722cc101d4abf8c8" \
        "mapbox_vector_tile==2.2.0" \
+       "gtfs-realtime-bindings==2.2.0" \
     && apt-get purge -y git && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 

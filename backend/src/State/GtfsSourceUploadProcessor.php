@@ -36,13 +36,14 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
 
         $uploadedFile = $request->files->get('file');
         $name = $request->request->get('name');
+        $realtimeUrl = $this->readRealtimeUrl($request->request->get('realtimeUrl'));
 
         if ($uploadedFile instanceof UploadedFile) {
             if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
                 throw new FunctionalException(message: 'File upload failed.', errorKey: 'gtfs_source.upload_failed');
             }
             $sourceName = is_string($name) && $name !== '' ? $name : 'GTFS feed';
-            $source = $this->gtfsService->createFromUpload($uploadedFile, $sourceName);
+            $source = $this->gtfsService->createFromUpload($uploadedFile, $sourceName, $realtimeUrl);
         } else {
             $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($body)) {
@@ -56,11 +57,30 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
             if (!is_string($sourceName)) {
                 $sourceName = 'GTFS feed';
             }
-            $source = $this->gtfsService->createFromUrl($url, $sourceName);
+            $source = $this->gtfsService->createFromUrl($url, $sourceName, $this->readRealtimeUrl($body['realtimeUrl'] ?? null));
         }
 
         $routes = $this->gtfsService->extractRoutes($source);
 
         return GtfsSourceResource::fromSource($source, $routes);
+    }
+
+    private function readRealtimeUrl(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+        if (mb_strlen($trimmed) > 1000) {
+            throw new FunctionalException(
+                message: 'The realtime feed URL is too long.',
+                errorKey: 'gtfs_source.realtime_url_too_long',
+            );
+        }
+
+        return $trimmed;
     }
 }

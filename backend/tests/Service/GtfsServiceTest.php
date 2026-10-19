@@ -7,11 +7,13 @@ namespace App\Tests\Service;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsService;
+use App\Service\OutboundUrlGuard;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 final class GtfsServiceTest extends TestCase
@@ -27,6 +29,7 @@ final class GtfsServiceTest extends TestCase
             $this->storageDir,
             new MockHttpClient(),
             new NullLogger(),
+            new OutboundUrlGuard(),
         );
     }
 
@@ -133,6 +136,7 @@ final class GtfsServiceTest extends TestCase
             $this->storageDir,
             $client,
             new NullLogger(),
+            new OutboundUrlGuard(),
         );
 
         try {
@@ -186,7 +190,7 @@ final class GtfsServiceTest extends TestCase
             throw new class extends \RuntimeException implements TransportExceptionInterface {
             };
         });
-        $service = new GtfsService($this->createStub(GtfsSourceRepository::class), $this->storageDir, $client, new NullLogger());
+        $service = new GtfsService($this->createStub(GtfsSourceRepository::class), $this->storageDir, $client, new NullLogger(), new OutboundUrlGuard());
 
         try {
             $service->createFromUrl('https://8.8.8.8/gtfs.zip', 'Feed');
@@ -197,6 +201,46 @@ final class GtfsServiceTest extends TestCase
 
         self::assertIsArray($captured);
         self::assertSame(['8.8.8.8' => '8.8.8.8'], $captured['resolve']);
+    }
+
+    #[Test]
+    public function itStoresAnOptionalRealtimeUrl(): void
+    {
+        $source = $this->service->createFromUpload(
+            new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
+            'Feed',
+            'https://example.com/rt',
+        );
+
+        self::assertSame('https://example.com/rt', $source->getRealtimeUrl());
+        self::assertSame(1, $source->getRouteCount());
+    }
+
+    #[Test]
+    public function itRejectsAnInsecureRealtimeUrl(): void
+    {
+        try {
+            $this->service->createFromUpload(
+                new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
+                'Feed',
+                'http://example.com/rt',
+            );
+            self::fail('Expected the insecure realtime URL to be rejected.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.https_only', $e->getErrorKey());
+        }
+    }
+
+    private function validZip(): string
+    {
+        return $this->writeZip([
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nSH1,46.5,6.6,1",
+            'stops.txt' => "stop_id,stop_name\nS1,Stop",
+            'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",
+        ]);
     }
 
     /** @param array<string, string> $files */

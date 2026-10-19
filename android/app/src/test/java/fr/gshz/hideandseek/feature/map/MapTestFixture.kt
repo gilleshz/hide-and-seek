@@ -95,6 +95,8 @@ class MapTestFixture(
 
     fun createSeekerMarkersViewModel() = SeekerMarkersViewModel(seekerMarkerRepository, sessionEvents)
 
+    fun createTimetableViewModel() = TimetableViewModel(gameRepository, sessionEvents)
+
     fun createQuestionViewModel() = QuestionViewModel(
         questionSources, locationRepository, sessionEvents, possibleAreaRefreshFlow,
     )

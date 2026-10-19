@@ -34,6 +34,7 @@ final class Group
     public const string TRANSIT_LINE_DISCOVERY_WRITE = 'transit-line-discovery:write';
     public const string TRANSIT_LINE_PREVIEW_READ = 'transit-line-preview:read';
     public const string TRANSIT_LINE_PREVIEW_WRITE = 'transit-line-preview:write';
+    public const string TRANSIT_DEPARTURES_READ = 'transit-departures:read';
     public const string BOUNDARY_PREVIEW_WRITE = 'boundary-preview:write';
     public const string BOUNDARY_PREVIEW_READ = 'boundary-preview:read';
     public const string LEAVE_READ = 'leave:read';

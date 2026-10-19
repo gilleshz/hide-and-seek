@@ -110,6 +110,22 @@
     <string name="map_style_atlas">Atlas</string>    <string name="map_style_ign_plan">IGN Plan</string>
     <string name="map_style_ign_satellite">IGN Satellite</string>
 
+    <string name="timetable_action">Next departures</string>
+    <string name="timetable_title">Departures</string>
+    <string name="timetable_subtitle">Next departures</string>
+    <string name="timetable_error">Could not refresh the departures. Check your connection.</string>
+    <string name="timetable_unavailable">Timetable not available for this station.</string>
+    <string name="timetable_retry">Retry</string>
+    <string name="timetable_empty">No upcoming departures.</string>
+    <string name="timetable_live">Live</string>
+    <string name="timetable_full_day">Full day</string>
+    <string name="timetable_now">Now</string>
+    <string name="timetable_in_minutes">in <xliff:g>%1$d</xliff:g> min</string>
+    <string name="timetable_due">due</string>
+    <string name="timetable_delay_late">late <xliff:g>%1$d</xliff:g> min</string>
+    <string name="timetable_delay_early">early <xliff:g>%1$d</xliff:g> min</string>
+    <string name="timetable_direction">Direction <xliff:g>%1$d</xliff:g></string>
+
     <string name="round_banner_not_started">Not started</string>
     <string name="round_banner_hiding">Hiding: <xliff:g>%1$s</xliff:g> left</string>
     <string name="round_banner_seeking">Seeking: <xliff:g>%1$s</xliff:g></string>
@@ -522,6 +538,8 @@
     <string name="gtfs_upload_url">Upload</string>
     <string name="gtfs_url_hint">https://example.com/gtfs.zip</string>
     <string name="gtfs_name_label">Feed name</string>
+    <string name="gtfs_realtime_url_label">Real-time departures URL (optional)</string>
+    <string name="gtfs_realtime_url_hint">GTFS-RT trip updates feed URL</string>
     <string name="osm_discovery_button">Discover transit lines</string>
     <string name="discovering_transit_label">Discovering transit lines...</string>
     <string name="transit_discovery_network_error">Discovery failed: check your connection and try again.</string>
@@ -591,6 +609,7 @@
     <string name="unknown_display_name">Unknown</string>
     <string name="unknown_label">Unknown</string>
     <string name="gtfs_url_required">URL is required</string>
+    <string name="gtfs_realtime_url_invalid">The real-time URL must start with https://</string>
     <string name="gtfs_network_error">Network error: <xliff:g>%1$s</xliff:g></string>
     <string name="gtfs_feed_default_name">GTFS feed</string>
 

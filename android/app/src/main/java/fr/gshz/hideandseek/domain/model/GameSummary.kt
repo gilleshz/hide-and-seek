@@ -16,5 +16,6 @@ data class GameSummary(
     val joinCode: String? = null,
     val defaultHidingPeriodMinutes: Int? = null,
     val selectedTransitLines: List<TransitLine> = emptyList(),
+    val hasGtfsLines: Boolean = false,
     val rulesVariant: RulesVariant = RulesVariant.Official,
 )

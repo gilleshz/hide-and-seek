@@ -162,6 +162,7 @@ class MapSessionViewModel @Inject constructor(
             mapStyleAvailable = info.mapStyleAvailable,
             selectedMapStyle = style,
             selectedTransitLines = info.selectedTransitLines,
+            hasGtfsLines = info.hasGtfsLines,
             roster = players.roster,
             selfPlayerUuid = players.selfUuid,
             locations = players.locations,
@@ -213,6 +214,7 @@ class MapSessionViewModel @Inject constructor(
                         boundary = game.toMapBounds(),
                         boundaryGeoJson = game.boundaryGeoJson,
                         selectedTransitLines = game.selectedTransitLines,
+                        hasGtfsLines = game.hasGtfsLines,
                     )
                 }
                 loadTransitOverlay(game.uuid, game.transitTilesPath)?.let { overlay ->
@@ -427,6 +429,7 @@ class MapSessionViewModel @Inject constructor(
         val maptilerApiKey: String? = null,
         val mapStyleAvailable: Boolean = false,
         val selectedTransitLines: List<TransitLine> = emptyList(),
+        val hasGtfsLines: Boolean = false,
     )
 
     private data class RoundInteraction(
@@ -462,6 +465,7 @@ data class MapSessionUiState(
     val mapStyleAvailable: Boolean = false,
     val selectedMapStyle: MapStyle = MapStyle.Standard,
     val selectedTransitLines: List<TransitLine> = emptyList(),
+    val hasGtfsLines: Boolean = false,
     val roster: Map<String, String> = emptyMap(),
     val selfPlayerUuid: String? = null,
     val locations: Map<String, LocationUpdate> = emptyMap(),

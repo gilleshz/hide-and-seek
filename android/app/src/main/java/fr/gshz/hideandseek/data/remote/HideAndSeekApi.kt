@@ -38,6 +38,7 @@ import fr.gshz.hideandseek.data.remote.dto.RevealQuestionRequest
 import fr.gshz.hideandseek.data.remote.dto.RoundDto
 import fr.gshz.hideandseek.data.remote.dto.RoundStartRequest
 import fr.gshz.hideandseek.data.remote.dto.RoundStopRequest
+import fr.gshz.hideandseek.data.remote.dto.StationDeparturesDto
 import fr.gshz.hideandseek.data.remote.dto.SubscriberTokenDto
 import fr.gshz.hideandseek.data.remote.dto.AddSeekerCandidateMarkerRequest
 import fr.gshz.hideandseek.data.remote.dto.SeekerCandidateMarkerDto
@@ -83,6 +84,13 @@ interface HideAndSeekApi {
     // Raw GeoJSON payload, not a typed DTO; the server marks it immutable and caches it.
     @GET
     suspend fun getTransitOverlay(@Url url: String): Response<ResponseBody>
+
+    @GET
+    suspend fun getStationDepartures(
+        @Url url: String,
+        @Query("stationId") stationId: String,
+        @Query("fullDay") fullDay: Boolean = false,
+    ): StationDeparturesDto
 
     @POST
     suspend fun joinGame(@Url url: String, @Body body: JoinRequest): JoinDto
@@ -321,6 +329,7 @@ interface HideAndSeekApi {
         @Url url: String,
         @Part file: MultipartBody.Part,
         @Part("name") name: RequestBody,
+        @Part("realtimeUrl") realtimeUrl: RequestBody? = null,
     ): GtfsSourceDto
 
     @POST

@@ -11,6 +11,7 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
+import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.domain.repository.GameBoundary
@@ -19,6 +20,10 @@ import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
 import kotlinx.coroutines.CompletableDeferred
 
 class FakeGameRepository : GameRepository {
+    data class GtfsUploadCall(val source: String, val name: String, val realtimeUrl: String?)
+
+    val gtfsUploadCalls = mutableListOf<GtfsUploadCall>()
+
     var createGameResult: Result<GameSummary> =
         Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-1", joinCode = "ABCDEF"))
     var getGameResult: Result<GameSummary> =
@@ -92,14 +97,41 @@ class FakeGameRepository : GameRepository {
         return transitLinePreviewResult.getOrThrow()
     }
 
-    override suspend fun uploadGtfsFromUrl(url: String, name: String): GtfsSourceState =
-        uploadGtfsFromUrlResult.getOrThrow()
+    override suspend fun uploadGtfsFromUrl(
+        url: String,
+        name: String,
+        realtimeUrl: String?,
+    ): GtfsSourceState {
+        gtfsUploadCalls += GtfsUploadCall(url, name, realtimeUrl)
+        return uploadGtfsFromUrlResult.getOrThrow()
+    }
 
     override suspend fun uploadGtfsFromFile(
         fileBytes: ByteArray,
         fileName: String,
         name: String,
-    ): GtfsSourceState = uploadGtfsFromFileResult.getOrThrow()
+        realtimeUrl: String?,
+    ): GtfsSourceState {
+        gtfsUploadCalls += GtfsUploadCall(fileName, name, realtimeUrl)
+        return uploadGtfsFromFileResult.getOrThrow()
+    }
+
+    var getStationDeparturesResult: Result<TransitDepartures> =
+        Result.success(TransitDepartures("station-1", "ALGER", "Europe/Paris", 1_760_000_000L, emptyList()))
+    var getStationDeparturesGate: CompletableDeferred<Unit>? = null
+    val getStationDeparturesCalls = mutableListOf<Pair<String, String>>()
+    val getStationDeparturesFullDayCalls = mutableListOf<Boolean>()
+
+    override suspend fun getStationDepartures(
+        gameUuid: String,
+        stationId: String,
+        fullDay: Boolean,
+    ): TransitDepartures {
+        getStationDeparturesCalls += gameUuid to stationId
+        getStationDeparturesFullDayCalls += fullDay
+        getStationDeparturesGate?.await()
+        return getStationDeparturesResult.getOrThrow()
+    }
 
     var getGameGate: CompletableDeferred<Unit>? = null
     var getGameCalls = 0

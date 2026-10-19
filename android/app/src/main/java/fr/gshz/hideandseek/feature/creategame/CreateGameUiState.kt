@@ -98,6 +98,7 @@ data class CreateGameUiState(
     val showGtfsDialog: Boolean = false,
     val gtfsDialogMode: GtfsDialogMode = GtfsDialogMode.Url,
     val gtfsUrlInput: String = "",
+    val gtfsRealtimeUrlInput: String = "",
     val gtfsUploading: Boolean = false,
     val gtfsError: UiText? = null,
 ) {

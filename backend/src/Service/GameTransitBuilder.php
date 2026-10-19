@@ -69,7 +69,11 @@ final readonly class GameTransitBuilder
                 continue;
             }
             if (!isset($gtfsSourceSpecs[$sourceUuid])) {
-                $gtfsSourceSpecs[$sourceUuid] = ['path' => $source->getFilePath(), 'selectedRefs' => []];
+                $gtfsSourceSpecs[$sourceUuid] = [
+                    'path' => $source->getFilePath(),
+                    'uuid' => $sourceUuid,
+                    'selectedRefs' => [],
+                ];
             }
             $gtfsSourceSpecs[$sourceUuid]['selectedRefs'][] = $ref;
         }

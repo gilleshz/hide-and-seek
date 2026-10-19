@@ -111,6 +111,7 @@ internal data class StationTooltipData(
     val lng: Double,
     val screenX: Float,
     val screenY: Float,
+    val stationId: String? = null,
 )
 
 private class TooltipHost(
@@ -118,6 +119,8 @@ private class TooltipHost(
     val onTapped: (StationTooltipData) -> Unit,
     val onDismiss: () -> Unit,
     val onLineTapped: (String) -> Unit,
+    val canShowTimetable: Boolean = false,
+    val onTimetableTapped: (StationTooltipData) -> Unit = {},
 )
 
 internal data class SeekerActionData(
@@ -156,7 +159,7 @@ internal data class DrawingOverlayState(
     val onSelectConstraint: (String?) -> Unit = {},
 )
 
-/** The six concern ViewModels the map screen combines, one group so the composable stays short. */
+/** The seven concern ViewModels the map screen combines, one group so the composable stays short. */
 data class MapViewModels(
     val session: MapSessionViewModel,
     val zone: ZoneViewModel,
@@ -164,6 +167,7 @@ data class MapViewModels(
     val timeTrap: TimeTrapViewModel,
     val seekerMarkers: SeekerMarkersViewModel,
     val question: QuestionViewModel,
+    val timetable: TimetableViewModel,
 )
 
 @Composable
@@ -174,8 +178,10 @@ private fun mapViewModels(): MapViewModels = MapViewModels(
     timeTrap = hiltViewModel(),
     seekerMarkers = hiltViewModel(),
     question = hiltViewModel(),
+    timetable = hiltViewModel(),
 )
 
+@Suppress("LongMethod")
 @Composable
 fun MapScreen(
     onOpenChatClick: (gameUuid: String) -> Unit,
@@ -188,8 +194,10 @@ fun MapScreen(
     val timeTrapViewModel = viewModels.timeTrap
     val seekerMarkersViewModel = viewModels.seekerMarkers
     val questionViewModel = viewModels.question
+    val timetableViewModel = viewModels.timetable
     val uiState = assembleScreenState(viewModels)
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    val timetableState by timetableViewModel.uiState.collectAsStateWithLifecycle()
     val currentGameUuid by rememberUpdatedState(uiState.gameUuid)
     LaunchedEffect(Unit) {
         sessionViewModel.navigateToLobby.collect { onNavigateToLobby() }
@@ -224,6 +232,13 @@ fun MapScreen(
             drawingViewModel.addSearchAreaConstraint(lat, lng, radius)
         },
         onTransitLineTapped = sessionViewModel::toggleTransitFocus,
+        timetableState = timetableState,
+        onTimetableTapped = { station ->
+            station.stationId?.let { stationId -> timetableViewModel.open(stationId, station.label) }
+        },
+        onTimetableRetry = timetableViewModel::retry,
+        onTimetableClose = timetableViewModel::close,
+        onTimetableToggleFullDay = timetableViewModel::toggleFullDay,
     )
 }
 
@@ -444,6 +459,11 @@ internal fun MapContent(
     onUnmarkStation: (String) -> Unit = {},
     onConstrainSearchArea: (Double, Double, Double) -> Unit = { _, _, _ -> },
     onTransitLineTapped: (String) -> Unit = {},
+    timetableState: TimetableUiState = TimetableUiState(),
+    onTimetableTapped: (StationTooltipData) -> Unit = {},
+    onTimetableRetry: () -> Unit = {},
+    onTimetableClose: () -> Unit = {},
+    onTimetableToggleFullDay: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val recenterCounter = remember { mutableStateOf(0) }
@@ -472,19 +492,23 @@ internal fun MapContent(
                 }
             }
         },
-        floatingActionButton = { MapFabColumn(
-            uiState = uiState,
-            actions = actions,
-            navigation = navigation,
-            onEndRoundClick = { frozenHidingSeconds.value = uiState.roundTimerSeconds ?: 0L },
-            onEnterDrawing = drawingActions.onEnterDrawing,
-            fabActions = MapFabActions(
-                onRecenter = { recenterCounter.value++ },
-                onEnterSimulation = onEnterSimulation,
-                onStyleSelected = onStyleSelected,
-                onEnterTimeTrapPlacement = trapActions.onEnterPlacement,
-            ),
-        ) },
+        floatingActionButton = {
+            if (!timetableState.isVisible) {
+                MapFabColumn(
+                    uiState = uiState,
+                    actions = actions,
+                    navigation = navigation,
+                    onEndRoundClick = { frozenHidingSeconds.value = uiState.roundTimerSeconds ?: 0L },
+                    onEnterDrawing = drawingActions.onEnterDrawing,
+                    fabActions = MapFabActions(
+                        onRecenter = { recenterCounter.value++ },
+                        onEnterSimulation = onEnterSimulation,
+                        onStyleSelected = onStyleSelected,
+                        onEnterTimeTrapPlacement = trapActions.onEnterPlacement,
+                    ),
+                )
+            }
+        },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             MapContentLayout(
@@ -498,6 +522,11 @@ internal fun MapContent(
                 styleSource = uiState.currentStyleSource,
                 navigation = navigation,
                 onTransitLineTapped = onTransitLineTapped,
+                timetableState = timetableState,
+                onTimetableTapped = onTimetableTapped,
+                onTimetableRetry = onTimetableRetry,
+                onTimetableClose = onTimetableClose,
+                onTimetableToggleFullDay = onTimetableToggleFullDay,
                 seekerOverlay = SeekerMarkerOverlay(
                     markers = uiState.seekerMarkers,
                     radiusMeters = uiState.currentZoneRadiusMeters,
@@ -550,6 +579,11 @@ private fun BoxScope.MapContentLayout(
     navigation: MapNavigation,
     seekerOverlay: SeekerMarkerOverlay = SeekerMarkerOverlay(),
     onTransitLineTapped: (String) -> Unit = {},
+    timetableState: TimetableUiState = TimetableUiState(),
+    onTimetableTapped: (StationTooltipData) -> Unit = {},
+    onTimetableRetry: () -> Unit = {},
+    onTimetableClose: () -> Unit = {},
+    onTimetableToggleFullDay: () -> Unit = {},
 ) {
     val isPreviewMode = uiState.simulation?.mode == QuestionSheetMode.Preview
     MapLibreMapView(
@@ -569,6 +603,8 @@ private fun BoxScope.MapContentLayout(
         seekerOverlay = seekerOverlay,
         drawingOverlay = drawingOverlayState(uiState, drawingActions),
         trapPins = trapPins(uiState),
+        canShowTimetable = uiState.hasGtfsLines,
+        onTimetableTapped = onTimetableTapped,
         modifier = Modifier.fillMaxSize(),
     )
     MapOverlays(
@@ -577,6 +613,10 @@ private fun BoxScope.MapContentLayout(
         onEnterSimulation = onEnterSimulation,
         navigation = navigation,
         onTransitLineTapped = onTransitLineTapped,
+        timetableState = timetableState,
+        onTimetableRetry = onTimetableRetry,
+        onTimetableClose = onTimetableClose,
+        onTimetableToggleFullDay = onTimetableToggleFullDay,
     )
 }
 
@@ -659,14 +699,18 @@ private fun drawingOverlayState(uiState: MapUiState, drawingActions: DrawingActi
 
 private const val PENDING_CHIP_ALPHA = 0.88f
 
+@Suppress("LongMethod", "LongParameterList")
 @Composable
-@Suppress("LongMethod")
 private fun BoxScope.MapOverlays(
     uiState: MapUiState,
     overlayActions: MapOverlayActions,
     onEnterSimulation: (QuestionCategory) -> Unit = {},
     navigation: MapNavigation = MapNavigation(onOpenChatClick = {}),
     onTransitLineTapped: (String) -> Unit = {},
+    timetableState: TimetableUiState = TimetableUiState(),
+    onTimetableRetry: () -> Unit = {},
+    onTimetableClose: () -> Unit = {},
+    onTimetableToggleFullDay: () -> Unit = {},
 ) {
     val actions = overlayActions.zone
     val simActions = overlayActions.sim
@@ -754,6 +798,15 @@ private fun BoxScope.MapOverlays(
             actions = simActions,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             askedQuestions = uiState.askedQuestions,
+        )
+    }
+    if (timetableState.isVisible) {
+        TimetableSheet(
+            state = timetableState,
+            onRetry = onTimetableRetry,
+            onClose = onTimetableClose,
+            onToggleFullDay = onTimetableToggleFullDay,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )
     }
 }
@@ -1169,6 +1222,8 @@ private fun MapLibreMapView(
     seekerOverlay: SeekerMarkerOverlay = SeekerMarkerOverlay(),
     drawingOverlay: DrawingOverlayState = DrawingOverlayState(),
     trapPins: List<TrapPin> = emptyList(),
+    canShowTimetable: Boolean = false,
+    onTimetableTapped: (StationTooltipData) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1207,17 +1262,24 @@ private fun MapLibreMapView(
                     onTransitLineTapped(ref)
                     stationTooltip.value = null
                 },
+                canShowTimetable = canShowTimetable,
+                onTimetableTapped = { station ->
+                    stationTooltip.value = null
+                    onTimetableTapped(station)
+                },
             ),
             seekerHost = seekerOverlay,
             seekerAction = seekerAction,
             drawingOverlay = drawingOverlay,
             styleSource = styleSource,
+            canShowTimetable = canShowTimetable,
+            onTimetableTapped = onTimetableTapped,
         )
     }
 
     LaunchedEffect(stationTooltip.value) {
         if (stationTooltip.value != null) {
-            delay(4000)
+            delay(if (canShowTimetable) TIMETABLE_TOOLTIP_DISMISS_MS else TOOLTIP_DISMISS_MS)
             stationTooltip.value = null
         }
     }
@@ -1475,6 +1537,8 @@ private fun MapWithTooltipOverlay(
     seekerAction: MutableState<SeekerActionData?>,
     drawingOverlay: DrawingOverlayState = DrawingOverlayState(),
     styleSource: StyleSource = StyleSource.Uri(MapConstants.STYLE_URL),
+    canShowTimetable: Boolean = false,
+    onTimetableTapped: (StationTooltipData) -> Unit = {},
 ) {
     // Listeners register once; callbacks are read live so entering simulation enables pin taps.
     val currentTap by rememberUpdatedState(tapCallbacks)
@@ -1532,6 +1596,8 @@ private fun MapWithTooltipOverlay(
             lines = td.lines,
             screenX = td.screenX,
             screenY = td.screenY,
+            showTimetableAction = td.stationId != null && tooltip.canShowTimetable,
+            onTimetableTap = { tooltip.onTimetableTapped(td) },
             onLineTap = tooltip.onLineTapped,
             onDismiss = tooltip.onDismiss,
         )
@@ -1782,6 +1848,8 @@ private fun SeekerActionTracker(
 
 private const val STATION_HIT_RADIUS_PX = 24f
 private const val CANDIDATE_HIT_RADIUS_PX = 24f
+private const val TOOLTIP_DISMISS_MS = 4_000L
+private const val TIMETABLE_TOOLTIP_DISMISS_MS = 8_000L
 
 private fun parseCandidatePoiTapAtPoint(map: MapLibreMap, point: android.graphics.PointF): String? {
     val hitRect = android.graphics.RectF(
@@ -1824,7 +1892,15 @@ private fun parseStationTapAtPoint(map: MapLibreMap, point: android.graphics.Poi
     val label = props?.get("stationLabel")?.asString?.takeIf { it.isNotEmpty() }
     return label?.let {
         val lines = parseLineRefs(props?.getAsJsonArray("lines"))
-        StationTooltipData(it, lines, center.latitude, center.longitude, point.x, point.y)
+        StationTooltipData(
+            label = it,
+            lines = lines,
+            lat = center.latitude,
+            lng = center.longitude,
+            screenX = point.x,
+            screenY = point.y,
+            stationId = props?.get("stationId")?.asString?.takeIf { id -> id.isNotEmpty() },
+        )
     }
 }
 

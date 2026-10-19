@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Service\TransitTilePipeline;
+use App\Service\TransitTimetableBuilder;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Component\Filesystem\Filesystem;
 
 final class TransitTilePipelineTest extends TestCase
 {
-    /** @param list<array{path: string, selectedRefs: list<string>}> $gtfsSources */
+    /** @param list<array{path: string, uuid?: string, selectedRefs: list<string>}> $gtfsSources */
     private function scriptFor(array $gtfsSources, string $routesCsv = 'A'): string
     {
-        $pipeline = new TransitTilePipeline('http://overpass.test/api/interpreter', '/app/var/tiles');
+        $pipeline = new TransitTilePipeline(
+            'http://overpass.test/api/interpreter',
+            '/app/var/tiles',
+            new TransitTimetableBuilder('/app/var/tiles', new NullLogger(), new Filesystem()),
+        );
         $method = new \ReflectionMethod($pipeline, 'pipelineScript');
         $script = $method->invoke(
             $pipeline,

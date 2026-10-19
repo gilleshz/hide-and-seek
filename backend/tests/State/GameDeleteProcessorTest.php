@@ -34,11 +34,13 @@ use App\Service\IdentityResolver;
 use App\Service\LeaveService;
 use App\Service\MercureJwtService;
 use App\Service\NominatimService;
+use App\Service\OutboundUrlGuard;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
 use App\Service\TransitStationImporter;
 use App\Service\TransitTilePipeline;
 use App\Service\TransitTileService;
+use App\Service\TransitTimetableBuilder;
 use App\State\GameDeleteProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Support\AccountFactory;
@@ -47,6 +49,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpFoundation\Request;
@@ -179,6 +182,7 @@ final class GameDeleteProcessorTest extends TestCase
                 '/tmp/gtfs',
                 new MockHttpClient(),
                 $this->createStub(LoggerInterface::class),
+                new OutboundUrlGuard(),
             ),
             $entityManager,
             new Filesystem(),
@@ -199,7 +203,11 @@ final class GameDeleteProcessorTest extends TestCase
                 $this->createStub(GameTransitLineRepository::class),
                 $this->createStub(GameGtfsLineRepository::class),
                 $this->createStub(GtfsSourceRepository::class),
-                new TransitTilePipeline('http://mirror/api', '/tmp/tiles'),
+                new TransitTilePipeline(
+                    'http://mirror/api',
+                    '/tmp/tiles',
+                    new TransitTimetableBuilder('/tmp/tiles', new NullLogger(), new Filesystem()),
+                ),
                 new TransitStationImporter(
                     new TransitTileService('/tmp/tiles'),
                     $this->createStub(GameTransitStationRepository::class),

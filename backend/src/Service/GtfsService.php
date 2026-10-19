@@ -30,30 +30,17 @@ final readonly class GtfsService
     private const int MAX_TOTAL_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024;
     private const int MAX_COMPRESSION_RATIO = 100;
 
-    // RFC 1918, link-local, CGNAT and reserved ranges; checked against the ip2long bits, not a prefix string.
-    private const array BLOCKED_CIDRS = [
-        '0.0.0.0/8',
-        '10.0.0.0/8',
-        '100.64.0.0/10',
-        '127.0.0.0/8',
-        '169.254.0.0/16',
-        '172.16.0.0/12',
-        '192.168.0.0/16',
-        '198.18.0.0/15',
-        '224.0.0.0/4',
-        '240.0.0.0/4',
-    ];
-
     public function __construct(
         private GtfsSourceRepository $sources,
         #[Autowire('%app.gtfs_storage_dir%')]
         private string $gtfsStorageDir,
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
+        private OutboundUrlGuard $urlGuard,
     ) {
     }
 
-    public function createFromUpload(UploadedFile $file, string $name): GtfsSource
+    public function createFromUpload(UploadedFile $file, string $name, ?string $realtimeUrl = null): GtfsSource
     {
         $uuid = Uuid::v4()->toRfc4122();
         $destPath = $this->ensureStorageDir() . '/' . $uuid . '.zip';
@@ -70,14 +57,15 @@ final readonly class GtfsService
 
         $source = new GtfsSource($name, $destPath, $uuid);
         $source->setRouteCount($routeCount);
+        $this->applyRealtimeUrl($source, $realtimeUrl);
         $this->sources->save($source);
 
         return $source;
     }
 
-    public function createFromUrl(string $url, string $name): GtfsSource
+    public function createFromUrl(string $url, string $name, ?string $realtimeUrl = null): GtfsSource
     {
-        $pinned = $this->assertUrlAllowed($url);
+        $pinned = $this->urlGuard->resolve($url);
 
         $uuid = Uuid::v4()->toRfc4122();
         $destPath = $this->ensureStorageDir() . '/' . $uuid . '.zip';
@@ -143,9 +131,20 @@ final readonly class GtfsService
         $source = new GtfsSource($name, $destPath, $uuid);
         $source->setSourceUrl($url);
         $source->setRouteCount($routeCount);
+        $this->applyRealtimeUrl($source, $realtimeUrl);
         $this->sources->save($source);
 
         return $source;
+    }
+
+    private function applyRealtimeUrl(GtfsSource $source, ?string $realtimeUrl): void
+    {
+        $trimmed = $realtimeUrl !== null ? trim($realtimeUrl) : '';
+        if ($trimmed === '') {
+            return;
+        }
+        $this->urlGuard->assertShape($trimmed);
+        $source->setRealtimeUrl($trimmed);
     }
 
     /** @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string}> */
@@ -351,64 +350,6 @@ final readonly class GtfsService
         }
 
         return $routes;
-    }
-
-    /**
-     * @return array{host: string, ip: string}
-     */
-    private function assertUrlAllowed(string $url): array
-    {
-        $scheme = parse_url($url, PHP_URL_SCHEME);
-        if (!is_string($scheme) || $scheme === '') {
-            throw new FunctionalException(message: 'Invalid URL: missing scheme.', errorKey: 'gtfs.invalid_url_scheme');
-        }
-        $scheme = strtolower($scheme);
-        if ($scheme !== 'https') {
-            throw new FunctionalException(message: 'Only HTTPS URLs are accepted for GTFS downloads.', errorKey: 'gtfs.https_only');
-        }
-
-        $host = parse_url($url, PHP_URL_HOST);
-        if (!is_string($host) || $host === '') {
-            throw new FunctionalException(message: 'Invalid URL: missing host.', errorKey: 'gtfs.invalid_url_host');
-        }
-
-        if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) {
-            throw new FunctionalException(message: 'IPv6 GTFS hosts are not supported.', errorKey: 'gtfs.ipv6_not_supported');
-        }
-
-        if (str_contains($host, ':')) {
-            $host = '[' . trim($host, '[]') . ']';
-        }
-
-        $resolvedIp = gethostbyname($host);
-        if ($resolvedIp === $host && !filter_var($host, FILTER_VALIDATE_IP)) {
-            throw new FunctionalException(message: 'Could not resolve host for GTFS download.', errorKey: 'gtfs.host_resolution_failed');
-        }
-
-        if ($this->isBlockedIp($resolvedIp)) {
-            throw new FunctionalException(message: 'Downloads from private or reserved IP ranges are not allowed.', errorKey: 'gtfs.private_ip_blocked');
-        }
-
-        return ['host' => $host, 'ip' => $resolvedIp];
-    }
-
-    private function isBlockedIp(string $ip): bool
-    {
-        $long = ip2long($ip);
-        if ($long === false) {
-            return true;
-        }
-
-        foreach (self::BLOCKED_CIDRS as $cidr) {
-            [$base, $prefixLength] = explode('/', $cidr);
-            $mask = (0xFFFFFFFF << 32 - (int) $prefixLength) & 0xFFFFFFFF;
-            $baseLong = ip2long($base);
-            if ($baseLong !== false && ($long & $mask) === ($baseLong & $mask)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     public function deleteFile(GtfsSource $source): void

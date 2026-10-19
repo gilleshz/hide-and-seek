@@ -29,11 +29,13 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
+import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.domain.repository.GameBoundary
 import fr.gshz.hideandseek.domain.repository.GameRepository
 import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
+import java.net.URLEncoder
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -98,10 +100,14 @@ class GameRepositoryImpl @Inject constructor(
         ),
     ).toDomain()
 
-    override suspend fun uploadGtfsFromUrl(url: String, name: String): GtfsSourceState {
+    override suspend fun uploadGtfsFromUrl(
+        url: String,
+        name: String,
+        realtimeUrl: String?,
+    ): GtfsSourceState {
         val dto = api.uploadGtfsFromUrl(
             url = urlFor("/api/gtfs-sources"),
-            body = GtfsSourceUrlRequest(url = url, name = name),
+            body = GtfsSourceUrlRequest(url = url, name = name, realtimeUrl = realtimeUrl),
         )
         return dto.toDomain()
     }
@@ -110,6 +116,7 @@ class GameRepositoryImpl @Inject constructor(
         fileBytes: ByteArray,
         fileName: String,
         name: String,
+        realtimeUrl: String?,
     ): GtfsSourceState {
         val requestBody = fileBytes.toRequestBody("application/zip".toMediaType())
         val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
@@ -118,6 +125,7 @@ class GameRepositoryImpl @Inject constructor(
             url = urlFor("/api/gtfs-sources"),
             file = part,
             name = nameBody,
+            realtimeUrl = realtimeUrl?.toRequestBody("text/plain".toMediaType()),
         )
         return dto.toDomain()
     }
@@ -169,6 +177,19 @@ class GameRepositoryImpl @Inject constructor(
 
     override suspend fun getGame(gameUuid: String): GameSummary =
         api.getGame(url = urlFor("/api/games/$gameUuid")).toDomain()
+
+    override suspend fun getStationDepartures(
+        gameUuid: String,
+        stationId: String,
+        fullDay: Boolean,
+    ): TransitDepartures {
+        val encodedStationId = URLEncoder.encode(stationId, "UTF-8")
+        return api.getStationDepartures(
+            url = urlFor("/api/games/$gameUuid/transit-stations/$encodedStationId/departures"),
+            stationId = stationId,
+            fullDay = fullDay,
+        ).toDomain()
+    }
 
     override suspend fun getTransitOverlay(gameUuid: String): String? {
         val response = api.getTransitOverlay(urlFor("/api/games/$gameUuid/transit-overlay.geojson"))
