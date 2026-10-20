@@ -32,8 +32,9 @@ final class GameInput
     public array $areas = [];
 
     // Refs travel as quoted argv, so printable chars are safe; only control chars and over-length are refused.
+    // Paris metro + RER expands to 107 branch relations; one bounded build must cover it.
     /** @var list<array<string, mixed>> */
-    #[Assert\Count(max: 100)]
+    #[Assert\Count(max: 250)]
     #[Assert\All([
         new Assert\Collection(
             fields: [

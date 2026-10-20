@@ -47,6 +47,8 @@ import fr.gshz.hideandseek.data.remote.dto.TeamDto
 import fr.gshz.hideandseek.data.remote.dto.TeamRequest
 import fr.gshz.hideandseek.data.remote.dto.TimeTrapDto
 import fr.gshz.hideandseek.data.remote.dto.TimeTrapResolutionRequest
+import fr.gshz.hideandseek.data.remote.dto.GtfsRealtimeProbeDto
+import fr.gshz.hideandseek.data.remote.dto.GtfsRealtimeProbeRequest
 import fr.gshz.hideandseek.data.remote.dto.GtfsSourceDto
 import fr.gshz.hideandseek.data.remote.dto.GtfsSourceUrlRequest
 import fr.gshz.hideandseek.data.remote.dto.TransitLineDiscoveryRequest
@@ -329,4 +331,10 @@ interface HideAndSeekApi {
         @Url url: String,
         @Body body: GtfsSourceUrlRequest,
     ): GtfsSourceDto
+
+    @POST
+    suspend fun probeGtfsRealtime(
+        @Url url: String,
+        @Body body: GtfsRealtimeProbeRequest,
+    ): GtfsRealtimeProbeDto
 }

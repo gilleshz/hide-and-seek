@@ -11,6 +11,7 @@ import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
 import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.GtfsRoute
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.TransitLine
 
@@ -47,6 +48,7 @@ interface GameRepository {
     suspend fun boundaryPreview(areas: List<AreaInfo>): String
     suspend fun transitLinePreview(osmIds: Set<String>): String
     suspend fun uploadGtfsFromUrl(url: String, name: String, realtimeUrl: String? = null): GtfsSourceState
+    suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe
     suspend fun uploadGtfsFromFile(
         fileBytes: ByteArray,
         fileName: String,

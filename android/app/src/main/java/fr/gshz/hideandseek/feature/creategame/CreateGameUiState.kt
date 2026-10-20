@@ -11,6 +11,16 @@ import fr.gshz.hideandseek.domain.repository.AreaInfo
 
 enum class GtfsDialogMode { Url, File }
 
+sealed interface RealtimeProbeState {
+    data object Checking : RealtimeProbeState
+    data class Ok(val tripCount: Int, val ageSeconds: Int?) : RealtimeProbeState
+    data class Stale(val ageSeconds: Int) : RealtimeProbeState
+    data class WrongType(val feedType: String?) : RealtimeProbeState
+    data object Invalid : RealtimeProbeState
+    data object Unreachable : RealtimeProbeState
+    data object InvalidUrl : RealtimeProbeState
+}
+
 data class TransitLineGroup(
     val ref: String,
     val name: String,
@@ -73,6 +83,7 @@ data class CreateGameUiState(
     val error: ErrorType? = null,
     val errorKey: String? = null,
     val errorArgs: Map<String, String>? = null,
+    val errorDetail: String? = null,
     val createdGameUuid: String? = null,
     /** The connection has no player name to join as host with: the user must set it up on connect. */
     val needsConnect: Boolean = false,
@@ -100,6 +111,7 @@ data class CreateGameUiState(
     val gtfsDialogMode: GtfsDialogMode = GtfsDialogMode.Url,
     val gtfsUrlInput: String = "",
     val gtfsRealtimeUrlInput: String = "",
+    val realtimeProbe: RealtimeProbeState? = null,
     val gtfsUploading: Boolean = false,
     val gtfsError: UiText? = null,
 ) {

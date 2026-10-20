@@ -5,6 +5,7 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
@@ -387,6 +388,91 @@ class CreateGameViewModelTest {
         assertEquals("join.device_mismatch", viewModel.uiState.value.needConnectErrorKey)
         assertEquals("ABCDEF", viewModel.uiState.value.needConnectJoinCode)
         assertNull(viewModel.uiState.value.createdGameUuid)
+    }
+
+    @Test
+    fun `a validation response surfaces the server detail`() = runTest {
+        gameRepository.createGameResult = Result.failure(
+            httpException(
+                422,
+                """{"detail":"selectedTransitLines: This collection should contain 250 elements or less."}""",
+            ),
+        )
+        val viewModel = createViewModel()
+        viewModel.onNameChange("Paris")
+
+        viewModel.createGame()
+
+        assertEquals(ErrorType.Validation, viewModel.uiState.value.error)
+        assertEquals(
+            "selectedTransitLines: This collection should contain 250 elements or less.",
+            viewModel.uiState.value.errorDetail,
+        )
+        assertNull(viewModel.uiState.value.createdGameUuid)
+    }
+
+    @Test
+    fun `a pasted realtime url is checked after the debounce`() = runTest(dispatcher) {
+        gameRepository.probeGtfsRealtimeResult = Result.success(
+            GtfsRealtimeProbe("ok", "trip_update", 20, 42),
+        )
+        val viewModel = createViewModel()
+
+        viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
+        advanceUntilIdle()
+
+        assertEquals(
+            RealtimeProbeState.Ok(tripCount = 42, ageSeconds = 20),
+            viewModel.uiState.value.realtimeProbe,
+        )
+        assertEquals(listOf("https://example.com/feed"), gameRepository.probeGtfsRealtimeCalls)
+    }
+
+    @Test
+    fun `a vehicle feed is reported as the wrong type`() = runTest(dispatcher) {
+        gameRepository.probeGtfsRealtimeResult = Result.success(
+            GtfsRealtimeProbe("wrong_type", "vehicle", 30, 0),
+        )
+        val viewModel = createViewModel()
+
+        viewModel.onGtfsRealtimeUrlChange("https://example.com/vehicles")
+        advanceUntilIdle()
+
+        assertEquals(RealtimeProbeState.WrongType("vehicle"), viewModel.uiState.value.realtimeProbe)
+    }
+
+    @Test
+    fun `an unreachable feed is reported`() = runTest(dispatcher) {
+        gameRepository.probeGtfsRealtimeResult = Result.failure(IOException("offline"))
+        val viewModel = createViewModel()
+
+        viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
+        advanceUntilIdle()
+
+        assertEquals(RealtimeProbeState.Unreachable, viewModel.uiState.value.realtimeProbe)
+    }
+
+    @Test
+    fun `clearing the realtime url clears the probe`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
+        advanceUntilIdle()
+
+        viewModel.onGtfsRealtimeUrlChange("")
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.realtimeProbe)
+    }
+
+    @Test
+    fun `a non-https realtime url is rejected without a request`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.onGtfsRealtimeUrlChange("http://example.com/feed")
+        advanceUntilIdle()
+
+        assertEquals(RealtimeProbeState.InvalidUrl, viewModel.uiState.value.realtimeProbe)
+        assertTrue(gameRepository.probeGtfsRealtimeCalls.isEmpty())
     }
 
     @Test

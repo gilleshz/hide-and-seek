@@ -43,6 +43,8 @@ final class Group
     public const string CLIENT_CONFIG_READ = 'client-config:read';
     public const string GTFS_SOURCE_READ = 'gtfs-source:read';
     public const string GTFS_SOURCE_WRITE = 'gtfs-source:write';
+    public const string GTFS_REALTIME_PROBE_READ = 'gtfs-realtime-probe:read';
+    public const string GTFS_REALTIME_PROBE_WRITE = 'gtfs-realtime-probe:write';
     public const string SEEKER_CANDIDATE_READ = 'seeker-candidate:read';
     public const string SEEKER_CANDIDATE_WRITE = 'seeker-candidate:write';
     public const string POSSIBLE_AREA_CONSTRAINT_READ = 'possible-area-constraint:read';

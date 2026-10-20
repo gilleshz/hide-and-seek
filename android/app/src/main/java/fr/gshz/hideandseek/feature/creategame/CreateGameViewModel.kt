@@ -19,6 +19,7 @@ import fr.gshz.hideandseek.core.util.toErrorType
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
@@ -74,6 +75,7 @@ class CreateGameViewModel @Inject constructor(
     init {
         observeSelectedAreas()
         observeSelectedTransitLines()
+        observeRealtimeProbe()
     }
 
     /**
@@ -101,6 +103,47 @@ class CreateGameViewModel @Inject constructor(
         }
     }
 
+    private fun observeRealtimeProbe() {
+        viewModelScope.launch {
+            _uiState.map { it.gtfsRealtimeUrlInput }
+                .distinctUntilChanged()
+                .debounce(REALTIME_PROBE_DEBOUNCE_MS)
+                .collectLatest { raw -> checkRealtimeFeed(raw.trim()) }
+        }
+    }
+
+    private suspend fun checkRealtimeFeed(url: String) {
+        when {
+            url.isEmpty() -> _uiState.update { it.copy(realtimeProbe = null) }
+            !url.startsWith(REALTIME_URL_PREFIX) ->
+                _uiState.update { it.copy(realtimeProbe = RealtimeProbeState.InvalidUrl) }
+            else -> {
+                _uiState.update { it.copy(realtimeProbe = RealtimeProbeState.Checking) }
+                val probe = try {
+                    gameRepository.probeGtfsRealtime(url)
+                } catch (e: IOException) {
+                    Log.w(TAG, "GTFS-RT probe failed", e)
+                    null
+                } catch (e: HttpException) {
+                    Log.w(TAG, "GTFS-RT probe failed", e)
+                    null
+                }
+                _uiState.update {
+                    it.copy(realtimeProbe = probe?.toProbeState() ?: RealtimeProbeState.Unreachable)
+                }
+            }
+        }
+    }
+
+    private fun GtfsRealtimeProbe.toProbeState(): RealtimeProbeState = when (status) {
+        "ok" -> RealtimeProbeState.Ok(tripCount, headerAgeSeconds)
+        "stale" -> headerAgeSeconds?.let { RealtimeProbeState.Stale(it) } ?: RealtimeProbeState.Invalid
+        "wrong_type" -> RealtimeProbeState.WrongType(feedType)
+        "invalid_url" -> RealtimeProbeState.InvalidUrl
+        "invalid" -> RealtimeProbeState.Invalid
+        else -> RealtimeProbeState.Unreachable
+    }
+
     fun onNameChange(value: String) {
         _uiState.update { it.copy(name = value, error = null) }
     }
@@ -125,7 +168,9 @@ class CreateGameViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorKey = null, errorArgs = null) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, errorKey = null, errorArgs = null, errorDetail = null)
+            }
             val name = connectionStore.currentPlayerName()
             if (name == null) {
                 _uiState.update { it.copy(isLoading = false, needsConnect = true) }
@@ -187,7 +232,7 @@ class CreateGameViewModel @Inject constructor(
                         needConnectJoinCode = createdGame.joinCode,
                     )
                 } else {
-                    it.copy(isLoading = false, error = ErrorType.Network)
+                    it.copy(isLoading = false, error = ErrorType.Network, errorDetail = null)
                 }
             }
         } catch (e: HttpException) {
@@ -210,6 +255,7 @@ class CreateGameViewModel @Inject constructor(
                         error = e.toErrorType(),
                         errorKey = errorKey,
                         errorArgs = e.serverErrorArgs(),
+                        errorDetail = e.serverDetail(),
                     )
                 }
             }
@@ -453,6 +499,7 @@ class CreateGameViewModel @Inject constructor(
                         showGtfsDialog = false,
                         gtfsUrlInput = "",
                         gtfsRealtimeUrlInput = "",
+                        realtimeProbe = null,
                         gtfsSources = state.gtfsSources + source,
                     )
                 }
@@ -482,6 +529,7 @@ class CreateGameViewModel @Inject constructor(
                         gtfsUploading = false,
                         showGtfsDialog = false,
                         gtfsRealtimeUrlInput = "",
+                        realtimeProbe = null,
                         gtfsSources = state.gtfsSources + source,
                     )
                 }
@@ -621,6 +669,7 @@ class CreateGameViewModel @Inject constructor(
 
         /** Long enough to swallow a run of ticks, short enough that the map still feels live. */
         const val PREVIEW_DEBOUNCE_MS = 500L
+        const val REALTIME_PROBE_DEBOUNCE_MS = 600L
         const val FEATURE_COLLECTION_PREFIX = """{"type":"FeatureCollection","features":["""
         const val ERROR_KEY_NO_GEOMETRY = "transit.preview_no_geometry"
     }

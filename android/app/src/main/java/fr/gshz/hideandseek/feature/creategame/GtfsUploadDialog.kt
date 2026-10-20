@@ -42,6 +42,7 @@ internal fun GtfsUploadDialog(
     mode: GtfsDialogMode,
     urlInput: String,
     realtimeUrlInput: String,
+    realtimeProbe: RealtimeProbeState?,
     isUploading: Boolean,
     error: UiText?,
     onModeChange: (GtfsDialogMode) -> Unit,
@@ -61,6 +62,7 @@ internal fun GtfsUploadDialog(
                 mode = mode,
                 urlInput = urlInput,
                 realtimeUrlInput = realtimeUrlInput,
+                realtimeProbe = realtimeProbe,
                 isUploading = isUploading,
                 error = error,
                 onModeChange = onModeChange,
@@ -80,6 +82,7 @@ private fun GtfsUploadDialogContent(
     mode: GtfsDialogMode,
     urlInput: String,
     realtimeUrlInput: String,
+    realtimeProbe: RealtimeProbeState?,
     isUploading: Boolean,
     error: UiText?,
     onModeChange: (GtfsDialogMode) -> Unit,
@@ -97,6 +100,7 @@ private fun GtfsUploadDialogContent(
         GtfsModeSelector(mode = mode, isUploading = isUploading, onModeChange = onModeChange)
         GtfsRealtimeUrlField(
             urlInput = realtimeUrlInput,
+            probeState = realtimeProbe,
             isUploading = isUploading,
             onUrlChange = onRealtimeUrlChange,
         )
@@ -173,20 +177,70 @@ private fun GtfsModeSelector(
 @Composable
 private fun GtfsRealtimeUrlField(
     urlInput: String,
+    probeState: RealtimeProbeState?,
     isUploading: Boolean,
     onUrlChange: (String) -> Unit,
 ) {
+    val supporting: (@Composable () -> Unit)? = probeState?.let { probe ->
+        {
+            Text(
+                text = realtimeProbeText(probe),
+                style = MaterialTheme.typography.bodySmall,
+                color = realtimeProbeColor(probe),
+            )
+        }
+    }
     OutlinedTextField(
         value = urlInput,
         onValueChange = onUrlChange,
         label = { Text(stringResource(R.string.gtfs_realtime_url_label)) },
         placeholder = { Text(stringResource(R.string.gtfs_realtime_url_hint)) },
+        supportingText = supporting,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         enabled = !isUploading,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
     )
 }
+
+@Composable
+private fun realtimeProbeText(probe: RealtimeProbeState): String = when (probe) {
+    RealtimeProbeState.Checking -> stringResource(R.string.gtfs_realtime_probe_checking)
+    is RealtimeProbeState.Ok -> if (probe.ageSeconds != null) {
+        stringResource(
+            R.string.gtfs_realtime_probe_ok_age,
+            probe.tripCount,
+            probeAgeLabel(probe.ageSeconds),
+        )
+    } else {
+        stringResource(R.string.gtfs_realtime_probe_ok, probe.tripCount)
+    }
+    is RealtimeProbeState.Stale -> stringResource(
+        R.string.gtfs_realtime_probe_stale,
+        probeAgeLabel(probe.ageSeconds),
+    )
+    is RealtimeProbeState.WrongType -> stringResource(R.string.gtfs_realtime_probe_wrong_type)
+    RealtimeProbeState.Invalid -> stringResource(R.string.gtfs_realtime_probe_invalid)
+    RealtimeProbeState.Unreachable -> stringResource(R.string.gtfs_realtime_probe_unreachable)
+    RealtimeProbeState.InvalidUrl -> stringResource(R.string.gtfs_realtime_probe_invalid_url)
+}
+
+@Composable
+private fun realtimeProbeColor(probe: RealtimeProbeState) = when (probe) {
+    RealtimeProbeState.Checking, is RealtimeProbeState.Stale -> MaterialTheme.colorScheme.onSurfaceVariant
+    is RealtimeProbeState.Ok -> MaterialTheme.colorScheme.primary
+    else -> MaterialTheme.colorScheme.error
+}
+
+@Composable
+private fun probeAgeLabel(seconds: Int): String =
+    if (seconds < SECONDS_PER_MINUTE) {
+        stringResource(R.string.gtfs_realtime_probe_seconds, seconds)
+    } else {
+        stringResource(R.string.gtfs_realtime_probe_minutes, seconds / SECONDS_PER_MINUTE)
+    }
+
+private const val SECONDS_PER_MINUTE = 60
 
 @Composable
 private fun GtfsUrlTabContent(

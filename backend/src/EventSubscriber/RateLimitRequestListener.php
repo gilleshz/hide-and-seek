@@ -26,6 +26,8 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
         private RateLimiterFactory $join,
         #[Autowire(service: 'limiter.game_create')]
         private RateLimiterFactory $gameCreate,
+        #[Autowire(service: 'limiter.realtime_probe')]
+        private RateLimiterFactory $realtimeProbe,
         #[Autowire(service: 'limiter.token_mint')]
         private RateLimiterFactory $tokenMint,
         #[Autowire(service: 'limiter.location_ingest_ip')]
@@ -70,6 +72,10 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
 
         if (preg_match('#^/api/games/[^/]+/join$#', $path) === 1) {
             return $this->join;
+        }
+
+        if ($path === '/api/gtfs-sources/realtime-probe' && $request->isMethod('POST')) {
+            return $this->realtimeProbe;
         }
 
         if (

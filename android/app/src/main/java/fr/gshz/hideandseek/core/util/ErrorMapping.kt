@@ -12,9 +12,11 @@ import retrofit2.HttpException
 fun HttpException.toErrorType(): ErrorType = when (code()) {
     HttpURLConnection.HTTP_UNAUTHORIZED -> ErrorType.Unauthorized
     HttpURLConnection.HTTP_NOT_FOUND -> ErrorType.NotFound
-    HttpURLConnection.HTTP_BAD_REQUEST -> ErrorType.Validation
+    HttpURLConnection.HTTP_BAD_REQUEST, HTTP_UNPROCESSABLE_ENTITY -> ErrorType.Validation
     else -> ErrorType.Unknown
 }
+
+private const val HTTP_UNPROCESSABLE_ENTITY = 422
 
 /**
  * True when the server rejected the subscriber token as an identity: the token is missing, invalid,

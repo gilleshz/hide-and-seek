@@ -10,6 +10,7 @@ import fr.gshz.hideandseek.data.remote.dto.BoundaryPreviewRequest
 import fr.gshz.hideandseek.data.remote.dto.GameConfigRequest
 import fr.gshz.hideandseek.data.remote.dto.GameCreateRequest
 import fr.gshz.hideandseek.data.remote.dto.GtfsLineRef
+import fr.gshz.hideandseek.data.remote.dto.GtfsRealtimeProbeRequest
 import fr.gshz.hideandseek.data.remote.dto.GtfsSourceDto
 import fr.gshz.hideandseek.data.remote.dto.GtfsSourceUrlRequest
 import fr.gshz.hideandseek.data.remote.dto.JoinRequest
@@ -23,6 +24,7 @@ import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.GtfsRoute
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.JoinResult
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
@@ -114,6 +116,20 @@ class GameRepositoryImpl @Inject constructor(
             body = GtfsSourceUrlRequest(url = url, name = name, realtimeUrl = realtimeUrl),
         )
         return dto.toDomain()
+    }
+
+    override suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe {
+        val dto = api.probeGtfsRealtime(
+            url = urlFor("/api/gtfs-sources/realtime-probe"),
+            body = GtfsRealtimeProbeRequest(url),
+        )
+
+        return GtfsRealtimeProbe(
+            status = dto.status,
+            feedType = dto.feedType,
+            headerAgeSeconds = dto.headerAgeSeconds,
+            tripCount = dto.tripCount,
+        )
     }
 
     override suspend fun uploadGtfsFromFile(

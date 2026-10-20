@@ -163,6 +163,7 @@ private fun GtfsDialogIfShown(
             mode = uiState.gtfsDialogMode,
             urlInput = uiState.gtfsUrlInput,
             realtimeUrlInput = uiState.gtfsRealtimeUrlInput,
+            realtimeProbe = uiState.realtimeProbe,
             isUploading = uiState.gtfsUploading,
             error = uiState.gtfsError,
             onModeChange = actions.onGtfsDialogModeChange,
@@ -199,7 +200,12 @@ private fun CreateGameBody(
         GameConfigSection(uiState, actions)
         AreaSearchSection(uiState, actions)
         TransitLineSection(uiState, actions)
-        ErrorText(uiState.error, errorKey = uiState.errorKey, errorArgs = uiState.errorArgs)
+        ErrorText(
+            uiState.error,
+            detail = uiState.errorDetail,
+            errorKey = uiState.errorKey,
+            errorArgs = uiState.errorArgs,
+        )
     }
 }
 

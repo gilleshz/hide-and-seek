@@ -39,3 +39,10 @@ data class GtfsSourceState(
     val name: String,
     val routes: List<GtfsRoute>,
 )
+
+data class GtfsRealtimeProbe(
+    val status: String,
+    val feedType: String? = null,
+    val headerAgeSeconds: Int? = null,
+    val tripCount: Int = 0,
+)

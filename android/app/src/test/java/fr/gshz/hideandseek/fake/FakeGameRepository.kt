@@ -3,6 +3,7 @@ package fr.gshz.hideandseek.fake
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.JoinResult
@@ -52,6 +53,9 @@ class FakeGameRepository : GameRepository {
         Result.success(GtfsSourceState("src-1", "test", emptyList()))
     var uploadGtfsFromFileResult: Result<GtfsSourceState> =
         Result.success(GtfsSourceState("src-1", "test", emptyList()))
+    var probeGtfsRealtimeResult: Result<GtfsRealtimeProbe> =
+        Result.success(GtfsRealtimeProbe("ok", "trip_update", 20, 42))
+    val probeGtfsRealtimeCalls = mutableListOf<String>()
 
     var lastCreateSize: GameSize? = null
         private set
@@ -102,6 +106,11 @@ class FakeGameRepository : GameRepository {
     ): GtfsSourceState {
         gtfsUploadCalls += GtfsUploadCall(url, name, realtimeUrl)
         return uploadGtfsFromUrlResult.getOrThrow()
+    }
+
+    override suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe {
+        probeGtfsRealtimeCalls += url
+        return probeGtfsRealtimeResult.getOrThrow()
     }
 
     override suspend fun uploadGtfsFromFile(

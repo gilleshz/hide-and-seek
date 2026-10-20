@@ -647,12 +647,12 @@ final class GameApiTest extends ApiTestCase
     }
 
     #[Test]
-    public function itRejectsMoreThanOneHundredSelectedLines(): void
+    public function itRejectsMoreThanTheSelectedLineCap(): void
     {
         $client = static::createClient();
         $client->request('POST', '/api/games', self::AUTH + [
             'json' => ['name' => 'Too Many', 'size' => 'M', 'edition' => 'metric',
-                'selectedTransitLines' => array_fill(0, 101, [
+                'selectedTransitLines' => array_fill(0, 251, [
                     'osmType' => 'relation',
                     'osmId' => 1,
                     'ref' => 'A',

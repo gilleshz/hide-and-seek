@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Exception\FunctionalException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -72,6 +73,68 @@ final readonly class TransitRealtimeService
                 return [];
             }
         });
+    }
+
+    /**
+     * One-shot validation of a host-supplied GTFS-RT URL. Bypasses the cache and never throws:
+     * the app shows the result beside the field before the source is imported.
+     *
+     * @return array{status: string, feedType: ?string, headerAgeSeconds: ?int, tripCount: int}
+     */
+    public function probe(string $url): array
+    {
+        try {
+            $bytes = $this->fetch($url);
+        } catch (FunctionalException) {
+            return $this->probeResult('invalid_url');
+        } catch (\Throwable) {
+            return $this->probeResult('unreachable');
+        }
+
+        try {
+            $decoded = $this->decode($bytes);
+        } catch (\Throwable) {
+            return $this->probeResult('invalid');
+        }
+
+        $type = is_string($decoded['type'] ?? null) ? $decoded['type'] : 'none';
+        $header = $decoded['headerTimestamp'] ?? null;
+        $age = is_int($header) && $header > 0 ? max(0, time() - $header) : null;
+
+        if ($type === 'trip_update') {
+            $trips = is_array($decoded['trips'] ?? null) ? $decoded['trips'] : [];
+
+            return [
+                'status' => $age !== null && $age > self::MAX_FEED_AGE_SECONDS ? 'stale' : 'ok',
+                'feedType' => 'trip_update',
+                'headerAgeSeconds' => $age,
+                'tripCount' => \count($trips),
+            ];
+        }
+
+        if ($type === 'vehicle') {
+            return [
+                'status' => 'wrong_type',
+                'feedType' => 'vehicle',
+                'headerAgeSeconds' => $age,
+                'tripCount' => 0,
+            ];
+        }
+
+        return $this->probeResult('invalid');
+    }
+
+    /**
+     * @return array{status: string, feedType: ?string, headerAgeSeconds: ?int, tripCount: int}
+     */
+    private function probeResult(string $status): array
+    {
+        return [
+            'status' => $status,
+            'feedType' => null,
+            'headerAgeSeconds' => null,
+            'tripCount' => 0,
+        ];
     }
 
     private function fetch(string $url): string

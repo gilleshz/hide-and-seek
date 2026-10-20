@@ -471,7 +471,7 @@ final class IdentityGuardApiTest extends ApiTestCase
     {
         $client = static::createClient();
 
-        for ($i = 0; $i < 3; ++$i) {
+        for ($i = 0; $i < 5; ++$i) {
             $client->request('POST', '/api/games', self::AUTH + [
                 'json' => ['name' => "Create{$i}", 'size' => 'M', 'edition' => 'metric'],
             ]);
@@ -479,7 +479,7 @@ final class IdentityGuardApiTest extends ApiTestCase
         }
 
         $client->request('POST', '/api/games', self::AUTH + [
-            'json' => ['name' => 'Create4', 'size' => 'M', 'edition' => 'metric'],
+            'json' => ['name' => 'Create6', 'size' => 'M', 'edition' => 'metric'],
         ]);
 
         self::assertResponseStatusCodeSame(429);

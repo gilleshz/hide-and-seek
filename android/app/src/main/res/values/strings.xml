@@ -542,6 +542,16 @@
     <string name="gtfs_name_label">Feed name</string>
     <string name="gtfs_realtime_url_label">Real-time departures URL (optional)</string>
     <string name="gtfs_realtime_url_hint">GTFS-RT trip updates feed URL</string>
+    <string name="gtfs_realtime_probe_checking">Checking feed...</string>
+    <string name="gtfs_realtime_probe_ok">Feed OK: %1$d trip updates.</string>
+    <string name="gtfs_realtime_probe_ok_age">Feed OK: %1$d trip updates, updated %2$s ago.</string>
+    <string name="gtfs_realtime_probe_stale">Feed is stale: last update %1$s ago.</string>
+    <string name="gtfs_realtime_probe_wrong_type">This is a vehicle-position feed, not trip updates.</string>
+    <string name="gtfs_realtime_probe_invalid">This URL does not return a GTFS-RT feed.</string>
+    <string name="gtfs_realtime_probe_unreachable">Could not reach the feed.</string>
+    <string name="gtfs_realtime_probe_invalid_url">The feed URL must start with https://.</string>
+    <string name="gtfs_realtime_probe_seconds">%1$d s</string>
+    <string name="gtfs_realtime_probe_minutes">%1$d min</string>
     <string name="osm_discovery_button">Discover transit lines</string>
     <string name="discovering_transit_label">Discovering transit lines...</string>
     <string name="transit_discovery_network_error">Discovery failed: check your connection and try again.</string>
