@@ -68,6 +68,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.i18n.resolveMessage
+import fr.gshz.hideandseek.core.ui.ProfileAvatar
 import fr.gshz.hideandseek.core.ui.formatDistance
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.core.ui.theme.extendedColors
@@ -93,6 +94,7 @@ private const val REPLY_SWIPE_THRESHOLD_DP = 72
 private const val QUOTE_ACCENT_WIDTH_DP = 3
 private const val QUOTE_THUMB_SIZE_DP = 36
 private const val RECEIPT_ICON_SIZE_DP = 14
+private const val SENDER_AVATAR_SIZE_DP = 24
 private const val DEFAULT_IMAGE_RATIO = 4f / 3f
 private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
@@ -157,7 +159,7 @@ private fun RegularBubble(
         onReplySwipe = if (!message.isSystem) onReplySwipe else null,
         onLongPress = onLongPress,
     ) {
-        SenderLabel(uiState.senderNameOf(message))
+        SenderHeader(message, uiState)
         message.replyToUuid?.let { uuid ->
             QuotedReplyBlock(
                 replyToUuid = uuid,
@@ -201,7 +203,7 @@ private fun QuestionBubble(
         onReplySwipe = if (!message.isSystem) onReplySwipe else null,
         onLongPress = onLongPress,
     ) {
-        SenderLabel(uiState.senderNameOf(message))
+        SenderHeader(message, uiState)
         message.resolvedBody()?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
         QuestionSubtexts(message, uiState, pending, onCountdownExpired)
         if (uiState.isHider && pending) {
@@ -268,7 +270,7 @@ private fun QuestionInfoBubble(
     val isOwn = message.senderUuid == uiState.selfPlayerUuid
     val color = if (isOwn) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
     BubbleFrame(isOwn = isOwn, color = color, onLongPress = onLongPress) {
-        SenderLabel(uiState.senderNameOf(message))
+        SenderHeader(message, uiState)
         message.resolvedBody()?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
         val question = uiState.joinedQuestion(message)
         if (uiState.isHider && question != null) {
@@ -508,12 +510,24 @@ private fun BubbleFrame(
 }
 
 @Composable
-private fun SenderLabel(senderName: String?) {
-    Text(
-        text = senderName ?: stringResource(R.string.chat_sender_system),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+private fun SenderHeader(message: ChatMessage, uiState: ChatUiState) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        if (message.senderUuid != null) {
+            ProfileAvatar(
+                name = uiState.senderNameOf(message),
+                avatarUrl = uiState.senderAvatarUrl(message),
+                size = SENDER_AVATAR_SIZE_DP.dp,
+            )
+        }
+        Text(
+            text = uiState.senderNameOf(message) ?: stringResource(R.string.chat_sender_system),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     Spacer(modifier = Modifier.height(Spacing.xs))
 }
 

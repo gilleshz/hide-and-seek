@@ -29,6 +29,7 @@ data class ChatUiState(
     val gameName: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val roster: Map<String, String> = emptyMap(),
+    val avatarUrls: Map<String, String> = emptyMap(),
     val selfPlayerUuid: String = "",
     val apiUrl: String = "",
     val isSending: Boolean = false,
@@ -59,6 +60,8 @@ data class ChatUiState(
      */
     fun senderNameOf(message: ChatMessage): String? =
         message.senderUuid?.let { uuid -> roster[uuid] ?: message.senderName ?: uuid }
+
+    fun senderAvatarUrl(message: ChatMessage): String? = message.senderUuid?.let { avatarUrls[it] }
 
     fun joinedQuestion(message: ChatMessage): AskedQuestion? = message.questionUuid?.let { questionsByUuid[it] }
 

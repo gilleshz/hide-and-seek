@@ -21,6 +21,7 @@ import fr.gshz.hideandseek.domain.model.AskedQuestion
 import fr.gshz.hideandseek.domain.model.ChatMessage
 import fr.gshz.hideandseek.domain.model.DeviceLocation
 import fr.gshz.hideandseek.domain.model.Edition
+import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.repository.ChatRepository
 import fr.gshz.hideandseek.domain.repository.GameEventRepository
@@ -58,7 +59,7 @@ class ChatViewModel @Inject constructor(
     private val gameUuid: String = checkNotNull(savedStateHandle[HideAndSeekDestinations.CHAT_ARG])
 
     private val gameName = MutableStateFlow("")
-    private val roster = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val roster = MutableStateFlow<Map<String, Player>>(emptyMap())
     private val selfPlayerUuid = MutableStateFlow("")
     private val apiUrl = MutableStateFlow("")
     private val sendInteraction = MutableStateFlow(SendInteraction())
@@ -102,11 +103,18 @@ class ChatViewModel @Inject constructor(
     val uiState: StateFlow<ChatUiState> = combine(
         baseState, sendInteraction, questionState, receiptState,
     ) { base, send, question, receipt ->
+        val avatarBase = base.url.trimEnd('/')
+        val avatarUrls = base.rosterMap.mapNotNull { (uuid, player) ->
+            player.avatarRef?.takeIf { avatarBase.isNotEmpty() }?.let { ref ->
+                uuid to "$avatarBase/api/avatars/$ref"
+            }
+        }.toMap()
         ChatUiState(
             gameUuid = gameUuid,
             gameName = base.name,
             messages = base.msgList,
-            roster = base.rosterMap,
+            roster = base.rosterMap.mapValues { (_, player) -> player.displayName },
+            avatarUrls = avatarUrls,
             selfPlayerUuid = base.selfUuid,
             apiUrl = base.url,
             isSending = send.isSending,
@@ -478,7 +486,7 @@ class ChatViewModel @Inject constructor(
                     val game = gameStateCache.getGameSummary(gameUuid)
                     gameName.value = game.name
                     edition.value = game.edition
-                    roster.value = gameStateCache.getRoster(gameUuid).associate { it.uuid to it.displayName }
+                    roster.value = gameStateCache.getRoster(gameUuid).associateBy { it.uuid }
                 },
                 logMessage = "Failed to load game info for chat",
             )
@@ -505,7 +513,7 @@ class ChatViewModel @Inject constructor(
     private data class ChatBaseState(
         val name: String,
         val msgList: List<ChatMessage>,
-        val rosterMap: Map<String, String>,
+        val rosterMap: Map<String, Player>,
         val selfUuid: String,
         val url: String,
     )
@@ -692,7 +700,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             gameEventRepository.rosterEvents.collect { event ->
                 gameStateCache.setRoster(gameUuid, event.players)
-                roster.value = event.players.associate { it.uuid to it.displayName }
+                roster.value = event.players.associateBy { it.uuid }
             }
         }
     }
@@ -725,7 +733,7 @@ class ChatViewModel @Inject constructor(
 
     private suspend fun refreshRoster() {
         runApiCall(
-            block = { roster.value = gameStateCache.refreshRoster(gameUuid).associate { it.uuid to it.displayName } },
+            block = { roster.value = gameStateCache.refreshRoster(gameUuid).associateBy { it.uuid } },
             logMessage = "Failed to refresh the chat roster",
         )
     }

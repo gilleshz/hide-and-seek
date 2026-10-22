@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.feature.lobby
 
 import androidx.lifecycle.SavedStateHandle
+import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
@@ -55,7 +56,7 @@ class LobbyViewModelTest {
     private val sessionRepository = FakeSessionRepository()
     private val roundRepository = FakeRoundRepository()
     private val connectionStore = mockk<ConnectionStore> {
-        coEvery { current() } returns null
+        coEvery { current() } returns ConnectionConfig("https://api.test/", "key")
     }
     private val clientConfigRepository =
         mockk<fr.gshz.hideandseek.domain.repository.ClientConfigRepository>(relaxed = true)
@@ -92,15 +93,17 @@ class LobbyViewModelTest {
     fun `loads game info and roster on init`() = runTest {
         gameRepository.getGameResult =
             Result.success(GameSummary("game-1", "Berlin", GameSize.Large, Edition.Imperial, "round-1"))
-        gameRepository.listPlayersResult = Result.success(listOf(Player("p1", "Alice")))
+        gameRepository.listPlayersResult = Result.success(listOf(Player("p1", "Alice", avatarRef = "ref-1")))
 
         val viewModel = createViewModel()
 
         val state = viewModel.uiState.value
         assertEquals("game-1", state.gameUuid)
+        assertEquals("https://api.test", state.apiUrl)
         assertEquals("Berlin", state.gameName)
         assertEquals(GameSize.Large, state.gameSize)
         assertEquals(1, state.roster.size)
+        assertEquals("ref-1", state.roster.single().avatarRef)
         assertFalse(state.isLoading)
         assertNull(state.error)
     }

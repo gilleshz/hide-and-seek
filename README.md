@@ -9,6 +9,7 @@ and unofficial, see [Legal](#legal).
 - Create a game: name, player count, area and transit lines
 - Join by game code or by scanning the host's QR code
 - Live map: player positions update in real time over a server-sent events stream
+- Profile photos on the map pins, picked from the camera or the gallery
 - Rounds with hiding zones, street network, time traps, questions and photo targets
 - Team chat with photos
 - Privacy built in: a hider's location never reaches a seeker, enforced server-side

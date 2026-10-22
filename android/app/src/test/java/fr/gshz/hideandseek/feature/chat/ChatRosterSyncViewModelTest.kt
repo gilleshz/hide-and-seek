@@ -4,11 +4,13 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.data.GameStateCache
+import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
 import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
 import fr.gshz.hideandseek.data.ImageSaver
+import fr.gshz.hideandseek.domain.model.ChatMessage
 import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.repository.ChatDeletedEvent
 import fr.gshz.hideandseek.domain.repository.ChatEvent
@@ -22,6 +24,7 @@ import fr.gshz.hideandseek.fake.FakeGameRepository
 import fr.gshz.hideandseek.fake.FakeLocationRepository
 import fr.gshz.hideandseek.fake.FakeQuestionRepository
 import fr.gshz.hideandseek.fake.FakeSessionRepository
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import java.io.IOException
@@ -57,6 +60,7 @@ class ChatRosterSyncViewModelTest {
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        coEvery { connectionStore.current() } returns ConnectionConfig("https://api.test/", "key")
         every { gameEventRepository.chatEvents } returns chatEventFlow
         every { gameEventRepository.rosterEvents } returns rosterEventFlow
         every { gameEventRepository.reconnectedEvents } returns reconnectedEventFlow
@@ -131,6 +135,34 @@ class ChatRosterSyncViewModelTest {
             var state = awaitItem()
             while (state.messages.isEmpty()) state = awaitItem()
             assertEquals("Carol", state.senderNameOf(state.messages.single()))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a roster event exposes the player avatar as an absolute url`() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+
+        rosterEventFlow.emit(
+            RosterChanged(listOf(Player("p1", "Alice"), Player("p3", "Carol", avatarRef = "ref-3"))),
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.avatarUrls["p3"] == null) state = awaitItem()
+            assertEquals("Carol", state.roster["p3"])
+            assertEquals("https://api.test/api/avatars/ref-3", state.avatarUrls["p3"])
+            val message = ChatMessage(
+                uuid = "m-1",
+                senderUuid = "p3",
+                senderName = "Carol",
+                type = "text",
+                body = "Just got here",
+                imageRef = null,
+                createdAt = "2026-07-05T12:00:00Z",
+            )
+            assertEquals("https://api.test/api/avatars/ref-3", state.senderAvatarUrl(message))
             cancelAndIgnoreRemainingEvents()
         }
     }

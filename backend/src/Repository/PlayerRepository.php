@@ -64,6 +64,26 @@ class PlayerRepository extends ServiceEntityRepository
         return $players;
     }
 
+    /**
+     * @return list<Game>
+     */
+    public function findActiveGamesByIdentity(Identity $identity): array
+    {
+        // uniq_player_game_identity already yields one row per game, and Game.admin_levels
+        // is json, which Postgres cannot DISTINCT over.
+        /** @var list<Player> $players */
+        $players = $this->createQueryBuilder('p')
+            ->addSelect('g')
+            ->innerJoin('p.game', 'g')
+            ->where('p.identity = :identity')
+            ->andWhere('p.leftAt IS NULL')
+            ->setParameter('identity', $identity)
+            ->getQuery()
+            ->getResult();
+
+        return array_map(static fn (Player $player): Game => $player->getGame(), $players);
+    }
+
     public function save(Player $player, bool $flush = true): void
     {
         $this->getEntityManager()->persist($player);

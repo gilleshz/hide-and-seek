@@ -11,6 +11,7 @@ import fr.gshz.hideandseek.domain.model.Side
 
 data class LobbyUiState(
     val gameUuid: String = "",
+    val apiUrl: String = "",
     val gameJoinCode: String? = null,
     val qrPayload: String? = null,
     val gameName: String = "",

@@ -446,6 +446,7 @@ internal fun LobbyContent(
         } else {
             RosterList(
                 roster = uiState.roster,
+                apiUrl = uiState.apiUrl,
                 onPlayerLongPress = actions.onPlayerLongPress,
             )
         }

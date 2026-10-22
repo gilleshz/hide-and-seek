@@ -129,6 +129,17 @@ class LobbyViewModel @Inject constructor(
 
     private suspend fun refreshRoster() {
         try {
+            if (_uiState.value.apiUrl.isEmpty()) {
+                val apiUrl = try {
+                    connectionStore.current()?.apiUrl?.trimEnd('/')
+                } catch (e: IOException) {
+                    Log.w(TAG, "Connection read failed", e)
+                    null
+                }
+                if (apiUrl != null) {
+                    _uiState.update { it.copy(apiUrl = apiUrl) }
+                }
+            }
             applyRoster(gameStateCache.refreshRoster(gameUuid))
         } catch (e: IOException) {
             Log.w(TAG, "Roster refresh failed", e)
@@ -174,13 +185,25 @@ class LobbyViewModel @Inject constructor(
 
     @Suppress("LongMethod")
     private suspend fun loadWith(knownGame: GameSummary?) {
-        _uiState.update { it.copy(isLoading = true, error = null, errorDetail = null) }
+        val conn = try {
+            connectionStore.current()
+        } catch (e: IOException) {
+            Log.w(TAG, "Connection read failed", e)
+            null
+        }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                errorDetail = null,
+                apiUrl = conn?.apiUrl?.trimEnd('/').orEmpty(),
+            )
+        }
         try {
             // Self-heal needs the live roundUuid: bypass the cache here and warm it for Map/Chat.
             val game = knownGame ?: gameStateCache.refreshGameSummary(gameUuid)
             val roster = gameStateCache.refreshRoster(gameUuid)
             val session = reconcileSession(game.roundUuid, roster)
-            val conn = connectionStore.current()
             val roundStatus = session?.let { roundRepository.getRound(it.roundUuid).status }
             val qr = if (conn != null && game.joinCode != null) {
                 try {

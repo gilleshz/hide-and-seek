@@ -49,19 +49,23 @@ import androidx.compose.ui.unit.sp
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.ErrorText
+import fr.gshz.hideandseek.core.ui.ProfileAvatar
 import fr.gshz.hideandseek.core.ui.RoleBadge
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.Player
 
+private const val ROSTER_AVATAR_SIZE_DP = 32
+
 @Composable
 internal fun RosterList(
     roster: List<Player>,
+    apiUrl: String,
     onPlayerLongPress: (Player) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         roster.forEach { player ->
-            RosterRow(player = player, onPlayerLongPress = onPlayerLongPress)
+            RosterRow(player = player, apiUrl = apiUrl, onPlayerLongPress = onPlayerLongPress)
         }
     }
 }
@@ -70,6 +74,7 @@ internal fun RosterList(
 @Composable
 private fun RosterRow(
     player: Player,
+    apiUrl: String,
     onPlayerLongPress: (Player) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -85,6 +90,12 @@ private fun RosterRow(
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            ProfileAvatar(
+                name = player.displayName,
+                avatarUrl = player.avatarRef?.takeIf { apiUrl.isNotEmpty() }?.let { "$apiUrl/api/avatars/$it" },
+                size = ROSTER_AVATAR_SIZE_DP.dp,
+            )
+            Spacer(Modifier.width(Spacing.sm))
             Text(
                 text = player.displayName,
                 style = MaterialTheme.typography.bodyLarge,
