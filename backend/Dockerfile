@@ -19,7 +19,7 @@ RUN git clone --recurse-submodules https://github.com/ad-freiburg/loom.git /loom
     && make -j$(nproc)
 
 # Stage 2: Symfony + API Platform on FrankenPHP (bundles the Caddy web server + Mercure hub).
-FROM dunglas/frankenphp:1.13.1-php8.4
+FROM dunglas/frankenphp:1.13.2-php8.4.27
 
 # PHP extensions for PostgreSQL/PostGIS + Symfony
 # pcntl lets messenger:consume handle SIGTERM, so the scheduler worker stops gracefully.
@@ -27,7 +27,8 @@ FROM dunglas/frankenphp:1.13.1-php8.4
 # orientation GD must apply so portrait photos stay upright. libwebp-dev must be present
 # before gd builds or the WebP codec is silently left out.
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
-    libwebp-dev libglpk40 libstdc++6 \
+    ca-certificates libwebp-dev libglpk40 libstdc++6 \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN install-php-extensions pdo_pgsql intl opcache zip pcntl gd exif @composer
