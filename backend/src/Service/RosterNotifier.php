@@ -31,6 +31,7 @@ final readonly class RosterNotifier
                     'uuid' => $player->uuid,
                     'displayName' => $player->displayName,
                     'side' => $player->side?->value,
+                    'avatarRef' => $player->avatarRef,
                 ],
                 $this->roster->roster($game),
             ),

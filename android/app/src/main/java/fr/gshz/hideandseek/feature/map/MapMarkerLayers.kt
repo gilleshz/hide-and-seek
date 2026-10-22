@@ -3,9 +3,12 @@ package fr.gshz.hideandseek.feature.map
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Shader
 import androidx.compose.runtime.MutableState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -25,6 +28,7 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 private val geoJson = Json { encodeDefaults = true }
@@ -44,8 +48,8 @@ internal fun Style.ensureMarkerLayers(selfPin: Bitmap, otherPin: Bitmap) {
     addSource(GeoJsonSource(OTHERS_SOURCE_ID))
     addSource(GeoJsonSource(SELF_LABEL_SOURCE_ID))
     addSource(GeoJsonSource(OTHERS_LABEL_SOURCE_ID))
-    addLayer(pinLayer(SELF_PIN_LAYER_ID, SELF_SOURCE_ID, SELF_PIN_IMAGE_ID))
-    addLayer(pinLayer(OTHERS_PIN_LAYER_ID, OTHERS_SOURCE_ID, OTHERS_PIN_IMAGE_ID))
+    addLayer(pinLayer(SELF_PIN_LAYER_ID, SELF_SOURCE_ID))
+    addLayer(pinLayer(OTHERS_PIN_LAYER_ID, OTHERS_SOURCE_ID))
     addLayer(initialsLayer(SELF_INITIALS_LAYER_ID, SELF_LABEL_SOURCE_ID))
     addLayer(labelLayer(SELF_LABEL_LAYER_ID, SELF_LABEL_SOURCE_ID))
     addLayer(initialsLayer(OTHERS_INITIALS_LAYER_ID, OTHERS_LABEL_SOURCE_ID))
@@ -55,6 +59,8 @@ internal fun Style.ensureMarkerLayers(selfPin: Bitmap, otherPin: Bitmap) {
 internal class MarkerPins private constructor(
     val self: Bitmap,
     val other: Bitmap,
+    val density: Float,
+    val densityDpi: Int,
 ) {
     companion object {
         fun create(context: Context): MarkerPins {
@@ -62,9 +68,66 @@ internal class MarkerPins private constructor(
             return MarkerPins(
                 self = pinBitmap(SELF_MARKER_RADIUS, SELF_MARKER_COLOR, metrics.density, metrics.densityDpi),
                 other = pinBitmap(CIRCLE_RADIUS, OTHER_MARKER_COLOR, metrics.density, metrics.densityDpi),
+                density = metrics.density,
+                densityDpi = metrics.densityDpi,
             )
         }
     }
+}
+
+internal data class AvatarBitmap(val url: String, val bitmap: Bitmap)
+
+internal fun avatarSelfImageId(playerUuid: String, url: String): String =
+    "$AVATAR_SELF_PREFIX$playerUuid-${avatarImageKey(url)}"
+
+internal fun avatarOtherImageId(playerUuid: String, url: String): String =
+    "$AVATAR_OTHER_PREFIX$playerUuid-${avatarImageKey(url)}"
+
+private fun avatarImageKey(url: String): String =
+    url.substringAfterLast('/').ifEmpty { url.hashCode().toString() }
+
+internal fun avatarPinBitmap(avatar: Bitmap, radius: Float, density: Float, densityDpi: Int): Bitmap {
+    val size = ceil((2f * radius + CIRCLE_STROKE_WIDTH) * density).toInt().coerceAtLeast(1)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    bitmap.density = densityDpi
+    val canvas = Canvas(bitmap)
+    val center = size / 2f
+    val radiusPx = radius * density
+    val square = centerSquareBitmap(avatar)
+    val scaled = Bitmap.createScaledBitmap(
+        square,
+        (radiusPx * 2f).roundToInt().coerceAtLeast(1),
+        (radiusPx * 2f).roundToInt().coerceAtLeast(1),
+        true,
+    )
+    val shader = BitmapShader(scaled, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+        setLocalMatrix(Matrix().apply { setTranslate(center - radiusPx, center - radiusPx) })
+    }
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.shader = shader }
+    canvas.drawCircle(center, center, radiusPx, fill)
+    fill.shader = null
+
+    val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = CIRCLE_STROKE_WIDTH * density
+        color = Color.parseColor(CIRCLE_STROKE_COLOR)
+    }
+    canvas.drawCircle(center, center, radiusPx, stroke)
+
+    return bitmap
+}
+
+private fun centerSquareBitmap(avatar: Bitmap): Bitmap {
+    val side = kotlin.math.min(avatar.width, avatar.height)
+    if (side == avatar.width && side == avatar.height) return avatar
+
+    return Bitmap.createBitmap(
+        avatar,
+        (avatar.width - side) / 2,
+        (avatar.height - side) / 2,
+        side,
+        side,
+    )
 }
 
 private fun pinBitmap(radius: Float, color: String, density: Float, densityDpi: Int): Bitmap {
@@ -84,11 +147,48 @@ private fun pinBitmap(radius: Float, color: String, density: Float, densityDpi: 
     return bitmap
 }
 
-internal fun Style.updateMarkerSources(markers: List<PlayerMarker>) {
+internal fun Style.updateAvatarImages(
+    avatars: Map<String, AvatarBitmap>,
+    registered: MutableMap<String, String>,
+    density: Float,
+    densityDpi: Int,
+): Set<String> {
+    val stale = mutableSetOf<String>()
+    (registered.keys - avatars.keys).forEach { playerUuid ->
+        val oldUrl = registered.getValue(playerUuid)
+        stale += avatarSelfImageId(playerUuid, oldUrl)
+        stale += avatarOtherImageId(playerUuid, oldUrl)
+        registered.remove(playerUuid)
+    }
+    avatars.forEach { (playerUuid, avatar) ->
+        val oldUrl = registered[playerUuid]
+        if (oldUrl == avatar.url) return@forEach
+        if (oldUrl != null) {
+            stale += avatarSelfImageId(playerUuid, oldUrl)
+            stale += avatarOtherImageId(playerUuid, oldUrl)
+        }
+        addImage(
+            avatarSelfImageId(playerUuid, avatar.url),
+            avatarPinBitmap(avatar.bitmap, SELF_MARKER_RADIUS, density, densityDpi),
+        )
+        addImage(
+            avatarOtherImageId(playerUuid, avatar.url),
+            avatarPinBitmap(avatar.bitmap, CIRCLE_RADIUS, density, densityDpi),
+        )
+        registered[playerUuid] = avatar.url
+    }
+
+    return stale
+}
+
+internal fun Style.updateMarkerSources(
+    markers: List<PlayerMarker>,
+    avatarUrls: Map<String, String> = emptyMap(),
+) {
     val offsets = fanOffsets(markers)
     val (self, others) = markers.partition { it.isSelf }
-    val selfJson = toFeatureCollectionJson(self, offsets)
-    val othersJson = toFeatureCollectionJson(others, offsets)
+    val selfJson = toFeatureCollectionJson(self, offsets, avatarUrls)
+    val othersJson = toFeatureCollectionJson(others, offsets, avatarUrls)
     (getSource(SELF_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(selfJson)
     (getSource(SELF_LABEL_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(selfJson)
     (getSource(OTHERS_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(othersJson)
@@ -223,9 +323,9 @@ internal fun MapLibreMap.frameCameraIfNeeded(
     }
 }
 
-private fun pinLayer(layerId: String, sourceId: String, imageId: String): SymbolLayer =
+private fun pinLayer(layerId: String, sourceId: String): SymbolLayer =
     SymbolLayer(layerId, sourceId).withProperties(
-        PropertyFactory.iconImage(imageId),
+        PropertyFactory.iconImage(Expression.get(PROPERTY_PIN_IMAGE)),
         PropertyFactory.iconOffset(Expression.get(PROPERTY_PIN_OFFSET)),
         PropertyFactory.iconAllowOverlap(true),
         PropertyFactory.iconAnchor(Property.ICON_ANCHOR_CENTER),
@@ -258,15 +358,18 @@ private fun labelLayer(layerId: String, sourceId: String): SymbolLayer =
 private fun toFeatureCollectionJson(
     markers: List<PlayerMarker>,
     offsets: Map<String, MarkerFanOffset>,
+    avatarUrls: Map<String, String>,
 ): String {
     val collection = FeatureCollectionDto(
         features = markers.map {
             val fan = offsets[it.playerUuid] ?: MarkerFanOffset.NONE
+            val avatarUrl = avatarUrls[it.playerUuid]
             FeatureDto(
                 geometry = GeometryDto(coordinates = listOf(it.longitude, it.latitude)),
                 properties = PropertiesDto(
                     displayName = it.displayName,
-                    initials = it.initials,
+                    initials = if (avatarUrl != null) "" else it.initials,
+                    pinImage = pinImageId(it, avatarUrl),
                     pinOffset = listOf(fan.x, fan.y),
                     initialsOffset = listOf(fan.x / INITIALS_TEXT_SIZE, fan.y / INITIALS_TEXT_SIZE),
                     labelOffset = listOf(
@@ -278,6 +381,13 @@ private fun toFeatureCollectionJson(
         },
     )
     return geoJson.encodeToString(collection)
+}
+
+internal fun pinImageId(marker: PlayerMarker, avatarUrl: String?): String = when {
+    avatarUrl != null && marker.isSelf -> avatarSelfImageId(marker.playerUuid, avatarUrl)
+    avatarUrl != null -> avatarOtherImageId(marker.playerUuid, avatarUrl)
+    marker.isSelf -> SELF_PIN_IMAGE_ID
+    else -> OTHERS_PIN_IMAGE_ID
 }
 
 @Serializable
@@ -303,6 +413,7 @@ private data class GeometryDto(
 private data class PropertiesDto(
     val displayName: String,
     val initials: String = "",
+    val pinImage: String,
     val pinOffset: List<Float>,
     val initialsOffset: List<Float>,
     val labelOffset: List<Float>,
@@ -332,7 +443,10 @@ private const val SEEKER_MARKER_LINE_LAYER_ID = "seeker-candidate-line"
 private val LABEL_FONT = arrayOf("Noto Sans Regular")
 private const val PROPERTY_DISPLAY_NAME = "displayName"
 private const val PROPERTY_INITIALS = "initials"
+private const val PROPERTY_PIN_IMAGE = "pinImage"
 private const val PROPERTY_PIN_OFFSET = "pinOffset"
+private const val AVATAR_SELF_PREFIX = "avatar-self-"
+private const val AVATAR_OTHER_PREFIX = "avatar-other-"
 private const val PROPERTY_INITIALS_OFFSET = "initialsOffset"
 private const val PROPERTY_LABEL_OFFSET = "labelOffset"
 private const val BOUNDARY_FILL_COLOR = "#3B82F6"

@@ -208,6 +208,12 @@ data class PlayerMarker(
     val latitude: Double,
     val longitude: Double,
     val isSelf: Boolean,
+    val avatarUrl: String? = null,
+)
+
+internal data class RosterPlayer(
+    val displayName: String,
+    val avatarUrl: String? = null,
 )
 
 data class ZonePin(val latitude: Double, val longitude: Double)
@@ -434,30 +440,31 @@ private fun travelingCircle(traveling: AskedQuestion): String? {
 }
 
 internal fun buildMarkers(
-    rosterMap: Map<String, String>,
+    roster: Map<String, RosterPlayer>,
     selfUuid: String?,
     locationMap: Map<String, LocationUpdate>,
     selfGps: ZonePin?,
 ): List<PlayerMarker> {
     val markers = locationMap.map { (playerUuid, update) ->
-        playerMarker(rosterMap, playerUuid, update.latitude, update.longitude, playerUuid == selfUuid)
+        playerMarker(roster, playerUuid, update.latitude, update.longitude, playerUuid == selfUuid)
     }.toMutableList()
 
     if (selfUuid != null && markers.none { it.isSelf } && selfGps != null) {
-        markers.add(playerMarker(rosterMap, selfUuid, selfGps.latitude, selfGps.longitude, isSelf = true))
+        markers.add(playerMarker(roster, selfUuid, selfGps.latitude, selfGps.longitude, isSelf = true))
     }
 
     return markers
 }
 
 private fun playerMarker(
-    rosterMap: Map<String, String>,
+    roster: Map<String, RosterPlayer>,
     playerUuid: String,
     latitude: Double,
     longitude: Double,
     isSelf: Boolean,
 ): PlayerMarker {
-    val name = rosterMap[playerUuid] ?: playerUuid
+    val entry = roster[playerUuid]
+    val name = entry?.displayName ?: playerUuid
     return PlayerMarker(
         playerUuid = playerUuid,
         displayName = name,
@@ -465,6 +472,7 @@ private fun playerMarker(
         latitude = latitude,
         longitude = longitude,
         isSelf = isSelf,
+        avatarUrl = entry?.avatarUrl,
     )
 }
 

@@ -429,6 +429,27 @@
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
 
+    <!-- Photo de profil -->
+    <string name="settings_profile_photo">Photo de profil</string>
+    <string name="settings_profile_photo_hint">Visible par les joueurs de vos parties</string>
+    <string name="settings_profile_photo_empty_hint">Ajoutez une photo pour remplacer vos initiales sur la carte</string>
+    <string name="settings_profile_photo_add">Ajouter une photo</string>
+    <string name="settings_profile_photo_change">Modifier</string>
+    <string name="settings_profile_photo_remove">Supprimer la photo</string>
+    <string name="settings_profile_photo_remove_title">Supprimer la photo de profil ?</string>
+    <string name="settings_profile_photo_remove_body">Vos initiales réapparaîtront sur la carte.</string>
+    <string name="settings_profile_photo_remove_confirm">Supprimer</string>
+    <string name="avatar_crop_title">Ajuster la photo</string>
+    <string name="avatar_crop_hint">Pincez ou utilisez le curseur pour zoomer. Faites glisser pour déplacer.</string>
+    <string name="avatar_crop_zoom">Zoom</string>
+    <string name="avatar_crop_reset">Réinitialiser</string>
+    <string name="avatar_crop_use">Utiliser la photo</string>
+    <string name="avatar_crop_loading">Chargement de la photo</string>
+    <string name="avatar_crop_uploading">Envoi de la photo</string>
+    <string name="avatar_crop_close">Fermer</string>
+    <string name="avatar_crop_open_failed">Cette photo n\'a pas pu être ouverte. Essayez-en une autre.</string>
+    <string name="error_profile_credential_invalid">Ce nom est enregistré sur un autre appareil.</string>
+
     <!-- Clés de messages backend -->
     <string name="question_radar_ask">Êtes-vous à moins de <xliff:g>%1$s</xliff:g> de moi ?</string>
     <string name="question_matching_ask_no_name_transit_station">Est-ce que votre station de transport la plus proche est la même que la mienne ?</string>

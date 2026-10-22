@@ -635,6 +635,27 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
 
+    <!-- Profile photo -->
+    <string name="settings_profile_photo">Profile photo</string>
+    <string name="settings_profile_photo_hint">Visible to players in your games</string>
+    <string name="settings_profile_photo_empty_hint">Add a photo to replace your initials on the map</string>
+    <string name="settings_profile_photo_add">Add photo</string>
+    <string name="settings_profile_photo_change">Change</string>
+    <string name="settings_profile_photo_remove">Remove photo</string>
+    <string name="settings_profile_photo_remove_title">Remove profile photo?</string>
+    <string name="settings_profile_photo_remove_body">Your initials will show on the map again.</string>
+    <string name="settings_profile_photo_remove_confirm">Remove</string>
+    <string name="avatar_crop_title">Adjust photo</string>
+    <string name="avatar_crop_hint">Pinch or use the slider to zoom. Drag to move.</string>
+    <string name="avatar_crop_zoom">Zoom</string>
+    <string name="avatar_crop_reset">Reset</string>
+    <string name="avatar_crop_use">Use photo</string>
+    <string name="avatar_crop_loading">Loading photo</string>
+    <string name="avatar_crop_uploading">Uploading photo</string>
+    <string name="avatar_crop_close">Close</string>
+    <string name="avatar_crop_open_failed">This photo could not be opened. Try another one.</string>
+    <string name="error_profile_credential_invalid">This name is registered to another device.</string>
+
     <!-- Backend error message keys -->
     <string name="error_seeker_only">Only the seeker can ask questions.</string>
     <string name="error_hider_only">Only the hider can perform this action.</string>

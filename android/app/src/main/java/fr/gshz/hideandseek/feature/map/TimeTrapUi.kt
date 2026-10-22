@@ -22,6 +22,7 @@ import androidx.compose.ui.window.DialogProperties
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.ErrorText
 import fr.gshz.hideandseek.core.ui.formatDurationWords
+import fr.gshz.hideandseek.core.ui.rememberPhotoSourcePicker
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.TimeTrap
 
@@ -31,6 +32,7 @@ private const val TRAP_CHIP_ALPHA = 0.88f
  * Station first, photo on confirm: the reverse of a zone card, because the trap must be
  * pinned to a station before the server can tell the hider which one it snapped to.
  */
+@Suppress("LongMethod")
 @Composable
 internal fun TimeTrapPlacementPanel(
     uiState: MapUiState,
@@ -39,7 +41,11 @@ internal fun TimeTrapPlacementPanel(
     modifier: Modifier = Modifier,
 ) {
     val showOwnZoneWarning = rememberSaveable { mutableStateOf(false) }
-    val pickPhoto = rememberCardPhotoPicker(onPicked = onConfirm, onCancelled = {})
+    val pickPhoto = rememberPhotoSourcePicker(
+        onPicked = onConfirm,
+        titleRes = R.string.zone_card_photo_title,
+        messageRes = R.string.zone_card_photo_message,
+    )
 
     Surface(modifier = modifier, shape = MaterialTheme.shapes.large, tonalElevation = 4.dp) {
         Column(

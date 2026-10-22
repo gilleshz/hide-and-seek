@@ -81,6 +81,7 @@ fun PlayerDto.toDomain() = Player(
     uuid = uuid,
     displayName = displayName,
     side = side?.let(Side::fromWireValue),
+    avatarRef = avatarRef,
 )
 
 fun LeaderboardEntryDto.toDomain() = LeaderboardEntry(

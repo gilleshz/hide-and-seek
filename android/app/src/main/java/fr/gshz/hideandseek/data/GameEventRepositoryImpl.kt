@@ -345,7 +345,12 @@ class GameEventRepositoryImpl @Inject constructor(
             val player = element as? JsonObject ?: return@mapNotNull null
             val uuid = player.stringField("uuid") ?: return@mapNotNull null
             val displayName = player.stringField("displayName") ?: return@mapNotNull null
-            Player(uuid, displayName, Side.fromWireValueOrNull(player.stringField("side")))
+            Player(
+                uuid,
+                displayName,
+                Side.fromWireValueOrNull(player.stringField("side")),
+                player.stringField("avatarRef"),
+            )
         } ?: return
         _rosterEvents.emit(RosterChanged(players))
     }

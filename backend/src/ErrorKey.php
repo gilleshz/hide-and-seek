@@ -15,6 +15,7 @@ final class ErrorKey
     public const string IDENTITY_PLAYER_NOT_FOUND = 'identity.player_not_found';
     public const string IDENTITY_PLAYER_LEFT = 'identity.player_left';
     public const string JOIN_DEVICE_MISMATCH = 'join.device_mismatch';
+    public const string PROFILE_CREDENTIAL_INVALID = 'profile.credential_invalid';
     public const string PLAYER_REMOVE_NOT_HOST = 'player.remove_not_host';
     public const string RATE_LIMIT_EXCEEDED = 'rate_limit.exceeded';
     public const string POSSIBLE_AREA_SEEKERS_ONLY = 'possible_area.seekers_only';

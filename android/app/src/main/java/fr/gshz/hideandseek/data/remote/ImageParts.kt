@@ -52,6 +52,12 @@ class ImageParts @Inject constructor(@ApplicationContext private val context: Co
         )
     }
 
+    fun image(jpeg: ByteArray): MultipartBody.Part = MultipartBody.Part.createFormData(
+        "image",
+        "avatar.jpg",
+        jpeg.toRequestBody(JPEG_MIME_TYPE.toMediaTypeOrNull()),
+    )
+
     fun text(value: String): RequestBody = value.toRequestBody(PLAIN_TEXT.toMediaTypeOrNull())
 
     private fun streamingBody(resolver: ContentResolver, uri: Uri, mimeType: String): RequestBody {

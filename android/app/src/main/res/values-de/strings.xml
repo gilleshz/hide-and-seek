@@ -632,6 +632,27 @@
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
 
+    <!-- Profilbild -->
+    <string name="settings_profile_photo">Profilbild</string>
+    <string name="settings_profile_photo_hint">Sichtbar für Spieler in deinen Spielen</string>
+    <string name="settings_profile_photo_empty_hint">Füge ein Foto hinzu, um deine Initialen auf der Karte zu ersetzen</string>
+    <string name="settings_profile_photo_add">Foto hinzufügen</string>
+    <string name="settings_profile_photo_change">Ändern</string>
+    <string name="settings_profile_photo_remove">Foto entfernen</string>
+    <string name="settings_profile_photo_remove_title">Profilbild entfernen?</string>
+    <string name="settings_profile_photo_remove_body">Deine Initialen werden wieder auf der Karte angezeigt.</string>
+    <string name="settings_profile_photo_remove_confirm">Entfernen</string>
+    <string name="avatar_crop_title">Foto anpassen</string>
+    <string name="avatar_crop_hint">Zum Zoomen kneifen oder den Regler verwenden. Zum Verschieben ziehen.</string>
+    <string name="avatar_crop_zoom">Zoom</string>
+    <string name="avatar_crop_reset">Zurücksetzen</string>
+    <string name="avatar_crop_use">Foto verwenden</string>
+    <string name="avatar_crop_loading">Foto wird geladen</string>
+    <string name="avatar_crop_uploading">Foto wird hochgeladen</string>
+    <string name="avatar_crop_close">Schließen</string>
+    <string name="avatar_crop_open_failed">Dieses Foto konnte nicht geöffnet werden. Versuche es mit einem anderen.</string>
+    <string name="error_profile_credential_invalid">Dieser Name ist auf einem anderen Gerät registriert.</string>
+
     <!-- Backend-Fehlermeldungen -->
     <string name="error_seeker_only">Nur die suchende Person kann Fragen stellen.</string>
     <string name="error_hider_only">Nur die versteckende Person kann diese Aktion ausführen.</string>

@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.feature.settings
 
 import fr.gshz.hideandseek.R
+import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 
 data class SettingsUiState(
@@ -8,6 +9,13 @@ data class SettingsUiState(
     val availableLocales: List<LocaleOption> = defaultLocales,
     val selectedTheme: String = "system",
     val availableThemes: List<ThemeOption> = defaultThemes,
+    val playerName: String? = null,
+    val avatarUrl: String? = null,
+    val isUploadingAvatar: Boolean = false,
+    val avatarSaved: Boolean = false,
+    val avatarError: ErrorType? = null,
+    val avatarErrorKey: String? = null,
+    val avatarErrorArgs: Map<String, String>? = null,
 )
 
 data class LocaleOption(

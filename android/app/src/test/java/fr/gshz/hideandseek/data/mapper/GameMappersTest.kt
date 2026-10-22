@@ -2,6 +2,7 @@ package fr.gshz.hideandseek.data.mapper
 
 import fr.gshz.hideandseek.data.remote.dto.GameDto
 import fr.gshz.hideandseek.data.remote.dto.GtfsLineDto
+import fr.gshz.hideandseek.data.remote.dto.PlayerDto
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,6 +21,13 @@ class GameMappersTest {
     @Test
     fun `hasGtfsLines is false without GTFS lines`() {
         assertFalse(game().toDomain().hasGtfsLines)
+    }
+
+    @Test
+    fun `player mapping carries the avatar ref`() {
+        val player = PlayerDto(uuid = "player-1", displayName = "Alice", avatarRef = "ref-1").toDomain()
+
+        assertEquals("ref-1", player.avatarRef)
     }
 
     private fun game(selectedGtfsLines: List<GtfsLineDto> = emptyList()) = GameDto(

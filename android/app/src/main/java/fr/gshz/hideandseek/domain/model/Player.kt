@@ -4,4 +4,5 @@ data class Player(
     val uuid: String,
     val displayName: String,
     val side: Side? = null,
+    val avatarRef: String? = null,
 )

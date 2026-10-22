@@ -48,8 +48,8 @@ final class RosterNotifierTest extends TestCase
         self::assertIsArray($payload);
         self::assertSame('roster', $payload['type']);
         self::assertSame([
-            ['uuid' => $alice->getUuid(), 'displayName' => 'Alice', 'side' => 'hider'],
-            ['uuid' => $bob->getUuid(), 'displayName' => 'Bob', 'side' => null],
+            ['uuid' => $alice->getUuid(), 'displayName' => 'Alice', 'side' => 'hider', 'avatarRef' => null],
+            ['uuid' => $bob->getUuid(), 'displayName' => 'Bob', 'side' => null, 'avatarRef' => null],
         ], $payload['players']);
     }
 

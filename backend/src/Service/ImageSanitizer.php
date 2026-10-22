@@ -32,7 +32,7 @@ final readonly class ImageSanitizer
     /**
      * @return array{path: string, extension: string, mime: string}
      */
-    public function sanitize(UploadedFile $file): array
+    public function sanitize(UploadedFile $file, ?int $squareSize = null): array
     {
         $size = @getimagesize($file->getPathname());
         if ($size === false) {
@@ -53,6 +53,12 @@ final readonly class ImageSanitizer
         }
 
         $image = $this->applyOrientation($image, $file->getPathname());
+        $mime = $size['mime'];
+        if ($squareSize !== null) {
+            $image = $this->centerSquare($image, $squareSize);
+            $format = ['extension' => 'jpg'];
+            $mime = 'image/jpeg';
+        }
 
         $path = tempnam(sys_get_temp_dir(), 'jetlag-img-');
         if (!is_string($path) || !$this->encode($image, $path, $format)) {
@@ -65,7 +71,54 @@ final readonly class ImageSanitizer
         }
         imagedestroy($image);
 
-        return ['path' => $path, 'extension' => $format['extension'], 'mime' => $size['mime']];
+        return ['path' => $path, 'extension' => $format['extension'], 'mime' => $mime];
+    }
+
+    private function centerSquare(\GdImage $image, int $size): \GdImage
+    {
+        if ($size < 1) {
+            imagedestroy($image);
+            throw $this->invalidImage();
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $side = min($width, $height);
+
+        if (!imageistruecolor($image)) {
+            imagepalettetotruecolor($image);
+        }
+
+        $square = imagecreatetruecolor($size, $size);
+        if (!$square instanceof \GdImage) {
+            imagedestroy($image);
+            throw $this->invalidImage();
+        }
+
+        $white = imagecolorallocate($square, 255, 255, 255);
+        if ($white === false) {
+            imagedestroy($square);
+            imagedestroy($image);
+            throw $this->invalidImage();
+        }
+
+        // Opaque white first, so transparent source pixels flatten onto white instead of black.
+        imagefill($square, 0, 0, $white);
+        imagecopyresampled(
+            $square,
+            $image,
+            0,
+            0,
+            intdiv($width - $side, 2),
+            intdiv($height - $side, 2),
+            $size,
+            $size,
+            $side,
+            $side,
+        );
+        imagedestroy($image);
+
+        return $square;
     }
 
     /**

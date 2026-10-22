@@ -1,6 +1,8 @@
 @file:Suppress("TooManyFunctions")
 package fr.gshz.hideandseek.feature.map
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.PointF
 import android.view.MotionEvent
 import android.view.View
@@ -52,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -66,6 +69,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.BitmapImage
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.ErrorText
 import fr.gshz.hideandseek.core.ui.formatDistance
@@ -1229,6 +1236,7 @@ private fun MapLibreMapView(
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val state = remember(context) { MapViewState(MarkerPins.create(context)) }
+    val avatars = rememberAvatarBitmaps(markers)
     val stationTooltip = remember { mutableStateOf<StationTooltipData?>(null) }
     val seekerAction = remember { mutableStateOf<SeekerActionData?>(null) }
     val seekerCircles = if (seekerOverlay.isSeeker) {
@@ -1294,6 +1302,7 @@ private fun MapLibreMapView(
         boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
         seekerCircles, seekerOverlay.radiusMeters,
         drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, focusedTransitRef,
+        avatars,
     ) {
         state.syncSources(
             markers, possibleAreaGeoJson, boundary,
@@ -1301,6 +1310,7 @@ private fun MapLibreMapView(
             boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
             seekerCircles, seekerOverlay.radiusMeters,
             drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, focusedTransitRef,
+            avatars,
         )
     }
 
@@ -1312,7 +1322,39 @@ private fun MapLibreMapView(
     }
 }
 
+@Composable
+private fun rememberAvatarBitmaps(markers: List<PlayerMarker>): Map<String, AvatarBitmap> {
+    val context = LocalContext.current
+    val urls = remember(markers) {
+        markers.mapNotNull { marker -> marker.avatarUrl?.let { marker.playerUuid to it } }.toMap()
+    }
+    var avatars by remember { mutableStateOf<Map<String, AvatarBitmap>>(emptyMap()) }
+    LaunchedEffect(urls) {
+        val loaded = avatars.filter { (playerUuid, avatar) -> urls[playerUuid] == avatar.url }.toMutableMap()
+        urls.forEach { (playerUuid, url) ->
+            if (loaded[playerUuid]?.url == url) return@forEach
+            loadAvatarBitmap(context, url)?.let { loaded[playerUuid] = AvatarBitmap(url, it) }
+        }
+        avatars = loaded
+    }
+    return avatars
+}
+
+private suspend fun loadAvatarBitmap(context: Context, url: String): Bitmap? {
+    val request = ImageRequest.Builder(context).data(url).build()
+    val bitmap = ((SingletonImageLoader.get(context).execute(request) as? SuccessResult)?.image as? BitmapImage)
+        ?.bitmap
+        ?: return null
+    // MapLibre and the pin canvas read pixels from software bitmaps.
+    return if (bitmap.config == Bitmap.Config.HARDWARE) {
+        bitmap.copy(Bitmap.Config.ARGB_8888, false)
+    } else {
+        bitmap
+    }
+}
+
 private class MapViewState(private val markerPins: MarkerPins) {
+    private val registeredAvatars = mutableMapOf<String, String>()
     var stationClickListenerRegistered = false
     var longClickListenerRegistered = false
     var touchListenerRegistered = false
@@ -1351,6 +1393,7 @@ private class MapViewState(private val markerPins: MarkerPins) {
     }
 
     private fun attachOverlays(style: Style) {
+        registeredAvatars.clear()
         style.ensureExclusionLayer()
         style.ensureBoundaryLayer()
         style.ensureZoneLayer()
@@ -1382,6 +1425,7 @@ private class MapViewState(private val markerPins: MarkerPins) {
         manualConstraints: List<ManualConstraint> = emptyList(),
         trapPins: List<TrapPin> = emptyList(),
         focusedTransitRef: String? = null,
+        avatars: Map<String, AvatarBitmap> = emptyMap(),
     ) {
         val map = mapRef.value?.takeIf { styleReady.value } ?: return
         val style = map.style ?: return
@@ -1389,7 +1433,14 @@ private class MapViewState(private val markerPins: MarkerPins) {
             style.ensureTransitOverlayLayer(transitOverlayGeoJson, focusedTransitRef)
         }
         style.applyTransitFocus(focusedTransitRef)
-        style.updateMarkerSources(markers)
+        val staleImages = style.updateAvatarImages(
+            avatars,
+            registeredAvatars,
+            markerPins.density,
+            markerPins.densityDpi,
+        )
+        style.updateMarkerSources(markers, registeredAvatars)
+        staleImages.forEach(style::removeImage)
         style.updateZoneSource(zonePin, zoneRadiusMeters ?: DEFAULT_ZONE_RADIUS_METERS)
         style.updateSeekerMarkerSource(seekerCircles, seekerRadiusMeters ?: DEFAULT_ZONE_RADIUS_METERS)
         style.updateTimeTrapSource(trapPins)

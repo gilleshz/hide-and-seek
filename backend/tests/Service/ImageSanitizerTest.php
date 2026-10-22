@@ -165,6 +165,61 @@ final class ImageSanitizerTest extends TestCase
         @unlink($result['path']);
     }
 
+    #[Test]
+    public function aSquareSizeCenterCropsAndResizesToJpeg(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sanitizer_square_');
+        self::assertIsString($path);
+        $image = imagecreatetruecolor(100, 50);
+        self::assertInstanceOf(\GdImage::class, $image);
+        imagejpeg($image, $path, 90);
+        imagedestroy($image);
+
+        $result = $this->sanitizer->sanitize(
+            new UploadedFile($path, 'photo.jpg', 'image/jpeg', null, true),
+            64,
+        );
+
+        self::assertSame('jpg', $result['extension']);
+        self::assertSame('image/jpeg', $result['mime']);
+        $size = getimagesize($result['path']);
+        self::assertIsArray($size);
+        self::assertSame([64, 64], [$size[0], $size[1]]);
+        self::assertSame('image/jpeg', $size['mime']);
+        @unlink($result['path']);
+    }
+
+    #[Test]
+    public function aTransparentSquareIsFlattenedOntoWhite(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sanitizer_square_alpha_');
+        self::assertIsString($path);
+        $image = imagecreatetruecolor(20, 20);
+        self::assertInstanceOf(\GdImage::class, $image);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+        self::assertIsInt($transparent);
+        imagefill($image, 0, 0, $transparent);
+        imagepng($image, $path);
+        imagedestroy($image);
+
+        $result = $this->sanitizer->sanitize(
+            new UploadedFile($path, 'alpha.png', 'image/png', null, true),
+            16,
+        );
+
+        $decoded = imagecreatefromjpeg($result['path']);
+        self::assertInstanceOf(\GdImage::class, $decoded);
+        $corner = imagecolorat($decoded, 0, 0);
+        self::assertIsInt($corner);
+        self::assertGreaterThanOrEqual(250, ($corner >> 16) & 0xFF);
+        self::assertGreaterThanOrEqual(250, ($corner >> 8) & 0xFF);
+        self::assertGreaterThanOrEqual(250, $corner & 0xFF);
+        imagedestroy($decoded);
+        @unlink($result['path']);
+    }
+
     private function expectInvalidImage(string $path): void
     {
         try {

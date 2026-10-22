@@ -33,6 +33,7 @@ import fr.gshz.hideandseek.data.remote.dto.PossibleAreaDto
 import fr.gshz.hideandseek.data.remote.dto.LocationPingRequest
 import fr.gshz.hideandseek.data.remote.dto.LocationPingResponse
 import fr.gshz.hideandseek.data.remote.dto.PlayerDto
+import fr.gshz.hideandseek.data.remote.dto.ProfileDto
 import fr.gshz.hideandseek.data.remote.dto.RevealQuestionRequest
 import fr.gshz.hideandseek.data.remote.dto.RoundDto
 import fr.gshz.hideandseek.data.remote.dto.RoundStartRequest
@@ -62,6 +63,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -337,4 +339,28 @@ interface HideAndSeekApi {
         @Url url: String,
         @Body body: GtfsRealtimeProbeRequest,
     ): GtfsRealtimeProbeDto
+
+    @GET
+    suspend fun getProfile(
+        @Url url: String,
+        @Query("name") name: String,
+        @Header("X-Device-Key") deviceKey: String,
+    ): ProfileDto
+
+    @Multipart
+    @POST
+    suspend fun uploadAvatar(
+        @Url url: String,
+        @Query("name") name: String,
+        @Header("X-Device-Key") deviceKey: String,
+        @Part image: MultipartBody.Part,
+    ): ProfileDto
+
+    // The backend answers 204 No Content; no return type so the deserializer skips the empty body.
+    @DELETE
+    suspend fun deleteAvatar(
+        @Url url: String,
+        @Query("name") name: String,
+        @Header("X-Device-Key") deviceKey: String,
+    )
 }

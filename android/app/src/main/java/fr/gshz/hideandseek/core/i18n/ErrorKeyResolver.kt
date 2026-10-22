@@ -62,6 +62,7 @@ private val ERROR_KEY_MAP: Map<String, Int> = mapOf(
     "identity.player_not_found" to R.string.error_session_expired,
     "identity.player_left" to R.string.error_session_expired,
     "join.device_mismatch" to R.string.error_join_device_mismatch,
+    "profile.credential_invalid" to R.string.error_profile_credential_invalid,
     "rate_limit.exceeded" to R.string.error_rate_limit,
     "heavy_work.busy" to R.string.error_heavy_work_busy,
 )

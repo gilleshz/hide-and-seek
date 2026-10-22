@@ -1,6 +1,7 @@
 package fr.gshz.hideandseek.feature.map
 
 import app.cash.turbine.test
+import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.domain.model.DeviceLocation
 import fr.gshz.hideandseek.domain.model.Edition
@@ -12,6 +13,7 @@ import fr.gshz.hideandseek.domain.model.RoundStatus
 import fr.gshz.hideandseek.domain.model.ScoreDeclaration
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.repository.TimerEvent
+import io.mockk.coEvery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -619,6 +621,68 @@ class MapSessionViewModelTest {
                 cancelAndIgnoreRemainingEvents()
             }
         }
+
+    @Test
+    fun `roster avatar refs become absolute avatar urls`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = null),
+        )
+        fixture.gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-1"))
+        fixture.gameRepository.listPlayersResult =
+            Result.success(listOf(Player("player-1", "Alice", avatarRef = "ref-1")))
+        coEvery { fixture.connectionStore.current() } returns
+            ConnectionConfig("https://api.example.com/", "key")
+
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.gameName.isEmpty()) state = awaitItem()
+            fixture.locationRepository.emit(LocationUpdate("player-1", 1.0, 2.0, "2026-01-01T00:00:00Z"))
+            while (state.markers.none { it.playerUuid == "player-1" }) state = awaitItem()
+
+            assertEquals(
+                "https://api.example.com/api/avatars/ref-1",
+                state.markers.first { it.playerUuid == "player-1" }.avatarUrl,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a roster event refreshes a player avatar url`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = null),
+        )
+        fixture.gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-1"))
+        fixture.gameRepository.listPlayersResult = Result.success(listOf(Player("player-1", "Alice")))
+        coEvery { fixture.connectionStore.current() } returns
+            ConnectionConfig("https://api.example.com/", "key")
+
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.gameName.isEmpty()) state = awaitItem()
+            fixture.locationRepository.emit(LocationUpdate("player-1", 1.0, 2.0, "2026-01-01T00:00:00Z"))
+            while (state.markers.none { it.playerUuid == "player-1" }) state = awaitItem()
+
+            fixture.gameEventRepository.emitRosterChanged(
+                listOf(Player("player-1", "Alice", avatarRef = "ref-2")),
+            )
+            while (state.markers.firstOrNull { it.playerUuid == "player-1" }?.avatarUrl == null) {
+                state = awaitItem()
+            }
+
+            assertEquals(
+                "https://api.example.com/api/avatars/ref-2",
+                state.markers.first { it.playerUuid == "player-1" }.avatarUrl,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     private companion object {
         const val ONE_MINUTE_MS = 60_000L

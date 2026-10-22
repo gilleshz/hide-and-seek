@@ -31,6 +31,9 @@ class Identity
     #[ORM\Column(name: 'credential_reset_requested', type: 'boolean', options: ['default' => false])]
     private bool $credentialResetRequested = false;
 
+    #[ORM\Column(name: 'avatar_ref', type: 'string', length: 64, nullable: true)]
+    private ?string $avatarRef = null;
+
     #[ORM\Column(name: 'token_epoch', type: 'integer', options: ['default' => 1])]
     private int $tokenEpoch = 1;
 
@@ -73,6 +76,18 @@ class Identity
     public function isCredentialResetRequested(): bool
     {
         return $this->credentialResetRequested;
+    }
+
+    public function getAvatarRef(): ?string
+    {
+        return $this->avatarRef;
+    }
+
+    public function replaceAvatar(?string $avatarRef): self
+    {
+        $this->avatarRef = $avatarRef;
+
+        return $this;
     }
 
     public function getTokenEpoch(): int

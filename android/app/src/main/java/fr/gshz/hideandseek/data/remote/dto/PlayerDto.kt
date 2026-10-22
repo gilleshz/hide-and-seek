@@ -7,4 +7,5 @@ data class PlayerDto(
     val uuid: String,
     val displayName: String,
     val side: String? = null,
+    val avatarRef: String? = null,
 )

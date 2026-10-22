@@ -12,6 +12,7 @@ import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.LocationUpdate
+import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.Round
 import fr.gshz.hideandseek.domain.model.RoundStatus
 import fr.gshz.hideandseek.domain.model.RulesVariant
@@ -64,7 +65,7 @@ class MapSessionViewModel @Inject constructor(
     private val gameUuid: String = sessionEvents.gameUuid
 
     private val gameInfo = MutableStateFlow(GameInfo())
-    private val roster = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val roster = MutableStateFlow<Map<String, RosterPlayer>>(emptyMap())
     private val selfPlayerUuid = MutableStateFlow<String?>(null)
     private val locations = MutableStateFlow<Map<String, LocationUpdate>>(emptyMap())
     private val rosterHealAttempted = mutableSetOf<String>()
@@ -119,7 +120,7 @@ class MapSessionViewModel @Inject constructor(
 
     private data class PlayersPart(
         val info: GameInfo,
-        val roster: Map<String, String>,
+        val roster: Map<String, RosterPlayer>,
         val selfUuid: String?,
         val locations: Map<String, LocationUpdate>,
         val selfGps: ZonePin?,
@@ -163,7 +164,7 @@ class MapSessionViewModel @Inject constructor(
             selectedMapStyle = style,
             selectedTransitLines = info.selectedTransitLines,
             hasGtfsLines = info.hasGtfsLines,
-            roster = players.roster,
+            roster = players.roster.mapValues { it.value.displayName },
             selfPlayerUuid = players.selfUuid,
             locations = players.locations,
             selfGps = players.selfGps,
@@ -183,6 +184,7 @@ class MapSessionViewModel @Inject constructor(
     init {
         loadGameInfo()
         observeLocations()
+        observeRoster()
         observeReconnects()
         observeSessionChanges()
         observeTimerEvents()
@@ -204,7 +206,7 @@ class MapSessionViewModel @Inject constructor(
                 if (session != null && game.roundUuid != session.roundUuid) {
                     _navigateToLobby.tryEmit(Unit)
                 }
-                roster.value = rosterNames(refresh)
+                reloadRoster(refresh)
                 gameInfo.update {
                     it.copy(
                         gameName = game.name,
@@ -248,14 +250,33 @@ class MapSessionViewModel @Inject constructor(
         }
     }
 
-    private suspend fun rosterNames(refresh: Boolean): Map<String, String> {
+    private suspend fun reloadRoster(refresh: Boolean) {
         val players = if (refresh) {
             gameInfoSource.gameStateCache.refreshRoster(gameUuid)
         } else {
             gameInfoSource.gameStateCache.getRoster(gameUuid)
         }
-        return players.associate { it.uuid to it.displayName }
+        roster.value = rosterEntries(players, currentApiUrl())
     }
+
+    private fun observeRoster() {
+        viewModelScope.launch {
+            sessionEvents.gameEventRepository.rosterEvents.collect { changed ->
+                roster.value = rosterEntries(changed.players, currentApiUrl())
+            }
+        }
+    }
+
+    private suspend fun currentApiUrl(): String =
+        gameInfoSource.connectionStore.current()?.apiUrl?.trimEnd('/').orEmpty()
+
+    private fun rosterEntries(players: List<Player>, apiUrl: String): Map<String, RosterPlayer> =
+        players.associate { player ->
+            player.uuid to RosterPlayer(
+                displayName = player.displayName,
+                avatarUrl = player.avatarRef?.takeIf { apiUrl.isNotEmpty() }?.let { "$apiUrl/api/avatars/$it" },
+            )
+        }
 
     private suspend fun loadClientConfig() {
         try {
@@ -307,7 +328,7 @@ class MapSessionViewModel @Inject constructor(
     private suspend fun healRosterIfUnknown(playerUuid: String) {
         if (playerUuid in roster.value || !rosterHealAttempted.add(playerUuid)) return
         try {
-            roster.value = rosterNames(refresh = true)
+            reloadRoster(refresh = true)
         } catch (e: IOException) {
             Log.w(TAG, "Roster refresh for unknown player failed", e)
         } catch (e: HttpException) {

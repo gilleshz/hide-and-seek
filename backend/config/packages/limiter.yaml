@@ -42,3 +42,8 @@ framework:
             limit: 1800
             interval: '1 minute'
             cache_pool: 'rate_limiter.cache'
+        profile:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '10 minutes'
+            cache_pool: 'rate_limiter.cache'

@@ -17,14 +17,14 @@ readonly class LocalVolumeStorage implements ImageStorageInterface
     ) {
     }
 
-    public function store(string $gameUuid, UploadedFile $file): string
+    public function store(string $scope, UploadedFile $file, ?int $squareSize = null): string
     {
-        $dir = "{$this->baseDir}/{$gameUuid}";
+        $dir = "{$this->baseDir}/{$scope}";
         if (!is_dir($dir) && !mkdir($dir, 0o755, true) && !is_dir($dir)) {
             throw new \RuntimeException("Failed to create directory: {$dir}");
         }
 
-        $sanitized = $this->sanitizer->sanitize($file);
+        $sanitized = $this->sanitizer->sanitize($file, $squareSize);
         $ref = bin2hex(random_bytes(16)) . '.' . $sanitized['extension'];
         $dest = "{$dir}/{$ref}";
         $stored = @rename($sanitized['path'], $dest) || @copy($sanitized['path'], $dest);
@@ -36,9 +36,14 @@ readonly class LocalVolumeStorage implements ImageStorageInterface
         return $ref;
     }
 
-    public function read(string $gameUuid, string $ref): mixed
+    public function exists(string $scope, string $ref): bool
     {
-        $path = $this->resolvePath($gameUuid, $ref);
+        return is_file($this->resolvePath($scope, $ref));
+    }
+
+    public function read(string $scope, string $ref): mixed
+    {
+        $path = $this->resolvePath($scope, $ref);
         $fp = is_file($path) ? fopen($path, 'rb') : false;
         if ($fp === false) {
             throw new \RuntimeException("Failed to open file: {$path}");
@@ -47,28 +52,28 @@ readonly class LocalVolumeStorage implements ImageStorageInterface
         return $fp;
     }
 
-    public function mimeType(string $gameUuid, string $ref): string
+    public function mimeType(string $scope, string $ref): string
     {
-        $path = $this->resolvePath($gameUuid, $ref);
+        $path = $this->resolvePath($scope, $ref);
         $mime = mime_content_type($path);
 
         return $mime === false ? 'application/octet-stream' : $mime;
     }
 
-    public function delete(string $gameUuid, string $ref): void
+    public function delete(string $scope, string $ref): void
     {
-        $path = $this->resolvePath($gameUuid, $ref);
+        $path = $this->resolvePath($scope, $ref);
         if (is_file($path)) {
             unlink($path);
         }
     }
 
-    private function resolvePath(string $gameUuid, string $ref): string
+    private function resolvePath(string $scope, string $ref): string
     {
         if (str_contains($ref, '/') || str_contains($ref, '\\') || str_contains($ref, '..')) {
             throw new \InvalidArgumentException('Invalid image reference.');
         }
 
-        return "{$this->baseDir}/{$gameUuid}/{$ref}";
+        return "{$this->baseDir}/{$scope}/{$ref}";
     }
 }

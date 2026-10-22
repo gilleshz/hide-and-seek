@@ -6,6 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.gshz.hideandseek.core.device.AndroidDeviceIdentity
 import fr.gshz.hideandseek.core.device.DeviceIdentity
+import fr.gshz.hideandseek.data.AvatarRepositoryImpl
 import fr.gshz.hideandseek.data.ChatRepositoryImpl
 import fr.gshz.hideandseek.data.ClientConfigRepositoryImpl
 import fr.gshz.hideandseek.data.ConnectionRepositoryImpl
@@ -22,6 +23,7 @@ import fr.gshz.hideandseek.data.SessionRepositoryImpl
 import fr.gshz.hideandseek.data.StreetNetworkRepositoryImpl
 import fr.gshz.hideandseek.data.TimeTrapRepositoryImpl
 import fr.gshz.hideandseek.data.ZoneRepositoryImpl
+import fr.gshz.hideandseek.domain.repository.AvatarRepository
 import fr.gshz.hideandseek.domain.repository.ChatRepository
 import fr.gshz.hideandseek.domain.repository.ClientConfigRepository
 import fr.gshz.hideandseek.domain.repository.ConnectionRepository
@@ -117,6 +119,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindClientConfigRepository(impl: ClientConfigRepositoryImpl): ClientConfigRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAvatarRepository(impl: AvatarRepositoryImpl): AvatarRepository
 
     @Binds
     @Singleton

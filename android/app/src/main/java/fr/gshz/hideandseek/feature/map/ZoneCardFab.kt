@@ -1,9 +1,5 @@
 package fr.gshz.hideandseek.feature.map
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
@@ -23,8 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fr.gshz.hideandseek.R
-import fr.gshz.hideandseek.core.ui.ImageSourceDialog
-import fr.gshz.hideandseek.core.ui.rememberCameraCapture
+import fr.gshz.hideandseek.core.ui.rememberPhotoSourcePicker
 import fr.gshz.hideandseek.domain.model.ZoneCard
 
 /**
@@ -42,13 +37,15 @@ internal fun ZoneCardFab(
     val pendingCard = rememberSaveable { mutableStateOf<ZoneCard?>(null) }
     val cardNeedingConfirmation = remember { mutableStateOf<ZoneCard?>(null) }
 
-    val picker = rememberCardPhotoPicker(
+    val picker = rememberPhotoSourcePicker(
         onPicked = { uri ->
             pendingCard.value?.let { onPlayZoneCard(it, uri) }
             pendingCard.value = null
             expanded.value = false
         },
         onCancelled = { pendingCard.value = null },
+        titleRes = R.string.zone_card_photo_title,
+        messageRes = R.string.zone_card_photo_message,
     )
     val play: (ZoneCard) -> Unit = { card ->
         pendingCard.value = card
@@ -138,40 +135,4 @@ private fun TinyHomeWarningDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) 
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
         },
     )
-}
-
-/**
- * Callback that asks for the card photo, camera or gallery, and hands back its URI.
- * Cancelling plays nothing.
- */
-@Composable
-internal fun rememberCardPhotoPicker(onPicked: (String) -> Unit, onCancelled: () -> Unit): () -> Unit {
-    val showSource = rememberSaveable { mutableStateOf(false) }
-    val consume: (Uri?) -> Unit = { uri -> if (uri == null) onCancelled() else onPicked(uri.toString()) }
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> consume(uri) }
-    val capturePhoto = rememberCameraCapture(consume)
-
-    if (showSource.value) {
-        ImageSourceDialog(
-            onCameraClick = {
-                showSource.value = false
-                capturePhoto()
-            },
-            onGalleryClick = {
-                showSource.value = false
-                galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            },
-            onDismiss = {
-                showSource.value = false
-                onCancelled()
-            },
-            titleRes = R.string.zone_card_photo_title,
-            messageRes = R.string.zone_card_photo_message,
-        )
-    }
-
-    return { showSource.value = true }
 }

@@ -32,6 +32,8 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
         private RateLimiterFactory $tokenMint,
         #[Autowire(service: 'limiter.location_ingest_ip')]
         private RateLimiterFactory $locationIngestIp,
+        #[Autowire(service: 'limiter.profile')]
+        private RateLimiterFactory $profile,
         #[Autowire(service: 'limiter.api_global')]
         private RateLimiterFactory $apiGlobal,
     ) {
@@ -66,6 +68,10 @@ final readonly class RateLimitRequestListener implements EventSubscriberInterfac
 
     private function limiterFor(Request $request, string $path): RateLimiterFactory
     {
+        if (str_starts_with($path, '/api/profile')) {
+            return $this->profile;
+        }
+
         if ($path === '/api/games' && $request->isMethod('POST')) {
             return $this->gameCreate;
         }

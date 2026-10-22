@@ -40,12 +40,16 @@ final class PlayerResource
     #[Groups([Group::PLAYER_READ])]
     public ?Side $side;
 
+    #[Groups([Group::PLAYER_READ])]
+    public ?string $avatarRef = null;
+
     public static function fromEntity(Player $player, ?Side $side): self
     {
         $self = new self();
         $self->uuid = $player->getUuid();
         $self->displayName = $player->getDisplayName();
         $self->side = $side;
+        $self->avatarRef = $player->getIdentity()->getAvatarRef();
 
         return $self;
     }
