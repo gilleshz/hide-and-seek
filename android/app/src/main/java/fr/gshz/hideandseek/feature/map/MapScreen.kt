@@ -1228,7 +1228,7 @@ private fun MapLibreMapView(
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val state = remember { MapViewState() }
+    val state = remember(context) { MapViewState(MarkerPins.create(context)) }
     val stationTooltip = remember { mutableStateOf<StationTooltipData?>(null) }
     val seekerAction = remember { mutableStateOf<SeekerActionData?>(null) }
     val seekerCircles = if (seekerOverlay.isSeeker) {
@@ -1312,7 +1312,7 @@ private fun MapLibreMapView(
     }
 }
 
-private class MapViewState {
+private class MapViewState(private val markerPins: MarkerPins) {
     var stationClickListenerRegistered = false
     var longClickListenerRegistered = false
     var touchListenerRegistered = false
@@ -1360,7 +1360,7 @@ private class MapViewState {
         style.ensureSeekerMarkerLayer()
         style.ensureTimeTrapLayer()
         style.ensureManualConstraintLayer()
-        style.ensureMarkerLayers()
+        style.ensureMarkerLayers(markerPins.self, markerPins.other)
         style.ensureDrawingLayer()
     }
 

@@ -1,6 +1,11 @@
 @file:Suppress("TooManyFunctions")
 package fr.gshz.hideandseek.feature.map
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import androidx.compose.runtime.MutableState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -11,7 +16,6 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
@@ -19,36 +23,72 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
 private val geoJson = Json { encodeDefaults = true }
 
 /**
- * Marker circles live on their own symbol-free sources so they always paint. The text
+ * Marker pins live on their own glyph-free sources so they always paint. The text
  * (initials/name) lives on separate label sources: a SymbolLayer whose glyphs fail to load
- * breaks the *rendering of every layer on its source*, so keeping text off the circle source
+ * breaks the *rendering of every layer on its source*, so keeping text off the pin source
  * guarantees the pin shows even if glyphs are unavailable.
  */
-internal fun Style.ensureMarkerLayers() {
+internal fun Style.ensureMarkerLayers(selfPin: Bitmap, otherPin: Bitmap) {
     if (getSource(SELF_SOURCE_ID) != null) return
 
+    addImage(SELF_PIN_IMAGE_ID, selfPin)
+    addImage(OTHERS_PIN_IMAGE_ID, otherPin)
     addSource(GeoJsonSource(SELF_SOURCE_ID))
     addSource(GeoJsonSource(OTHERS_SOURCE_ID))
     addSource(GeoJsonSource(SELF_LABEL_SOURCE_ID))
     addSource(GeoJsonSource(OTHERS_LABEL_SOURCE_ID))
-    addLayer(circleLayer(SELF_CIRCLE_LAYER_ID, SELF_SOURCE_ID, SELF_MARKER_COLOR, SELF_MARKER_RADIUS))
-    addLayer(circleLayer(OTHERS_CIRCLE_LAYER_ID, OTHERS_SOURCE_ID, OTHER_MARKER_COLOR, CIRCLE_RADIUS))
+    addLayer(pinLayer(SELF_PIN_LAYER_ID, SELF_SOURCE_ID, SELF_PIN_IMAGE_ID))
+    addLayer(pinLayer(OTHERS_PIN_LAYER_ID, OTHERS_SOURCE_ID, OTHERS_PIN_IMAGE_ID))
     addLayer(initialsLayer(SELF_INITIALS_LAYER_ID, SELF_LABEL_SOURCE_ID))
     addLayer(labelLayer(SELF_LABEL_LAYER_ID, SELF_LABEL_SOURCE_ID))
     addLayer(initialsLayer(OTHERS_INITIALS_LAYER_ID, OTHERS_LABEL_SOURCE_ID))
     addLayer(labelLayer(OTHERS_LABEL_LAYER_ID, OTHERS_LABEL_SOURCE_ID))
 }
 
+internal class MarkerPins private constructor(
+    val self: Bitmap,
+    val other: Bitmap,
+) {
+    companion object {
+        fun create(context: Context): MarkerPins {
+            val metrics = context.resources.displayMetrics
+            return MarkerPins(
+                self = pinBitmap(SELF_MARKER_RADIUS, SELF_MARKER_COLOR, metrics.density, metrics.densityDpi),
+                other = pinBitmap(CIRCLE_RADIUS, OTHER_MARKER_COLOR, metrics.density, metrics.densityDpi),
+            )
+        }
+    }
+}
+
+private fun pinBitmap(radius: Float, color: String, density: Float, densityDpi: Int): Bitmap {
+    val size = ceil((2f * radius + CIRCLE_STROKE_WIDTH) * density).toInt().coerceAtLeast(1)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    bitmap.density = densityDpi
+    val canvas = Canvas(bitmap)
+    val center = size / 2f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    paint.color = Color.parseColor(color)
+    paint.style = Paint.Style.FILL
+    canvas.drawCircle(center, center, radius * density, paint)
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = CIRCLE_STROKE_WIDTH * density
+    paint.color = Color.parseColor(CIRCLE_STROKE_COLOR)
+    canvas.drawCircle(center, center, radius * density, paint)
+    return bitmap
+}
+
 internal fun Style.updateMarkerSources(markers: List<PlayerMarker>) {
+    val offsets = fanOffsets(markers)
     val (self, others) = markers.partition { it.isSelf }
-    val selfJson = toFeatureCollectionJson(self)
-    val othersJson = toFeatureCollectionJson(others)
+    val selfJson = toFeatureCollectionJson(self, offsets)
+    val othersJson = toFeatureCollectionJson(others, offsets)
     (getSource(SELF_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(selfJson)
     (getSource(SELF_LABEL_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(selfJson)
     (getSource(OTHERS_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(othersJson)
@@ -183,19 +223,19 @@ internal fun MapLibreMap.frameCameraIfNeeded(
     }
 }
 
-private fun circleLayer(layerId: String, sourceId: String, color: String, radius: Float): CircleLayer =
-    CircleLayer(layerId, sourceId).withProperties(
-        PropertyFactory.circleRadius(radius),
-        PropertyFactory.circleColor(color),
-        PropertyFactory.circleStrokeWidth(CIRCLE_STROKE_WIDTH),
-        PropertyFactory.circleStrokeColor(CIRCLE_STROKE_COLOR),
+private fun pinLayer(layerId: String, sourceId: String, imageId: String): SymbolLayer =
+    SymbolLayer(layerId, sourceId).withProperties(
+        PropertyFactory.iconImage(imageId),
+        PropertyFactory.iconOffset(Expression.get(PROPERTY_PIN_OFFSET)),
+        PropertyFactory.iconAllowOverlap(true),
+        PropertyFactory.iconAnchor(Property.ICON_ANCHOR_CENTER),
     )
 
 private fun initialsLayer(layerId: String, sourceId: String): SymbolLayer =
     SymbolLayer(layerId, sourceId).withProperties(
         PropertyFactory.textField(Expression.get(PROPERTY_INITIALS)),
         PropertyFactory.textFont(LABEL_FONT),
-        PropertyFactory.textOffset(arrayOf(0f, 0f)),
+        PropertyFactory.textOffset(Expression.get(PROPERTY_INITIALS_OFFSET)),
         PropertyFactory.textAnchor(Property.TEXT_ANCHOR_CENTER),
         PropertyFactory.textAllowOverlap(true),
         PropertyFactory.textSize(INITIALS_TEXT_SIZE),
@@ -206,7 +246,7 @@ private fun labelLayer(layerId: String, sourceId: String): SymbolLayer =
     SymbolLayer(layerId, sourceId).withProperties(
         PropertyFactory.textField(Expression.get(PROPERTY_DISPLAY_NAME)),
         PropertyFactory.textFont(LABEL_FONT),
-        PropertyFactory.textOffset(arrayOf(0f, LABEL_OFFSET_Y)),
+        PropertyFactory.textOffset(Expression.get(PROPERTY_LABEL_OFFSET)),
         PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
         PropertyFactory.textAllowOverlap(true),
         PropertyFactory.textSize(LABEL_TEXT_SIZE),
@@ -215,12 +255,25 @@ private fun labelLayer(layerId: String, sourceId: String): SymbolLayer =
         PropertyFactory.textHaloWidth(LABEL_HALO_WIDTH),
     )
 
-private fun toFeatureCollectionJson(markers: List<PlayerMarker>): String {
+private fun toFeatureCollectionJson(
+    markers: List<PlayerMarker>,
+    offsets: Map<String, MarkerFanOffset>,
+): String {
     val collection = FeatureCollectionDto(
         features = markers.map {
+            val fan = offsets[it.playerUuid] ?: MarkerFanOffset.NONE
             FeatureDto(
                 geometry = GeometryDto(coordinates = listOf(it.longitude, it.latitude)),
-                properties = PropertiesDto(displayName = it.displayName, initials = it.initials),
+                properties = PropertiesDto(
+                    displayName = it.displayName,
+                    initials = it.initials,
+                    pinOffset = listOf(fan.x, fan.y),
+                    initialsOffset = listOf(fan.x / INITIALS_TEXT_SIZE, fan.y / INITIALS_TEXT_SIZE),
+                    labelOffset = listOf(
+                        fan.x / LABEL_TEXT_SIZE,
+                        LABEL_OFFSET_Y + fan.y / LABEL_TEXT_SIZE,
+                    ),
+                ),
             )
         },
     )
@@ -250,6 +303,9 @@ private data class GeometryDto(
 private data class PropertiesDto(
     val displayName: String,
     val initials: String = "",
+    val pinOffset: List<Float>,
+    val initialsOffset: List<Float>,
+    val labelOffset: List<Float>,
 )
 
 private const val BOUNDARY_SOURCE_ID = "boundary-source"
@@ -260,12 +316,14 @@ private const val OTHERS_SOURCE_ID = "other-players-source"
 private const val SELF_LABEL_SOURCE_ID = "self-label-source"
 private const val OTHERS_LABEL_SOURCE_ID = "other-players-label-source"
 private const val ZONE_SOURCE_ID = "hiding-zone-source"
-private const val SELF_CIRCLE_LAYER_ID = "self-location-circle"
+private const val SELF_PIN_LAYER_ID = "self-location-pin"
 private const val SELF_LABEL_LAYER_ID = "self-location-label"
 private const val SELF_INITIALS_LAYER_ID = "self-initials-label"
-private const val OTHERS_CIRCLE_LAYER_ID = "other-players-circle"
+private const val OTHERS_PIN_LAYER_ID = "other-players-pin"
 private const val OTHERS_LABEL_LAYER_ID = "other-players-label"
 private const val OTHERS_INITIALS_LAYER_ID = "other-players-initials"
+private const val SELF_PIN_IMAGE_ID = "marker-self"
+private const val OTHERS_PIN_IMAGE_ID = "marker-other"
 private const val ZONE_FILL_LAYER_ID = "hiding-zone-fill"
 private const val ZONE_LINE_LAYER_ID = "hiding-zone-line"
 private const val SEEKER_MARKER_SOURCE_ID = "seeker-candidate-source"
@@ -274,6 +332,9 @@ private const val SEEKER_MARKER_LINE_LAYER_ID = "seeker-candidate-line"
 private val LABEL_FONT = arrayOf("Noto Sans Regular")
 private const val PROPERTY_DISPLAY_NAME = "displayName"
 private const val PROPERTY_INITIALS = "initials"
+private const val PROPERTY_PIN_OFFSET = "pinOffset"
+private const val PROPERTY_INITIALS_OFFSET = "initialsOffset"
+private const val PROPERTY_LABEL_OFFSET = "labelOffset"
 private const val BOUNDARY_FILL_COLOR = "#3B82F6"
 private const val BOUNDARY_FILL_OPACITY = 0.08f
 private const val BOUNDARY_LINE_COLOR = "#3B82F6"
