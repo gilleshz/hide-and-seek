@@ -100,13 +100,6 @@ jobs:
              "app/build/outputs/apk/release/${APK_NAME}"
           echo "name=$APK_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hideandseek-${{ steps.version.outputs.versionName }}
-          path: ${{ env.OUTPUT_DIR }}/${{ steps.apk.outputs.name }}
-          if-no-files-found: error
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
