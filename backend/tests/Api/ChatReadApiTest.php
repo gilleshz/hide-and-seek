@@ -192,13 +192,13 @@ final class ChatReadApiTest extends ApiTestCase
         self::assertIsString($game['uuid']);
 
         $alice = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
         self::assertIsString($alice['playerUuid']);
         self::assertIsString($alice['mercureToken']);
 
         $bob = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Bob', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Bob', 'deviceKey' => $this->deviceKeyFor('Bob')],
         ])->toArray();
         self::assertIsString($bob['playerUuid']);
         self::assertIsString($bob['mercureToken']);

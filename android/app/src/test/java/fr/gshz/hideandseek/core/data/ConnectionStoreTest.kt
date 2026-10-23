@@ -96,6 +96,17 @@ class ConnectionStoreTest {
     }
 
     @Test
+    fun `save exposes the new key synchronously for the request interceptor`() = runTest {
+        store.save(ConnectionConfig("https://api.example.com", "secret"))
+
+        assertEquals("secret", store.currentCached()?.apiKey)
+
+        store.clear()
+
+        assertNull(store.currentCached())
+    }
+
+    @Test
     fun `the player name round-trips and stays plaintext`() = runTest {
         store.savePlayerName("Alice")
 

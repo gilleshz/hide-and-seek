@@ -5,10 +5,13 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.domain.model.JoinResult
+import fr.gshz.hideandseek.domain.model.Profile
+import fr.gshz.hideandseek.domain.repository.AvatarRepository
 import fr.gshz.hideandseek.fake.FakeGameRepository
 import fr.gshz.hideandseek.fake.FakeSessionRepository
 import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -31,19 +34,24 @@ class JoinGameViewModelTest {
     private val gameRepository = FakeGameRepository()
     private val sessionRepository = FakeSessionRepository()
     private val connectionStore = mockk<ConnectionStore>(relaxed = true)
+    private val avatarRepository = mockk<AvatarRepository>()
     private lateinit var viewModel: JoinGameViewModel
 
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         coEvery { connectionStore.currentPlayerName() } returns "Alice"
-        viewModel = JoinGameViewModel(gameRepository, sessionRepository, connectionStore, SavedStateHandle())
+        coEvery { avatarRepository.bootstrap(any()) } returns Profile("uuid-1", "Alice", null, null)
+        viewModel = createViewModel(SavedStateHandle())
     }
 
     @AfterEach
     fun tearDown() {
         Dispatchers.resetMain()
     }
+
+    private fun createViewModel(handle: SavedStateHandle) =
+        JoinGameViewModel(gameRepository, sessionRepository, connectionStore, avatarRepository, handle)
 
     @Test
     fun `join succeeds and saves the round from the join response directly`() = runTest {
@@ -88,7 +96,7 @@ class JoinGameViewModelTest {
     @Test
     fun `prefills the game key from the nav argument in upper case`() = runTest {
         val handle = SavedStateHandle(mapOf(HideAndSeekDestinations.JOIN_GAME_CODE_ARG to "abcd"))
-        val prefilled = JoinGameViewModel(gameRepository, sessionRepository, connectionStore, handle)
+        val prefilled = createViewModel(handle)
 
         assertEquals("ABCD", prefilled.uiState.value.gameKey)
     }
@@ -98,7 +106,7 @@ class JoinGameViewModelTest {
         val handle = SavedStateHandle(
             mapOf(HideAndSeekDestinations.JOIN_GAME_CODE_ARG to "550e8400-e29b-41d4-a716-446655440000"),
         )
-        val prefilled = JoinGameViewModel(gameRepository, sessionRepository, connectionStore, handle)
+        val prefilled = createViewModel(handle)
 
         assertEquals("550e8400-e29b-41d4-a716-446655440000", prefilled.uiState.value.gameKey)
     }
@@ -106,11 +114,11 @@ class JoinGameViewModelTest {
     @Test
     fun `prefills the error key from the nav arguments`() = runTest {
         val handle = SavedStateHandle(
-            mapOf(HideAndSeekDestinations.JOIN_GAME_ERROR_KEY_ARG to "join.device_mismatch"),
+            mapOf(HideAndSeekDestinations.JOIN_GAME_ERROR_KEY_ARG to "game.not_found"),
         )
-        val prefilled = JoinGameViewModel(gameRepository, sessionRepository, connectionStore, handle)
+        val prefilled = createViewModel(handle)
 
-        assertEquals("join.device_mismatch", prefilled.uiState.value.errorKey)
+        assertEquals("game.not_found", prefilled.uiState.value.errorKey)
         assertEquals(ErrorType.Validation, prefilled.uiState.value.error)
     }
 
@@ -123,29 +131,58 @@ class JoinGameViewModelTest {
     }
 
     @Test
-    fun `without a player name the join asks for one`() = runTest {
+    fun `without a player identity the join asks for a display name`() = runTest {
         coEvery { connectionStore.currentPlayerName() } returns null
         viewModel.onGameKeyChange("game-1")
 
         viewModel.join()
 
-        assertTrue(viewModel.uiState.value.needsConnect)
-        assertNull(viewModel.uiState.value.needConnectErrorKey)
+        assertTrue(viewModel.uiState.value.needsDisplayName)
+        assertEquals(ErrorType.Validation, viewModel.uiState.value.error)
         assertNull(gameRepository.lastJoinDisplayName)
         assertNull(viewModel.uiState.value.joinedGameUuid)
     }
 
     @Test
-    fun `a rejected device asks for a reconnect with the error key`() = runTest {
+    fun `a fresh join bootstraps the identity before joining`() = runTest {
+        coEvery { connectionStore.currentPlayerName() } returns null
+        coEvery { avatarRepository.bootstrap("Alice") } returns Profile("uuid-1", "Alice", null, null)
+        viewModel.onGameKeyChange("game-1")
+        viewModel.onDisplayNameChange("Alice")
+
+        viewModel.join()
+
+        assertEquals("Alice", gameRepository.lastJoinDisplayName)
+        assertEquals("game-1", viewModel.uiState.value.joinedGameUuid)
+        coVerify { avatarRepository.bootstrap("Alice") }
+        coVerify { connectionStore.savePlayerName("Alice") }
+    }
+
+    @Test
+    fun `a failed identity bootstrap surfaces a network error and stays on the form`() = runTest {
+        coEvery { connectionStore.currentPlayerName() } returns null
+        coEvery { avatarRepository.bootstrap(any()) } throws IOException("offline")
+        viewModel.onGameKeyChange("game-1")
+        viewModel.onDisplayNameChange("Alice")
+
+        viewModel.join()
+
+        assertEquals(ErrorType.Network, viewModel.uiState.value.error)
+        assertNull(gameRepository.lastJoinDisplayName)
+        assertNull(viewModel.uiState.value.joinedGameUuid)
+    }
+
+    @Test
+    fun `a rejected join surfaces its server error key`() = runTest {
         gameRepository.joinGameResult = Result.failure(
-            httpException(400, """{"errorKey":"join.device_mismatch"}"""),
+            httpException(400, """{"errorKey":"identity.token_invalid"}"""),
         )
         viewModel.onGameKeyChange("game-1")
 
         viewModel.join()
 
-        assertTrue(viewModel.uiState.value.needsConnect)
-        assertEquals("join.device_mismatch", viewModel.uiState.value.needConnectErrorKey)
+        assertEquals(ErrorType.Validation, viewModel.uiState.value.error)
+        assertEquals("identity.token_invalid", viewModel.uiState.value.errorKey)
         assertEquals("game-1", gameRepository.lastJoinGameUuid)
     }
 
@@ -157,7 +194,7 @@ class JoinGameViewModelTest {
         viewModel.join()
 
         assertEquals(ErrorType.NotFound, viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.needsConnect)
+        assertFalse(viewModel.uiState.value.needsDisplayName)
     }
 
     @Test
@@ -168,6 +205,5 @@ class JoinGameViewModelTest {
         viewModel.join()
 
         assertEquals(ErrorType.Network, viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.needsConnect)
     }
 }

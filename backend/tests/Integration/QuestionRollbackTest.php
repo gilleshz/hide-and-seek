@@ -165,8 +165,8 @@ final class QuestionRollbackTest extends KernelTestCase
         $game = new Game('Berlin ' . uniqid(), GameSize::Small, Edition::Metric);
         $round = new Round($game);
         $round->setStatus(RoundStatus::Seeking)->setHidingPeriodEndsAt(new \DateTimeImmutable('-1 minute'));
-        $seekerAccount = IdentityFactory::create('Seeker ' . uniqid(), 'test-password');
-        $hiderAccount = IdentityFactory::create('Hider ' . uniqid(), 'test-password');
+        $seekerAccount = IdentityFactory::create('Seeker ' . uniqid());
+        $hiderAccount = IdentityFactory::create('Hider ' . uniqid());
         $seeker = new Player($game, $seekerAccount);
         $hider = new Player($game, $hiderAccount);
         $this->em->persist($game);

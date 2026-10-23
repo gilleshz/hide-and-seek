@@ -8,6 +8,7 @@ use ApiPlatform\Test\ApiTestCase as PlatformApiTestCase;
 use ApiPlatform\Test\Client;
 use App\Service\IdentityResolver;
 use App\Service\MercureJwtService;
+use App\Tests\Support\IdentityFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -17,11 +18,11 @@ abstract class ApiTestCase extends PlatformApiTestCase
     /** Matches phpunit.dist.xml APP_API_KEY. */
     protected const array AUTH = ['headers' => ['X-API-KEY' => 'test-key']];
 
-    /** Every test join shares this device key; dedicated tests use OTHER_DEVICE_KEY. */
-    protected const string DEVICE_KEY = 'test-device-key';
-
-    /** A second device, for the mismatch and reset tests. */
-    protected const string OTHER_DEVICE_KEY = 'other-device-key';
+    /** Identity is device-keyed: each display name gets its own derived key by default. */
+    protected function deviceKeyFor(string $name): string
+    {
+        return IdentityFactory::deviceKey($name);
+    }
 
     protected static ?bool $alwaysBootKernel = true;
 
@@ -63,8 +64,9 @@ abstract class ApiTestCase extends PlatformApiTestCase
         string $roundUuid,
         string $name,
         string $side,
-        string $deviceKey = self::DEVICE_KEY,
+        ?string $deviceKey = null,
     ): array {
+        $deviceKey ??= $this->deviceKeyFor($name);
         $join = $this->joinOn($client, $gameUuid, $name, $deviceKey);
         $team = $this->pickSideOn($client, $roundUuid, $join['playerUuid'], $side, $join['mercureToken']);
 
@@ -125,9 +127,9 @@ abstract class ApiTestCase extends PlatformApiTestCase
      *
      * @return array{playerUuid: string, mercureToken: string}
      */
-    protected function joinGame(array $game, string $name, string $deviceKey = self::DEVICE_KEY): array
+    protected function joinGame(array $game, string $name, ?string $deviceKey = null): array
     {
-        return $this->joinOn($this->client(), $game['uuid'], $name, $deviceKey);
+        return $this->joinOn($this->client(), $game['uuid'], $name, $deviceKey ?? $this->deviceKeyFor($name));
     }
 
     /**
@@ -157,7 +159,7 @@ abstract class ApiTestCase extends PlatformApiTestCase
         array $game,
         string $name,
         string $side,
-        string $deviceKey = self::DEVICE_KEY,
+        ?string $deviceKey = null,
     ): array {
         $session = $this->joinAndPickSide(
             $this->client(),
@@ -192,7 +194,7 @@ abstract class ApiTestCase extends PlatformApiTestCase
         Client $client,
         string $gameUuid,
         string $name,
-        string $deviceKey = self::DEVICE_KEY,
+        string $deviceKey,
     ): array {
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
             'json' => ['name' => $name, 'deviceKey' => $deviceKey],

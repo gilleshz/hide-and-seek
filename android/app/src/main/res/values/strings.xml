@@ -18,11 +18,11 @@
     <string name="connect_title">Connect to a server</string>
     <string name="connect_api_url_label">API URL</string>
     <string name="connect_api_key_label">API key</string>
-    <string name="connect_account_name_label">Your name</string>
+    <string name="connect_account_name_label">Display name</string>
     <string name="connect_button">Connect</string>
     <string name="connect_plain_http_warning">Plain HTTP is not encrypted. Prefer https when possible.</string>
     <string name="connect_location_shared">Your location will be shared with the server you connect to. Only connect to a host you trust.</string>
-    <string name="connect_account_helper">Use the same name on this device to rejoin. Ask the host if you change phones.</string>
+    <string name="connect_account_helper">This is how other players see you. You can change it later in Settings.</string>
     <string name="form_error_blank">Fill in all required fields.</string>
 
     <string name="home_create_game">Create game</string>
@@ -645,6 +645,8 @@
     <string name="settings_profile_photo_remove_title">Remove profile photo?</string>
     <string name="settings_profile_photo_remove_body">Your initials will show on the map again.</string>
     <string name="settings_profile_photo_remove_confirm">Remove</string>
+    <string name="settings_profile_name_label">Display name</string>
+    <string name="settings_profile_name_save">Save</string>
     <string name="avatar_crop_title">Adjust photo</string>
     <string name="avatar_crop_hint">Pinch or use the slider to zoom. Drag to move.</string>
     <string name="avatar_crop_zoom">Zoom</string>
@@ -654,7 +656,7 @@
     <string name="avatar_crop_uploading">Uploading photo</string>
     <string name="avatar_crop_close">Close</string>
     <string name="avatar_crop_open_failed">This photo could not be opened. Try another one.</string>
-    <string name="error_profile_credential_invalid">This name is registered to another device.</string>
+    <string name="error_profile_credential_invalid">Your profile could not be loaded. Try again.</string>
 
     <!-- Backend error message keys -->
     <string name="error_seeker_only">Only the seeker can ask questions.</string>
@@ -767,7 +769,6 @@
     <string name="lobby_remove_player_dialog_body">They can rejoin later with the same name.</string>
     <string name="lobby_remove_player_confirm">Remove</string>
     <string name="system_player_removed">%1$s was removed from the game.</string>
-    <string name="error_join_device_mismatch">This name is already used on another device. Ask the person who runs your game server to allow a new device, or pick a different name.</string>
     <string name="lobby_precise_location_title">Precise location required</string>
     <string name="lobby_precise_location_body">The game needs precise location so the other players can find you on the map. Enable precise location in Settings.</string>
     <string name="lobby_precise_location_settings">Open settings</string>

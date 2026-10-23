@@ -15,6 +15,8 @@
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="APP_API_KEY" value="test-key" force="true" />
+        <!-- The container exports a generated (or blank) key; tests and IdentityFactory must share this fixed one. -->
+        <server name="IDENTITY_LOOKUP_KEY" value="test-identity-lookup-key" force="true" />
         <!-- Mirrors .env.test's MERCURE_JWT_SECRET: the subscriber token key is autowired under its own name (D13). -->
         <server name="MERCURE_SUBSCRIBER_JWT_KEY" value="test-mercure-secret-at-least-32-bytes-long!!" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />

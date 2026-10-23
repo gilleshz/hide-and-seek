@@ -10,6 +10,7 @@ services:
     environment:
       # Blank: generated at first boot, persisted in the secrets volume (docker compose exec app cat /app/config/secrets/app_api_key).
       APP_API_KEY: ${APP_API_KEY:-}
+      IDENTITY_LOOKUP_KEY: ${IDENTITY_LOOKUP_KEY:-}
       OVERPASS_MIRRORS: ${OVERPASS_MIRRORS}
       OVERPASS_MIRRORS_RANDOMIZE: ${OVERPASS_MIRRORS_RANDOMIZE:-true}
       MAX_BOUNDARY_SPAN_DEG: ${MAX_BOUNDARY_SPAN_DEG:-4.0}

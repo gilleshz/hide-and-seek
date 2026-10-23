@@ -15,6 +15,7 @@ use App\Repository\PlayerRepository;
 use App\Repository\RoundMembershipRepository;
 use App\Repository\RoundRepository;
 use App\Service\AvatarService;
+use App\Service\IdentityRosterPublisher;
 use App\Service\MercureJwtService;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
@@ -111,9 +112,7 @@ final class AvatarServiceTest extends TestCase
         $avatars = new AvatarService(
             $storage,
             $this->createStub(IdentityRepository::class),
-            $players,
-            $notifier,
-            new NullLogger(),
+            new IdentityRosterPublisher($players, $notifier, new NullLogger()),
         );
 
         return [$avatars, $hub, [$berlin, $paris], $identity];

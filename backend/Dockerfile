@@ -90,6 +90,7 @@ COPY . .
 RUN echo "APP_ENV=prod" > /app/.env \
     && echo "APP_SECRET=change-me-app-secret-at-least-32-chars" >> /app/.env \
     && echo "APP_API_KEY=change-me-shared-api-key" >> /app/.env \
+    && echo "IDENTITY_LOOKUP_KEY=change-me-identity-lookup-key" >> /app/.env \
     && echo 'DATABASE_URL="postgresql://jetlag:jetlag@db:5432/jetlag?serverVersion=16&charset=utf8"' >> /app/.env \
     && echo "DEFAULT_URI=http://localhost" >> /app/.env \
     && echo "SERVER_NAME=:80" >> /app/.env \

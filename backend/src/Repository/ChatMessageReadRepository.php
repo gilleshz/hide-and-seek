@@ -65,15 +65,15 @@ class ChatMessageReadRepository extends ServiceEntityRepository
     {
         /** @var list<array{playerUuid: mixed, playerName: mixed, readUpTo: mixed}> $rows */
         $rows = $this->createQueryBuilder('r')
-            ->select('p.uuid AS playerUuid', 'ident.name AS playerName', 'MAX(m.createdAt) AS readUpTo')
+            ->select('p.uuid AS playerUuid', 'ident.displayName AS playerName', 'MAX(m.createdAt) AS readUpTo')
             ->innerJoin('r.message', 'm')
             ->innerJoin('r.reader', 'p')
             ->innerJoin('p.identity', 'ident')
             ->where('m.game = :game')
             ->andWhere('p.leftAt IS NULL')
             ->groupBy('p.uuid')
-            ->addGroupBy('ident.name')
-            ->orderBy('ident.name', \SortDirection::Ascending)
+            ->addGroupBy('ident.displayName')
+            ->orderBy('ident.displayName', \SortDirection::Ascending)
             ->setParameter('game', $game)
             ->getQuery()
             ->getScalarResult();
@@ -110,13 +110,13 @@ class ChatMessageReadRepository extends ServiceEntityRepository
     {
         /** @var list<array{playerUuid: mixed, playerName: mixed, readAt: mixed}> $rows */
         $rows = $this->createQueryBuilder('r')
-            ->select('p.uuid AS playerUuid', 'ident.name AS playerName', 'r.readAt AS readAt')
+            ->select('p.uuid AS playerUuid', 'ident.displayName AS playerName', 'r.readAt AS readAt')
             ->innerJoin('r.reader', 'p')
             ->innerJoin('p.identity', 'ident')
             ->where('r.message = :message')
             ->andWhere('p.leftAt IS NULL')
             ->orderBy('r.readAt', \SortDirection::Ascending)
-            ->addOrderBy('ident.name', \SortDirection::Ascending)
+            ->addOrderBy('ident.displayName', \SortDirection::Ascending)
             ->setParameter('message', $message)
             ->getQuery()
             ->getScalarResult();

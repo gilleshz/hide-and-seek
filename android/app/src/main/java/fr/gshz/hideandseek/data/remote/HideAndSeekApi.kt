@@ -34,6 +34,7 @@ import fr.gshz.hideandseek.data.remote.dto.LocationPingRequest
 import fr.gshz.hideandseek.data.remote.dto.LocationPingResponse
 import fr.gshz.hideandseek.data.remote.dto.PlayerDto
 import fr.gshz.hideandseek.data.remote.dto.ProfileDto
+import fr.gshz.hideandseek.data.remote.dto.ProfileNameRequest
 import fr.gshz.hideandseek.data.remote.dto.RevealQuestionRequest
 import fr.gshz.hideandseek.data.remote.dto.RoundDto
 import fr.gshz.hideandseek.data.remote.dto.RoundStartRequest
@@ -64,6 +65,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Headers
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -340,18 +342,31 @@ interface HideAndSeekApi {
         @Body body: GtfsRealtimeProbeRequest,
     ): GtfsRealtimeProbeDto
 
+    @Headers("Cache-Control: no-cache")
     @GET
     suspend fun getProfile(
         @Url url: String,
-        @Query("name") name: String,
         @Header("X-Device-Key") deviceKey: String,
+    ): ProfileDto
+
+    @POST
+    suspend fun bootstrapProfile(
+        @Url url: String,
+        @Header("X-Device-Key") deviceKey: String,
+        @Body body: ProfileNameRequest,
+    ): ProfileDto
+
+    @PATCH
+    suspend fun renameProfile(
+        @Url url: String,
+        @Header("X-Device-Key") deviceKey: String,
+        @Body body: RequestBody,
     ): ProfileDto
 
     @Multipart
     @POST
     suspend fun uploadAvatar(
         @Url url: String,
-        @Query("name") name: String,
         @Header("X-Device-Key") deviceKey: String,
         @Part image: MultipartBody.Part,
     ): ProfileDto
@@ -360,7 +375,6 @@ interface HideAndSeekApi {
     @DELETE
     suspend fun deleteAvatar(
         @Url url: String,
-        @Query("name") name: String,
         @Header("X-Device-Key") deviceKey: String,
     )
 }

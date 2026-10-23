@@ -61,7 +61,7 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
     public function aDepartedHiderIsNoLongerOneOfTheRoundsHiders(): void
     {
         [$game, $round] = $this->persistGameWithRound();
-        $hiderAccount = IdentityFactory::create('Hider ' . uniqid(), 'test-password');
+        $hiderAccount = IdentityFactory::create('Hider ' . uniqid());
         $hider = new Player($game, $hiderAccount);
         $this->em->persist($hiderAccount);
         $this->em->persist($hider);
@@ -132,7 +132,7 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
     public function aRoundWhereNoHiderEverPingedHasNothingToAnswerFrom(): void
     {
         [, $round] = $this->persistGameWithRound();
-        $hiderAccount = IdentityFactory::create('Silent ' . uniqid(), 'test-password');
+        $hiderAccount = IdentityFactory::create('Silent ' . uniqid());
         $hider = new Player($round->getGame(), $hiderAccount);
         $this->em->persist($hiderAccount);
         $this->em->persist($hider);
@@ -152,8 +152,8 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
     private function persistRoundWithTwoPingingHiders(): array
     {
         [$game, $round] = $this->persistGameWithRound();
-        $staleAccount = IdentityFactory::create('Stale ' . uniqid(), 'test-password');
-        $freshAccount = IdentityFactory::create('Fresh ' . uniqid(), 'test-password');
+        $staleAccount = IdentityFactory::create('Stale ' . uniqid());
+        $freshAccount = IdentityFactory::create('Fresh ' . uniqid());
         $stale = new Player($game, $staleAccount);
         $fresh = new Player($game, $freshAccount);
         $this->em->persist($staleAccount);
@@ -184,7 +184,7 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
     public function leavingDropsEverySideThePlayerHeld(): void
     {
         [$game, $round] = $this->persistGameWithRound();
-        $seekerAccount = IdentityFactory::create('Seeker ' . uniqid(), 'test-password');
+        $seekerAccount = IdentityFactory::create('Seeker ' . uniqid());
         $seeker = new Player($game, $seekerAccount);
         $this->em->persist($seekerAccount);
         $this->em->persist($seeker);
@@ -205,7 +205,7 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
     public function aDepartedAskersOpenQuestionStopsBlockingTheRound(): void
     {
         [$game, $round] = $this->persistGameWithRound();
-        $askerAccount = IdentityFactory::create('Asker ' . uniqid(), 'test-password');
+        $askerAccount = IdentityFactory::create('Asker ' . uniqid());
         $asker = new Player($game, $askerAccount);
         $this->em->persist($askerAccount);
         $this->em->persist($asker);

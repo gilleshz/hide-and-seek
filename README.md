@@ -10,6 +10,7 @@ and unofficial, see [Legal](#legal).
 - Join by game code or by scanning the host's QR code
 - Live map: player positions update in real time over a server-sent events stream
 - Profile photos on the map pins, picked from the camera or the gallery
+- Editable display names, shared across every game on your server
 - Rounds with hiding zones, street network, time traps, questions and photo targets
 - Team chat with photos
 - Privacy built in: a hider's location never reaches a seeker, enforced server-side
@@ -52,9 +53,10 @@ key the app needs. TLS, a reverse proxy and the full guide are in
 
 1. Download the APK from the Releases page (Android 11 or newer).
 2. Connect to the server: API URL (for example `https://play.example.com`),
-   the API key from your host, and your name. The name is your identity on
-   that server, bound to this phone; the same name on the same phone rejoins
-   your games. If you change phones, ask the host to allow your new device.
+   the API key from your host, and a display name. The identity is bound to
+   this phone; the display name is how other players see you and can be
+   changed in Settings. If you change phones, connect as a new identity, then
+   leave the old seat or ask the host to remove it.
 3. Create or join a game. The host picks the area and the transit lines; the
    others join with the game code or by scanning the host's QR code.
 4. Play: hiders hide, seekers find them. The map shows live positions, zones

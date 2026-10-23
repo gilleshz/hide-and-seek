@@ -83,7 +83,7 @@ final class LocationPurgeCommandTest extends KernelTestCase
         $game = new Game('Purge Game', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $round->setStatus($status);
-        $account = IdentityFactory::create('Alice ' . uniqid(), 'test-password');
+        $account = IdentityFactory::create('Alice ' . uniqid());
         $player = new Player($game, $account);
         $location = new PlayerLocation($round, $player, new Point(13.405, 52.52));
         $em->persist($game);

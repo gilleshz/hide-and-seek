@@ -18,21 +18,21 @@ class IdentityRepository extends ServiceEntityRepository
         parent::__construct($registry, Identity::class);
     }
 
-    public function findByName(string $name): ?Identity
+    public function findByLookupHash(string $lookupHash): ?Identity
     {
-        return $this->findOneBy(['name' => $name]);
+        return $this->findOneBy(['lookupHash' => $lookupHash]);
     }
 
     /**
-     * Identity names are unique server-wide: two concurrent joins with the same name would both
-     * pass findByName() and race on the unique index. The xact lock serialises them for the whole
-     * transaction and releases at commit/rollback.
+     * Device keys are unique server-wide: two concurrent bootstraps would both pass findByLookupHash()
+     * and race on the unique index. The xact lock serialises them for the whole transaction and
+     * releases at commit/rollback.
      */
-    public function lockName(string $name): void
+    public function lockLookup(string $lookupHash): void
     {
         $this->getEntityManager()->getConnection()->executeStatement(
-            'SELECT pg_advisory_xact_lock(hashtext(:name)::bigint)',
-            ['name' => $name],
+            'SELECT pg_advisory_xact_lock(hashtextextended(:hash, 0))',
+            ['hash' => $lookupHash],
         );
     }
 

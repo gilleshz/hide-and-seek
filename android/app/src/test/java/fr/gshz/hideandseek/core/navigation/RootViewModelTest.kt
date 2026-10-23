@@ -124,14 +124,14 @@ class RootViewModelTest {
     }
 
     @Test
-    fun `a rejected device sends the user back with the error key`() = runTest {
+    fun `a rejected identity sends the user back with the error key`() = runTest {
         sessionRepository.seed(session())
         gameRepository.joinGameResult =
-            Result.failure(httpException(400, """{"errorKey":"join.device_mismatch"}"""))
+            Result.failure(httpException(400, """{"errorKey":"identity.token_invalid"}"""))
 
         val outcome = createViewModel().handleSessionExpired()
 
-        assertEquals(SessionExpiredOutcome.NeedsJoin("game-1", "join.device_mismatch"), outcome)
+        assertEquals(SessionExpiredOutcome.NeedsJoin("game-1", "identity.token_invalid"), outcome)
         assertNull(sessionRepository.currentSession())
     }
 

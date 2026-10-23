@@ -83,7 +83,7 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
         $sql = <<<'SQL'
             SELECT pac.uuid AS uuid, pac.mode AS mode, pac.source AS source, pac.label AS label,
                    ST_AsGeoJSON(pac.draw_geometry::geometry) AS geo_json,
-                   identities.name AS created_by_name
+                   identities.display_name AS created_by_name
             FROM possible_area_constraints pac
             LEFT JOIN round_memberships rm ON rm.id = pac.created_by_membership_id
             LEFT JOIN players p ON p.id = rm.player_id

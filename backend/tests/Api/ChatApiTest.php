@@ -22,7 +22,7 @@ final class ChatApiTest extends ApiTestCase
         $gameUuid = $game['uuid'];
 
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);
@@ -319,7 +319,7 @@ final class ChatApiTest extends ApiTestCase
         [$gameUuid] = $this->createGameWithPlayer($client);
 
         $carol = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Carol', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Carol', 'deviceKey' => $this->deviceKeyFor('Carol')],
         ])->toArray();
         self::assertIsString($carol['playerUuid']);
         self::assertIsString($carol['mercureToken']);
@@ -330,7 +330,7 @@ final class ChatApiTest extends ApiTestCase
         $client->request('POST', "/api/games/{$gameUuid}/leave", $this->headersWithToken($carol['mercureToken']));
 
         $returned = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Carol', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Carol', 'deviceKey' => $this->deviceKeyFor('Carol')],
         ])->toArray();
 
         // The password proves the identity: coming back must not orphan what she already wrote.
@@ -401,13 +401,13 @@ final class ChatApiTest extends ApiTestCase
         self::assertIsString($game['uuid']);
 
         $join = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);
         self::assertArrayNotHasKey('joinSecret', $join);
 
-        return [$game['uuid'], $join['playerUuid'], $join['mercureToken'], self::DEVICE_KEY];
+        return [$game['uuid'], $join['playerUuid'], $join['mercureToken'], $this->deviceKeyFor('Alice')];
     }
 
     private function createPngUpload(): UploadedFile

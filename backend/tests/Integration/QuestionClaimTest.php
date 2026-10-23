@@ -119,7 +119,7 @@ final class QuestionClaimTest extends KernelTestCase
     {
         $game = new Game('Berlin ' . uniqid(), GameSize::Small, Edition::Metric);
         $round = new Round($game);
-        $askerAccount = IdentityFactory::create('Seeker ' . uniqid(), 'test-password');
+        $askerAccount = IdentityFactory::create('Seeker ' . uniqid());
         $asker = new Player($game, $askerAccount);
         $question = new AskedQuestion($round, $asker, QuestionCategory::Radar, new \DateTimeImmutable('+5 minutes'));
         $this->em->persist($game);

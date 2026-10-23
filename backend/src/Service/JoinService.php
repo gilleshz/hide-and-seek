@@ -9,11 +9,8 @@ use App\Entity\Game;
 use App\Entity\Identity;
 use App\Entity\Player;
 use App\Entity\Round;
-use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
-use App\Exception\FunctionalException;
 use App\Repository\GameRepository;
-use App\Repository\IdentityRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\RoundRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,7 +21,6 @@ final readonly class JoinService
         private GameRepository $games,
         private RoundRepository $rounds,
         private PlayerRepository $players,
-        private IdentityRepository $identities,
         private EntityManagerInterface $entityManager,
         private RosterNotifier $roster,
         private ChatService $chatService,
@@ -32,11 +28,10 @@ final readonly class JoinService
     }
 
     /**
-     * An identity is the server-wide name, authenticated by an opaque device credential: rejoining
-     * (even without a leave in between) requires the same device key, so name-only takeovers die.
-     * The host can flag an identity so its owner can move to a new device.
+     * The identity is resolved from the device key before the join; a seat belongs to that identity,
+     * so rejoining (even without a leave in between) requires the same device.
      */
-    public function join(string $gameKey, string $name, string $deviceKey): JoinResult
+    public function join(string $gameKey, Identity $identity): JoinResult
     {
         $game = $this->games->findOneByUuid($gameKey)
             ?? $this->games->findOneBy(['joinCode' => strtoupper($gameKey)]);
@@ -45,46 +40,18 @@ final readonly class JoinService
         }
 
         return $this->entityManager->wrapInTransaction(
-            fn (): JoinResult => $this->joinTransactional($game, $name, $deviceKey),
+            fn (): JoinResult => $this->joinTransactional($game, $identity),
         );
     }
 
-    private function joinTransactional(Game $game, string $name, string $deviceKey): JoinResult
+    private function joinTransactional(Game $game, Identity $identity): JoinResult
     {
-        $identity = $this->resolveIdentity($name, $deviceKey);
         $seat = $this->players->findOneByGameAndIdentity($game, $identity);
         if ($seat !== null) {
             return new JoinResult($this->rejoin($seat), false);
         }
 
         return new JoinResult($this->register($game, $identity), true);
-    }
-
-    private function resolveIdentity(string $name, string $deviceKey): Identity
-    {
-        $name = trim($name);
-        // The xact lock plus READ COMMITTED makes a unique-violation retry unnecessary.
-        $this->identities->lockName($name);
-        $identity = $this->identities->findByName($name);
-        if ($identity === null) {
-            $identity = new Identity($name, $deviceKey);
-            $this->identities->save($identity);
-
-            return $identity;
-        }
-        if ($identity->credentialMatches($deviceKey)) {
-            return $identity;
-        }
-        if ($identity->isCredentialResetRequested()) {
-            $this->identities->save($identity->replaceCredential($deviceKey));
-
-            return $identity;
-        }
-
-        throw new FunctionalException(
-            'This name is already used on another device. Ask the person who runs your game server to allow a new device, or pick a different name.',
-            ErrorKey::JOIN_DEVICE_MISMATCH,
-        );
     }
 
     private function rejoin(Player $player): Player
@@ -107,7 +74,7 @@ final readonly class JoinService
         $this->players->save($player);
         // Roster event first so a client has the name before the announcement lands.
         $this->roster->publishChanged($game);
-        $this->announce($game, $identity->getName(), isNewPlayer: true);
+        $this->announce($game, $identity->getDisplayName(), isNewPlayer: true);
 
         return $player;
     }

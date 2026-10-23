@@ -377,7 +377,7 @@ class CreateGameViewModelTest {
     @Test
     fun `a join failure after create keeps the game code for the reconnect`() = runTest {
         gameRepository.joinGameResult = Result.failure(
-            httpException(400, """{"errorKey":"join.device_mismatch"}"""),
+            httpException(400, """{"errorKey":"game.not_found"}"""),
         )
         val viewModel = createViewModel()
         viewModel.onNameChange("Berlin")
@@ -385,7 +385,7 @@ class CreateGameViewModelTest {
         viewModel.createGame()
 
         assertTrue(viewModel.uiState.value.needsConnect)
-        assertEquals("join.device_mismatch", viewModel.uiState.value.needConnectErrorKey)
+        assertEquals("game.not_found", viewModel.uiState.value.needConnectErrorKey)
         assertEquals("ABCDEF", viewModel.uiState.value.needConnectJoinCode)
         assertNull(viewModel.uiState.value.createdGameUuid)
     }

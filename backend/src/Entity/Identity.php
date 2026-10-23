@@ -11,7 +11,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity(repositoryClass: IdentityRepository::class)]
 #[ORM\Table(name: 'identities')]
 #[ORM\UniqueConstraint(name: 'uniq_identities_uuid', columns: ['uuid'])]
-#[ORM\UniqueConstraint(name: 'uniq_identities_name', columns: ['name'])]
+#[ORM\UniqueConstraint(name: 'uniq_identities_lookup_hash', columns: ['lookup_hash'])]
 class Identity
 {
     #[ORM\Id]
@@ -22,14 +22,14 @@ class Identity
     #[ORM\Column(type: 'string', length: 36)]
     private string $uuid;
 
-    #[ORM\Column(type: 'string', length: 80)]
-    private string $name;
+    #[ORM\Column(name: 'display_name', type: 'string', length: 80)]
+    private string $displayName;
+
+    #[ORM\Column(name: 'lookup_hash', type: 'string', length: 64)]
+    private string $lookupHash;
 
     #[ORM\Column(name: 'credential_hash', type: 'string', length: 255)]
     private string $credentialHash;
-
-    #[ORM\Column(name: 'credential_reset_requested', type: 'boolean', options: ['default' => false])]
-    private bool $credentialResetRequested = false;
 
     #[ORM\Column(name: 'avatar_ref', type: 'string', length: 64, nullable: true)]
     private ?string $avatarRef = null;
@@ -40,10 +40,11 @@ class Identity
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
-    public function __construct(string $name, string $deviceKey)
+    public function __construct(string $displayName, string $deviceKey, string $lookupHash)
     {
         $this->uuid = Uuid::v4()->toRfc4122();
-        $this->name = $name;
+        $this->displayName = $displayName;
+        $this->lookupHash = $lookupHash;
         $this->credentialHash = password_hash($deviceKey, PASSWORD_ARGON2ID);
         $this->createdAt = new \DateTimeImmutable();
     }
@@ -58,9 +59,21 @@ class Identity
         return $this->uuid;
     }
 
-    public function getName(): string
+    public function getDisplayName(): string
     {
-        return $this->name;
+        return $this->displayName;
+    }
+
+    public function getLookupHash(): string
+    {
+        return $this->lookupHash;
+    }
+
+    public function rename(string $displayName): self
+    {
+        $this->displayName = trim($displayName);
+
+        return $this;
     }
 
     public function getCreatedAt(): \DateTimeImmutable
@@ -71,11 +84,6 @@ class Identity
     public function credentialMatches(string $deviceKey): bool
     {
         return password_verify($deviceKey, $this->credentialHash);
-    }
-
-    public function isCredentialResetRequested(): bool
-    {
-        return $this->credentialResetRequested;
     }
 
     public function getAvatarRef(): ?string
@@ -93,21 +101,5 @@ class Identity
     public function getTokenEpoch(): int
     {
         return $this->tokenEpoch;
-    }
-
-    public function replaceCredential(string $deviceKey): self
-    {
-        $this->credentialHash = password_hash($deviceKey, PASSWORD_ARGON2ID);
-        $this->credentialResetRequested = false;
-        ++$this->tokenEpoch;
-
-        return $this;
-    }
-
-    public function requestCredentialReset(): self
-    {
-        $this->credentialResetRequested = true;
-
-        return $this;
     }
 }

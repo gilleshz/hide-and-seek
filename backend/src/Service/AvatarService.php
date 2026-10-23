@@ -6,9 +6,7 @@ namespace App\Service;
 
 use App\Entity\Identity;
 use App\Repository\IdentityRepository;
-use App\Repository\PlayerRepository;
 use App\Storage\ImageStorageInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final readonly class AvatarService
@@ -20,9 +18,7 @@ final readonly class AvatarService
     public function __construct(
         private ImageStorageInterface $storage,
         private IdentityRepository $identities,
-        private PlayerRepository $players,
-        private RosterNotifier $roster,
-        private LoggerInterface $logger,
+        private IdentityRosterPublisher $roster,
     ) {
     }
 
@@ -39,7 +35,7 @@ final readonly class AvatarService
             throw $exception;
         }
 
-        $this->publishRosterChanged($identity);
+        $this->roster->publish($identity);
 
         if ($previous !== null) {
             $this->storage->delete(self::SCOPE, $previous);
@@ -56,21 +52,7 @@ final readonly class AvatarService
         }
 
         $this->identities->save($identity->replaceAvatar(null));
-        $this->publishRosterChanged($identity);
+        $this->roster->publish($identity);
         $this->storage->delete(self::SCOPE, $previous);
-    }
-
-    private function publishRosterChanged(Identity $identity): void
-    {
-        try {
-            foreach ($this->players->findActiveGamesByIdentity($identity) as $game) {
-                $this->roster->publishChanged($game);
-            }
-        } catch (\Throwable $exception) {
-            $this->logger->warning('Avatar roster publish failed.', [
-                'identity' => $identity->getUuid(),
-                'exception' => $exception,
-            ]);
-        }
     }
 }

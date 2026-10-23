@@ -32,9 +32,9 @@ final class PlayerRemoveApiTest extends ApiTestCase
         self::assertResponseStatusCodeSame(401);
         self::assertJsonContains(['errorKey' => 'identity.player_left']);
 
-        // Option A semantics: the removed player can come back with their password, same identity.
+        // Option A semantics: the removed player can come back with the same device key, same identity.
         $returned = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Bob', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Bob', 'deviceKey' => $this->deviceKeyFor('Bob')],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertSame($bob['playerUuid'], $returned['playerUuid']);
@@ -119,14 +119,14 @@ final class PlayerRemoveApiTest extends ApiTestCase
     }
 
     /**
-     * Joins with the shared test password.
+     * Joins with the display name's derived device key.
      *
      * @return array{playerUuid: string, mercureToken: string}
      */
     private function joinAs(Client $client, string $gameUuid, string $name): array
     {
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => $name, 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => $name, 'deviceKey' => $this->deviceKeyFor($name)],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertIsString($join['playerUuid']);

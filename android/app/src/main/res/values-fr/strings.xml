@@ -18,11 +18,11 @@
     <string name="connect_title">Connexion au serveur</string>
     <string name="connect_api_url_label">URL de l\'API</string>
     <string name="connect_api_key_label">Clé API</string>
-    <string name="connect_account_name_label">Votre nom</string>
+    <string name="connect_account_name_label">Nom affiché</string>
     <string name="connect_button">Connecter</string>
     <string name="connect_plain_http_warning">Le HTTP simple n\'est pas chiffré. Privilégiez https si possible.</string>
     <string name="connect_location_shared">Votre position sera partagée avec le serveur auquel vous vous connectez. Ne vous connectez qu\'à un hôte de confiance.</string>
-    <string name="connect_account_helper">Utilisez le même nom sur cet appareil pour rejoindre. Demandez à l\'hôte en cas de changement de téléphone.</string>
+    <string name="connect_account_helper">C\'est ainsi que les autres joueurs vous voient. Vous pouvez le modifier plus tard dans les réglages.</string>
     <string name="form_error_blank">Remplissez tous les champs requis.</string>
 
     <string name="home_create_game">Créer une partie</string>
@@ -439,6 +439,8 @@
     <string name="settings_profile_photo_remove_title">Supprimer la photo de profil ?</string>
     <string name="settings_profile_photo_remove_body">Vos initiales réapparaîtront sur la carte.</string>
     <string name="settings_profile_photo_remove_confirm">Supprimer</string>
+    <string name="settings_profile_name_label">Nom affiché</string>
+    <string name="settings_profile_name_save">Enregistrer</string>
     <string name="avatar_crop_title">Ajuster la photo</string>
     <string name="avatar_crop_hint">Pincez ou utilisez le curseur pour zoomer. Faites glisser pour déplacer.</string>
     <string name="avatar_crop_zoom">Zoom</string>
@@ -448,7 +450,7 @@
     <string name="avatar_crop_uploading">Envoi de la photo</string>
     <string name="avatar_crop_close">Fermer</string>
     <string name="avatar_crop_open_failed">Cette photo n\'a pas pu être ouverte. Essayez-en une autre.</string>
-    <string name="error_profile_credential_invalid">Ce nom est enregistré sur un autre appareil.</string>
+    <string name="error_profile_credential_invalid">Votre profil n\'a pas pu être chargé. Réessayez.</string>
 
     <!-- Clés de messages backend -->
     <string name="question_radar_ask">Êtes-vous à moins de <xliff:g>%1$s</xliff:g> de moi ?</string>
@@ -767,7 +769,6 @@
     <string name="lobby_remove_player_dialog_body">Cette personne pourra rejoindre plus tard avec le même nom.</string>
     <string name="lobby_remove_player_confirm">Retirer</string>
     <string name="system_player_removed">%1$s n\'est plus dans la partie.</string>
-    <string name="error_join_device_mismatch">Ce nom est déjà utilisé sur un autre appareil. Demandez à la personne qui héberge votre serveur de jeu d\'autoriser un nouvel appareil, ou choisissez un autre nom.</string>
     <string name="lobby_precise_location_title">Position précise requise</string>
     <string name="lobby_precise_location_body">Le jeu a besoin de votre position précise pour que les autres joueurs puissent vous trouver sur la carte. Activez la position précise dans les réglages.</string>
     <string name="lobby_precise_location_settings">Ouvrir les réglages</string>

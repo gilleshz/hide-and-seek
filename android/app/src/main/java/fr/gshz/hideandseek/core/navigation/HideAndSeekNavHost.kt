@@ -22,7 +22,6 @@ import androidx.navigation.navArgument
 import kotlinx.coroutines.flow.filter
 import fr.gshz.hideandseek.core.scanner.QR_SCAN_RESULT_KEY
 import fr.gshz.hideandseek.core.scanner.QrScannerScreen
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_DEVICE_MISMATCH
 import fr.gshz.hideandseek.feature.chat.ChatScreen
 import fr.gshz.hideandseek.feature.connect.ConnectScreen
 import fr.gshz.hideandseek.feature.connect.ConnectViewModel
@@ -129,8 +128,7 @@ private fun SessionExpiredEffect(navController: NavController, rootViewModel: Ro
                         }
                         is SessionExpiredOutcome.NeedsJoin -> {
                             val errorKey = outcome.errorKey
-                            val needsConnect = errorKey == ERROR_KEY_JOIN_DEVICE_MISMATCH ||
-                                errorKey == null && outcome.gameUuid == null
+                            val needsConnect = errorKey == null && outcome.gameUuid == null
                             navController.navigate(
                                 if (needsConnect) {
                                     HideAndSeekDestinations.connectRoute(errorKey)
@@ -210,11 +208,6 @@ private fun JoinGameRoute(navController: NavController) {
         onJoined = { gameUuid ->
             navController.navigate(HideAndSeekDestinations.lobbyRoute(gameUuid)) {
                 popUpTo(HideAndSeekDestinations.HOME) { inclusive = true }
-            }
-        },
-        onNeedConnect = { errorKey ->
-            navController.navigate(HideAndSeekDestinations.connectRoute(errorKey)) {
-                popUpTo(0) { inclusive = true }
             }
         },
         onScanClick = { navController.navigate(HideAndSeekDestinations.SCANNER) },

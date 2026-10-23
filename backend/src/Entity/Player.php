@@ -72,7 +72,7 @@ class Player
      */
     public function getDisplayName(): string
     {
-        return $this->identity->getName();
+        return $this->identity->getDisplayName();
     }
 
     public function getCreatedAt(): \DateTimeImmutable

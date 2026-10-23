@@ -9,7 +9,6 @@ use App\Enum\RoundStatus;
 use App\Repository\GameRepository;
 use App\Repository\RoundRepository;
 use App\Tests\Fake\FakeMercureHub;
-use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Mercure\Jwt\Grant;
 use Symfony\Component\Mercure\Jwt\LcobucciFactory;
@@ -279,19 +278,10 @@ final class IdentityGuardApiTest extends ApiTestCase
     }
 
     #[Test]
-    public function rejoiningAnExistingNameRequiresTheSameDevice(): void
+    public function aDeviceKeyRejoinsItsOwnPlayerAndIgnoresTheIncomingName(): void
     {
         $client = static::createClient();
         [$gameUuid, , $alice] = $this->gameWithJoinedPlayer($client, 'Alice');
-
-        $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::OTHER_DEVICE_KEY],
-        ]);
-        self::assertResponseStatusCodeSame(400);
-        self::assertJsonContains(['errorKey' => 'join.device_mismatch']);
-        self::assertJsonContains([
-            'detail' => 'This name is already used on another device. Ask the person who runs your game server to allow a new device, or pick a different name.',
-        ]);
 
         // The DTO backstop: a missing key never reaches the service.
         $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
@@ -300,54 +290,50 @@ final class IdentityGuardApiTest extends ApiTestCase
         self::assertResponseStatusCodeSame(422, 'A join without a deviceKey must 422.');
 
         $rejoin = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertSame($alice['playerUuid'], $rejoin['playerUuid']);
         self::assertArrayNotHasKey('joinSecret', $rejoin);
+
+        // The server-side name wins: a different name from the same device keeps the seat.
+        $renamed = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
+            'json' => ['name' => 'Alicia', 'deviceKey' => $this->deviceKeyFor('Alice')],
+        ])->toArray();
+        self::assertResponseIsSuccessful();
+        self::assertSame($alice['playerUuid'], $renamed['playerUuid']);
+        self::assertSame('Alice', $renamed['displayName']);
     }
 
     #[Test]
-    public function anIdentityFlaggedByTheHostAcceptsANewDevice(): void
+    public function aSecondDeviceWithTheSameDisplayNameCreatesADifferentIdentity(): void
     {
         $client = static::createClient();
-        [$gameUuid, $roundUuid, $alice] = $this->gameWithJoinedPlayer($client, 'Alice');
+        [$gameUuid, , $alice] = $this->gameWithJoinedPlayer($client, 'Alice');
 
-        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
-        $entityManager->getConnection()->executeStatement(
-            "UPDATE identities SET credential_reset_requested = true WHERE name = 'Alice'",
-        );
-        $entityManager->clear();
-
-        $rejoin = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::OTHER_DEVICE_KEY],
+        $other = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
+            'json' => ['name' => 'Alice', 'deviceKey' => 'second-device-' . $gameUuid],
         ])->toArray();
         self::assertResponseIsSuccessful();
-        self::assertSame($alice['playerUuid'], $rejoin['playerUuid']);
+        self::assertNotSame($alice['playerUuid'], $other['playerUuid']);
+        self::assertSame('Alice', $other['displayName']);
 
-        $client->request(
-            'POST',
-            "/api/rounds/{$roundUuid}/subscriber-token",
-            $this->headersWithToken($alice['token']),
+        $roster = $client->request('GET', "/api/games/{$gameUuid}/players", self::AUTH)->toArray();
+        $members = $roster['member'];
+        self::assertIsArray($members);
+        $names = array_map(
+            static function (mixed $member): string {
+                if (!is_array($member)) {
+                    return '';
+                }
+
+                $name = $member['displayName'] ?? null;
+
+                return is_string($name) ? $name : '';
+            },
+            $members,
         );
-        self::assertResponseStatusCodeSame(401);
-        self::assertJsonContains(['errorKey' => 'identity.token_invalid']);
-
-        self::assertIsString($rejoin['mercureToken']);
-        $client->request(
-            'POST',
-            "/api/rounds/{$roundUuid}/subscriber-token",
-            $this->headersWithToken($rejoin['mercureToken']),
-        );
-        self::assertResponseIsSuccessful();
-
-        // The new device owns the identity now; the old one is refused.
-        $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
-        ]);
-        self::assertResponseStatusCodeSame(400);
-        self::assertJsonContains(['errorKey' => 'join.device_mismatch']);
+        self::assertSame(['Alice', 'Alice'], $names);
     }
 
     #[Test]
@@ -358,7 +344,7 @@ final class IdentityGuardApiTest extends ApiTestCase
 
         foreach (['   ', "\t", " \t "] as $blankName) {
             $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-                'json' => ['name' => $blankName, 'deviceKey' => self::DEVICE_KEY],
+                'json' => ['name' => $blankName, 'deviceKey' => $this->deviceKeyFor($blankName)],
             ]);
             self::assertResponseStatusCodeSame(422, "Whitespace-only name '{$blankName}' must 422.");
         }
@@ -371,14 +357,14 @@ final class IdentityGuardApiTest extends ApiTestCase
         $game = $this->createGame();
 
         $first = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Dora', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Dora', 'deviceKey' => $this->deviceKeyFor('Dora')],
         ])->toArray();
         self::assertArrayNotHasKey('joinSecret', $first);
         self::assertArrayNotHasKey('deviceKey', $first);
         self::assertArrayNotHasKey('credentialHash', $first);
 
         $second = $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Dora', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Dora', 'deviceKey' => $this->deviceKeyFor('Dora')],
         ])->toArray();
         self::assertSame($first['playerUuid'], $second['playerUuid']);
         self::assertArrayNotHasKey('joinSecret', $second);
@@ -400,7 +386,7 @@ final class IdentityGuardApiTest extends ApiTestCase
         self::assertJsonContains(['errorKey' => 'identity.player_left']);
 
         $returned = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
         self::assertResponseIsSuccessful();
         self::assertSame($alice['playerUuid'], $returned['playerUuid']);
@@ -453,13 +439,13 @@ final class IdentityGuardApiTest extends ApiTestCase
 
         for ($i = 0; $i < 30; ++$i) {
             $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-                'json' => ['name' => "Join{$i}", 'deviceKey' => self::DEVICE_KEY],
+                'json' => ['name' => "Join{$i}", 'deviceKey' => $this->deviceKeyFor("Join{$i}")],
             ]);
             self::assertResponseIsSuccessful();
         }
 
         $client->request('POST', "/api/games/{$game['uuid']}/join", self::AUTH + [
-            'json' => ['name' => 'Join31', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Join31', 'deviceKey' => $this->deviceKeyFor('Join31')],
         ]);
 
         self::assertResponseStatusCodeSame(429);
@@ -639,7 +625,7 @@ final class IdentityGuardApiTest extends ApiTestCase
         self::assertResponseStatusCodeSame(204);
 
         $returned = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
 
         self::assertResponseIsSuccessful();

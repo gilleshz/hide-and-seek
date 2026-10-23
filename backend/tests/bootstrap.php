@@ -11,6 +11,8 @@ $_SERVER['APP_ENV'] = 'test';
 $_ENV['APP_ENV'] = 'test';
 $_SERVER['APP_API_KEY'] = 'test-key';
 $_ENV['APP_API_KEY'] = 'test-key';
+$_SERVER['IDENTITY_LOOKUP_KEY'] = 'test-identity-lookup-key';
+$_ENV['IDENTITY_LOOKUP_KEY'] = 'test-identity-lookup-key';
 $_SERVER['OVERPASS_MIRRORS_RANDOMIZE'] = 'true';
 $_ENV['OVERPASS_MIRRORS_RANDOMIZE'] = 'true';
 

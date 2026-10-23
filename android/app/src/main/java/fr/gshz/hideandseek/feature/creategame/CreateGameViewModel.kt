@@ -11,7 +11,6 @@ import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.model.withoutLocationTopics
-import fr.gshz.hideandseek.core.util.ERROR_KEY_JOIN_DEVICE_MISMATCH
 import fr.gshz.hideandseek.core.util.serverDetail
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
@@ -247,8 +246,6 @@ class CreateGameViewModel @Inject constructor(
                         needConnectErrorKey = errorKey,
                         needConnectJoinCode = createdGame.joinCode,
                     )
-                } else if (errorKey == ERROR_KEY_JOIN_DEVICE_MISMATCH) {
-                    it.copy(isLoading = false, needsConnect = true, needConnectErrorKey = errorKey)
                 } else {
                     it.copy(
                         isLoading = false,

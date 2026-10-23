@@ -25,6 +25,9 @@ class ConnectionStore @Inject constructor(
         val PLAYER_NAME = stringPreferencesKey("account_name")
     }
 
+    @Volatile
+    private var cachedConfig: ConnectionConfig? = null
+
     val connectionConfig: Flow<ConnectionConfig?> = dataStore.data.map { prefs ->
         val apiUrl = prefs[Keys.API_URL]
         val apiKey = prefs[Keys.API_KEY]?.let(apiKeyCipher::decrypt)
@@ -32,6 +35,9 @@ class ConnectionStore @Inject constructor(
     }
 
     val playerName: Flow<String?> = dataStore.data.map { it[Keys.PLAYER_NAME] }
+
+    /** The request interceptor needs the just-saved key without waiting for the DataStore flow. */
+    fun currentCached(): ConnectionConfig? = cachedConfig
 
     suspend fun current(): ConnectionConfig? = connectionConfig.first()
 
@@ -43,6 +49,7 @@ class ConnectionStore @Inject constructor(
             prefs[Keys.API_URL] = config.apiUrl
             prefs[Keys.API_KEY] = encodedKey
         }
+        cachedConfig = config
     }
 
     suspend fun savePlayerName(name: String) {
@@ -51,6 +58,7 @@ class ConnectionStore @Inject constructor(
 
     suspend fun clear() {
         dataStore.edit { it.clear() }
+        cachedConfig = null
     }
 
     /** One-time upgrade cleanup: the password is no longer read, never leave its ciphertext behind. */

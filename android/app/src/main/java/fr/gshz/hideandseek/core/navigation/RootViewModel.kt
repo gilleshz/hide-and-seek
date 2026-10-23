@@ -70,7 +70,7 @@ class RootViewModel @Inject constructor(
 
     /**
      * A server-side identity rejection wipes the session and tries to rejoin silently with the stored
-     * player name; when that fails (device mismatch, game gone, offline) the user lands on the join
+     * player name; when that fails (identity rejected, game gone, offline) the user lands on the join
      * screen.
      */
     @Suppress("SwallowedException")

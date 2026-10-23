@@ -4,11 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
+import fr.gshz.hideandseek.domain.model.Profile
+import fr.gshz.hideandseek.domain.repository.AvatarRepository
 import fr.gshz.hideandseek.domain.repository.ConnectionRepository
+import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -28,6 +32,7 @@ import org.junit.jupiter.api.Test
 class ConnectViewModelTest {
 
     private val connectionRepository = mockk<ConnectionRepository>(relaxed = true)
+    private val avatarRepository = mockk<AvatarRepository>()
 
     @BeforeEach
     fun setUp() {
@@ -48,13 +53,15 @@ class ConnectViewModelTest {
     ): ConnectViewModel {
         every { connectionRepository.observeConnection() } returns flowOf(connection)
         coEvery { connectionRepository.playerName() } returns playerName
+        coEvery { avatarRepository.bootstrap(any()) } returns Profile("uuid-1", "Alice", null, null)
         val savedStateHandle = SavedStateHandle(
             buildMap {
                 if (errorKey != null) put(HideAndSeekDestinations.CONNECT_ERROR_KEY_ARG, errorKey)
                 if (joinCode != null) put(HideAndSeekDestinations.CONNECT_JOIN_CODE_ARG, joinCode)
             },
         )
-        return ConnectViewModel(connectionRepository, savedStateHandle).apply { connectAttempt = attempt }
+        return ConnectViewModel(connectionRepository, avatarRepository, savedStateHandle)
+            .apply { connectAttempt = attempt }
     }
 
     private fun fillFields(viewModel: ConnectViewModel) {
@@ -64,7 +71,7 @@ class ConnectViewModelTest {
     }
 
     @Test
-    fun `successful attempt saves the config and the player name and connects`() = runTest {
+    fun `successful attempt saves the config and bootstraps the identity`() = runTest {
         val viewModel = createViewModel { _, _ -> ProbeResult.Connected }
         fillFields(viewModel)
         viewModel.connect()
@@ -73,8 +80,49 @@ class ConnectViewModelTest {
         assertTrue(state.connected)
         assertNull(state.error)
         assertFalse(state.isPlainHttp)
+        assertEquals("Alice", state.displayName)
         coVerify { connectionRepository.connect(ConnectionConfig("https://api.example.com", "secret")) }
+        coVerify { avatarRepository.bootstrap("Alice") }
         coVerify { connectionRepository.savePlayerName("Alice") }
+    }
+
+    @Test
+    fun `the server returned name wins over the typed one`() = runTest {
+        val viewModel = createViewModel { _, _ -> ProbeResult.Connected }
+        coEvery { avatarRepository.bootstrap(any()) } returns Profile("uuid-1", "Alice Server", null, null)
+        fillFields(viewModel)
+        viewModel.connect()
+
+        assertEquals("Alice Server", viewModel.uiState.value.displayName)
+        coVerify { connectionRepository.savePlayerName("Alice Server") }
+    }
+
+    @Test
+    fun `a failed bootstrap surfaces a network error without storing a name`() = runTest {
+        val viewModel = createViewModel { _, _ -> ProbeResult.Connected }
+        coEvery { avatarRepository.bootstrap(any()) } throws IOException("offline")
+        fillFields(viewModel)
+        viewModel.connect()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.connected)
+        assertEquals(ErrorType.Network, state.error)
+        coVerify(exactly = 0) { connectionRepository.savePlayerName(any()) }
+    }
+
+    @Test
+    fun `a rejected bootstrap surfaces the server error key`() = runTest {
+        val viewModel = createViewModel { _, _ -> ProbeResult.Connected }
+        coEvery { avatarRepository.bootstrap(any()) } throws
+            httpException(400, """{"errorKey":"profile.credential_invalid"}""")
+        fillFields(viewModel)
+        viewModel.connect()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.connected)
+        assertEquals(ErrorType.Validation, state.error)
+        assertEquals("profile.credential_invalid", state.errorKey)
+        coVerify(exactly = 0) { connectionRepository.savePlayerName(any()) }
     }
 
     @Test
@@ -88,6 +136,7 @@ class ConnectViewModelTest {
         assertEquals(ErrorType.Unauthorized, state.error)
         coVerify(exactly = 0) { connectionRepository.connect(any()) }
         coVerify(exactly = 0) { connectionRepository.savePlayerName(any()) }
+        coVerify(exactly = 0) { avatarRepository.bootstrap(any()) }
     }
 
     @Test
@@ -99,6 +148,7 @@ class ConnectViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ErrorType.Network, state.error)
         assertFalse(state.connected)
+        coVerify(exactly = 0) { avatarRepository.bootstrap(any()) }
     }
 
     @Test
@@ -172,6 +222,7 @@ class ConnectViewModelTest {
         assertEquals("ABC123", state.scannedGameCode)
         assertEquals("https://api.example.com", state.apiUrl)
         coVerify { connectionRepository.connect(ConnectionConfig("https://api.example.com", "secret")) }
+        coVerify { avatarRepository.bootstrap("Alice") }
         coVerify { connectionRepository.savePlayerName("Alice") }
     }
 
@@ -202,6 +253,7 @@ class ConnectViewModelTest {
         assertFalse(state.connected)
         assertNull(state.scannedGameCode)
         coVerify(exactly = 0) { connectionRepository.connect(any()) }
+        coVerify(exactly = 0) { avatarRepository.bootstrap(any()) }
     }
 
     @Test
@@ -237,12 +289,12 @@ class ConnectViewModelTest {
     fun `errorKey navigation argument surfaces the error`() = runTest {
         val viewModel = createViewModel(
             attempt = { _, _ -> ProbeResult.Connected },
-            errorKey = "join.device_mismatch",
+            errorKey = "identity.token_invalid",
         )
 
         val state = viewModel.uiState.value
         assertEquals(ErrorType.Validation, state.error)
-        assertEquals("join.device_mismatch", state.errorKey)
+        assertEquals("identity.token_invalid", state.errorKey)
     }
 
     @Test

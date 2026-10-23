@@ -14,6 +14,7 @@ import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
 import fr.gshz.hideandseek.di.DefaultDispatcher
+import fr.gshz.hideandseek.domain.model.Profile
 import fr.gshz.hideandseek.domain.repository.AvatarRepository
 import fr.gshz.hideandseek.feature.settings.avatar.toAvatarJpeg
 import java.io.IOException
@@ -52,10 +53,14 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             connectionStore.playerName.distinctUntilChanged().collect { name ->
-                _uiState.update {
-                    it.copy(playerName = name, avatarUrl = if (name == null) null else it.avatarUrl)
+                if (name == null) {
+                    _uiState.update {
+                        it.copy(displayName = null, nameDraft = "", identityUuid = null, avatarUrl = null)
+                    }
+                } else {
+                    _uiState.update { it.copy(displayName = name, nameDraft = name) }
+                    bootstrapProfile(name)
                 }
-                if (name != null) refreshProfile()
             }
         }
     }
@@ -89,10 +94,39 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun onDisplayNameChange(value: String) {
+        _uiState.update {
+            it.copy(nameDraft = value.take(NAME_MAX_LENGTH), nameError = null, nameErrorKey = null)
+        }
+    }
+
+    fun saveDisplayName() {
+        val name = _uiState.value.nameDraft.trim()
+        if (name.isBlank() || name.length > NAME_MAX_LENGTH) {
+            _uiState.update { it.copy(nameError = ErrorType.Validation, nameErrorKey = null) }
+            return
+        }
+        if (name == _uiState.value.displayName) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingName = true, nameError = null, nameErrorKey = null) }
+            try {
+                applyProfile(avatarRepository.rename(name))
+                _uiState.update { it.copy(isSavingName = false) }
+            } catch (e: HttpException) {
+                Log.w(TAG, "Rename rejected", e)
+                failName(e.toErrorType(), e.serverErrorKey())
+            } catch (e: IOException) {
+                Log.w(TAG, "Rename failed", e)
+                failName(ErrorType.Network)
+            }
+        }
+    }
+
     fun uploadAvatar(bitmap: Bitmap) = launchAvatarRequest {
         val jpeg = withContext(ioDispatcher) { bitmap.toAvatarJpeg() }
-        val avatarUrl = avatarRepository.avatarUrl(avatarRepository.uploadAvatar(jpeg))
-        _uiState.update { it.copy(avatarUrl = avatarUrl, avatarSaved = true) }
+        val profile = avatarRepository.uploadAvatar(jpeg)
+        _uiState.update { it.copy(avatarUrl = profile.avatarUrl, avatarSaved = true) }
     }
 
     fun removeAvatar() = launchAvatarRequest {
@@ -108,14 +142,31 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(avatarError = null, avatarErrorKey = null, avatarErrorArgs = null) }
     }
 
-    private suspend fun refreshProfile() {
+    private suspend fun bootstrapProfile(name: String) {
         try {
-            val profile = avatarRepository.getProfile()
-            _uiState.update { it.copy(avatarUrl = profile.avatarUrl) }
+            applyProfile(avatarRepository.bootstrap(name))
         } catch (e: IOException) {
-            Log.w(TAG, "Avatar profile unavailable", e)
+            Log.w(TAG, "Profile unavailable", e)
+            failName(ErrorType.Network)
         } catch (e: HttpException) {
-            Log.w(TAG, "Avatar profile rejected", e)
+            Log.w(TAG, "Profile rejected", e)
+            failName(e.toErrorType(), e.serverErrorKey())
+        }
+    }
+
+    private suspend fun applyProfile(profile: Profile) {
+        if (profile.name != connectionStore.currentPlayerName()) {
+            connectionStore.savePlayerName(profile.name)
+        }
+        _uiState.update {
+            it.copy(
+                displayName = profile.name,
+                nameDraft = profile.name,
+                identityUuid = profile.uuid,
+                avatarUrl = profile.avatarUrl,
+                nameError = null,
+                nameErrorKey = null,
+            )
         }
     }
 
@@ -150,7 +201,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    private fun failName(error: ErrorType, errorKey: String? = null) {
+        _uiState.update { it.copy(isSavingName = false, nameError = error, nameErrorKey = errorKey) }
+    }
+
     private companion object {
         const val TAG = "SettingsViewModel"
+        const val NAME_MAX_LENGTH = 80
     }
 }

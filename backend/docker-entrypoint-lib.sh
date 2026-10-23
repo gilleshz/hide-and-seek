@@ -5,7 +5,7 @@ declare -A PROVIDED=()
 
 resolve_secrets() {
     PROVIDED=()
-    for var in APP_SECRET APP_API_KEY MERCURE_PUBLISHER_JWT_KEY \
+    for var in APP_SECRET APP_API_KEY IDENTITY_LOOKUP_KEY MERCURE_PUBLISHER_JWT_KEY \
                MERCURE_SUBSCRIBER_JWT_KEY MERCURE_JWT_SECRET DATABASE_URL PUBLIC_URL; do
         if [ -n "${!var+docker_set}" ] && [ -n "${!var}" ]; then
             PROVIDED[$var]="${!var}"
@@ -34,7 +34,7 @@ resolve_secrets() {
         exit 1
     }
 
-    for var in APP_SECRET APP_API_KEY MERCURE_PUBLISHER_JWT_KEY \
+    for var in APP_SECRET APP_API_KEY IDENTITY_LOOKUP_KEY MERCURE_PUBLISHER_JWT_KEY \
                MERCURE_SUBSCRIBER_JWT_KEY MERCURE_JWT_SECRET; do
         if [ -n "${PROVIDED[$var]+x}" ] && is_placeholder "${PROVIDED[$var]}"; then
             refuse "$var" "${PROVIDED[$var]}"
@@ -49,6 +49,11 @@ resolve_secrets() {
     if [ -z "${PROVIDED[APP_API_KEY]+x}" ]; then
         [ -f "$SECRETS_DIR/app_api_key" ] || openssl rand -hex 32 > "$SECRETS_DIR/app_api_key"
         export APP_API_KEY="$(cat "$SECRETS_DIR/app_api_key")"
+    fi
+
+    if [ -z "${PROVIDED[IDENTITY_LOOKUP_KEY]+x}" ]; then
+        [ -f "$SECRETS_DIR/identity_lookup_key" ] || openssl rand -hex 32 > "$SECRETS_DIR/identity_lookup_key"
+        export IDENTITY_LOOKUP_KEY="$(cat "$SECRETS_DIR/identity_lookup_key")"
     fi
 
     resolve_mercure_key() {

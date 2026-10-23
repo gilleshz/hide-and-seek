@@ -57,7 +57,7 @@ final class LocationApiTest extends ApiTestCase
         $roundUuid = $game['roundUuid'];
 
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => 'Alice', 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => 'Alice', 'deviceKey' => $this->deviceKeyFor('Alice')],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);

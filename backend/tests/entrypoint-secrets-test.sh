@@ -42,22 +42,32 @@ run_case() {
 BASIC_ENV='APP_ENV=prod
 PUBLIC_URL=https://example.com'
 
-run_case "no docker env: generates 4 persisted secrets, publisher != subscriber, idempotent" \
+run_case "no docker env: generates 5 persisted secrets, publisher != subscriber, idempotent" \
     "$BASIC_ENV" \
     'resolve_secrets
      [ -f "$SECRETS_DIR/app_secret" ]
      [ -f "$SECRETS_DIR/app_api_key" ]
+     [ -f "$SECRETS_DIR/identity_lookup_key" ]
      [ -f "$SECRETS_DIR/mercure_publisher_jwt" ]
      [ -f "$SECRETS_DIR/mercure_subscriber_jwt" ]
      [ "$MERCURE_PUBLISHER_JWT_KEY" != "$MERCURE_SUBSCRIBER_JWT_KEY" ]
      first_api="$(cat "$SECRETS_DIR/app_api_key")"
+     first_lookup="$(cat "$SECRETS_DIR/identity_lookup_key")"
      first_pub="$(cat "$SECRETS_DIR/mercure_publisher_jwt")"
      first_sub="$(cat "$SECRETS_DIR/mercure_subscriber_jwt")"
      resolve_secrets
      [ "$(cat "$SECRETS_DIR/app_api_key")" = "$first_api" ]
+     [ "$(cat "$SECRETS_DIR/identity_lookup_key")" = "$first_lookup" ]
+     [ "$IDENTITY_LOOKUP_KEY" = "$first_lookup" ]
      [ "$(cat "$SECRETS_DIR/mercure_publisher_jwt")" = "$first_pub" ]
      [ "$(cat "$SECRETS_DIR/mercure_subscriber_jwt")" = "$first_sub" ]' \
     0
+
+run_case "docker IDENTITY_LOOKUP_KEY=change-me-* refuses boot" \
+    "$BASIC_ENV" \
+    'export IDENTITY_LOOKUP_KEY=change-me-identity-key
+     resolve_secrets' \
+    1 'change-me'
 
 run_case "docker APP_API_KEY=dev-shared-key refuses boot" \
     "$BASIC_ENV" \
@@ -164,4 +174,4 @@ APP_SECRET=change-me-baked-secret' \
 
 echo
 echo "entrypoint-secrets-test: $PASS passed, $FAIL failed"
-[ "$FAIL" -eq 0 ] && [ "$PASS" -eq 13 ]
+[ "$FAIL" -eq 0 ] && [ "$PASS" -eq 15 ]

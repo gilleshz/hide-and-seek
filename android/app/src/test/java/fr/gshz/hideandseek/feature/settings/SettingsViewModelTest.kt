@@ -6,6 +6,7 @@ import fr.gshz.hideandseek.core.data.SettingsStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.domain.model.Profile
 import fr.gshz.hideandseek.domain.repository.AvatarRepository
+import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -40,6 +41,11 @@ class SettingsViewModelTest {
         every { settingsStore.locale } returns MutableStateFlow(null)
         every { settingsStore.themeMode } returns themeFlow
         every { connectionStore.playerName } returns playerNameFlow
+        coEvery { connectionStore.currentPlayerName() } coAnswers { playerNameFlow.value }
+        coEvery { connectionStore.savePlayerName(any()) } coAnswers { playerNameFlow.value = firstArg() }
+        coEvery { avatarRepository.bootstrap(any()) } coAnswers {
+            Profile("uuid-1", firstArg(), "ref-1", "https://api.test/api/avatars/ref-1")
+        }
     }
 
     @AfterEach
@@ -108,26 +114,112 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the stored profile fills the avatar preview`() = runTest(testDispatcher) {
+    fun `the stored name is bootstrapped and the identity is shown`() = runTest(testDispatcher) {
         playerNameFlow.value = "Alice"
-        coEvery { avatarRepository.getProfile() } returns
-            Profile("Alice", "ref-1", "https://api.test/api/avatars/ref-1")
 
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
             var state = awaitItem()
-            while (state.avatarUrl == null) state = awaitItem()
+            while (state.identityUuid == null) state = awaitItem()
+            assertEquals("Alice", state.displayName)
+            assertEquals("Alice", state.nameDraft)
+            assertEquals("uuid-1", state.identityUuid)
             assertEquals("https://api.test/api/avatars/ref-1", state.avatarUrl)
+            coVerify { avatarRepository.bootstrap("Alice") }
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
+    fun `a failed bootstrap keeps the stored name and shows a network error`() = runTest(testDispatcher) {
+        playerNameFlow.value = "Alice"
+        coEvery { avatarRepository.bootstrap(any()) } throws IOException("offline")
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.nameError == null) state = awaitItem()
+            assertEquals(ErrorType.Network, state.nameError)
+            assertEquals("Alice", state.displayName)
+            assertNull(state.identityUuid)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a rejected bootstrap surfaces the profile error key`() = runTest(testDispatcher) {
+        playerNameFlow.value = "Alice"
+        coEvery { avatarRepository.bootstrap(any()) } throws
+            httpException(400, """{"errorKey":"profile.credential_invalid"}""")
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.nameError == null) state = awaitItem()
+            assertEquals(ErrorType.Validation, state.nameError)
+            assertEquals("profile.credential_invalid", state.nameErrorKey)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `saving a new display name renames the identity and stores it`() = runTest(testDispatcher) {
+        playerNameFlow.value = "Alice"
+        coEvery { avatarRepository.rename("Bob") } returns Profile("uuid-1", "Bob", "ref-1", null)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.identityUuid == null) state = awaitItem()
+            viewModel.onDisplayNameChange("Bob")
+            viewModel.saveDisplayName()
+            while (state.displayName != "Bob") state = awaitItem()
+            assertEquals("Bob", state.nameDraft)
+            assertEquals("Bob", playerNameFlow.value)
+            coVerify { avatarRepository.rename("Bob") }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a failed rename keeps the old name and shows the error`() = runTest(testDispatcher) {
+        playerNameFlow.value = "Alice"
+        coEvery { avatarRepository.rename(any()) } throws IOException("offline")
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.identityUuid == null) state = awaitItem()
+            viewModel.onDisplayNameChange("Bob")
+            viewModel.saveDisplayName()
+            while (state.nameError == null) state = awaitItem()
+            assertEquals(ErrorType.Network, state.nameError)
+            assertEquals("Alice", state.displayName)
+            assertEquals("Alice", playerNameFlow.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a blank display name is rejected without a request`() = runTest(testDispatcher) {
+        playerNameFlow.value = "Alice"
+
+        val viewModel = createViewModel()
+        viewModel.onDisplayNameChange("   ")
+        viewModel.saveDisplayName()
+
+        assertEquals(ErrorType.Validation, viewModel.uiState.value.nameError)
+        coVerify(exactly = 0) { avatarRepository.rename(any()) }
+    }
+
+    @Test
     fun `removing the avatar clears the preview`() = runTest(testDispatcher) {
         playerNameFlow.value = "Alice"
-        coEvery { avatarRepository.getProfile() } returns
-            Profile("Alice", "ref-1", "https://api.test/api/avatars/ref-1")
         coEvery { avatarRepository.removeAvatar() } returns Unit
 
         val viewModel = createViewModel()
@@ -146,8 +238,6 @@ class SettingsViewModelTest {
     @Test
     fun `a failed removal shows a network error`() = runTest(testDispatcher) {
         playerNameFlow.value = "Alice"
-        coEvery { avatarRepository.getProfile() } returns
-            Profile("Alice", "ref-1", "https://api.test/api/avatars/ref-1")
         coEvery { avatarRepository.removeAvatar() } throws IOException("offline")
 
         val viewModel = createViewModel()

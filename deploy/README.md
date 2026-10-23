@@ -51,6 +51,7 @@ a `.env` file with the `${VAR}` placeholders left in place).
 | `POSTGRES_PASSWORD` | yes | none | Database password. Use letters and digits only, special characters would need URL-encoding in the connection string. |
 | `PUBLIC_URL` | yes | none | The public `https://` URL of the instance. Prod refuses to boot without it, see TLS below. |
 | `APP_API_KEY` | no | generated at first boot | The key the Android app must present. Leave blank to generate and persist it in the secrets volume. |
+| `IDENTITY_LOOKUP_KEY` | no | generated at first boot | HMAC key for the device identity lookup. Generated and persisted in the secrets volume. Back it up with that volume; losing or changing it makes every identity unreachable. |
 | `OVERPASS_MIRRORS_RANDOMIZE` | no | `true` | Pick mirrors at random instead of in order. |
 | `MAX_BOUNDARY_SPAN_DEG` | no | `4.0` | Largest allowed game area, in degrees. |
 | `STADIA_API_KEY` | no | blank | Map style key; leave blank to disable the style. |
@@ -71,9 +72,10 @@ a `.env` file with the `${VAR}` placeholders left in place).
 2. In the app, connect with:
    - API URL: your `PUBLIC_URL`, for example `https://play.example.com`
    - API key: the value above
-   - Name: your server-wide identity, bound to this device. The same name on
-     the same device rejoins; a new phone needs
-     `docker compose exec app php bin/console jetlag:identity:allow-new-device <name>`.
+   - Display name: how other players see you. It is not a login handle and can
+     be changed in Settings. The identity is bound to this device; a new phone
+     creates a new identity, so leave the old seat from the old phone or ask
+     the host to remove it.
 
 ## TLS and reverse proxy
 
@@ -195,6 +197,26 @@ The hub now speaks Mercure 1.0. Deploy the new image first, then install the
 updated APK (or restart the app) so it fetches a 1.0 access token. An old APK
 cannot receive live events from the new hub; REST calls keep working.
 
+### Identity refactor (v1.5.0, destructive)
+
+Read this before deploying this image over an older stack.
+
+- **Every existing identity is destroyed.** Migration `Version20261023120000`
+  truncates `identities` `CASCADE`. That deletes every player seat and its
+  dependent rows (round memberships, locations, time traps); games, rounds and
+  chat text may remain with orphaned attribution.
+- **Back up `db_data` first** (see Backups) and run the upgrade in a maintenance
+  window. There is no in-place conversion: pre-refactor rows have no device
+  binding, so every player creates a new identity on their next join.
+- **The new secret is `IDENTITY_LOOKUP_KEY`.** It is generated and persisted in
+  the secrets volume when omitted. Back it up with that volume: losing or
+  changing it makes every identity unreachable.
+- **API compatibility.** Old APKs keep sending the `name` wire field on join; the
+  server accepts it and ignores it for an existing device identity. Profile calls
+  that still send `?name=` have the query ignored and act on the `X-Device-Key`
+  identity. Real-time behavior is unchanged, but ship the new APK so Settings
+  shows and edits the display name.
+
 ### Worker mode (optional)
 
 Worker mode is off by default. Set `FRANKENPHP_WORKER_MODE=1` in the stack env
@@ -219,7 +241,8 @@ it in dev, where bind mounts need hot reload.
   `POSTGRES_DB`.
 
 - `secrets` volume: keep a copy. Losing it rotates the app API key and every
-  phone has to reconnect with the new key:
+  phone has to reconnect with the new key. It also holds `IDENTITY_LOOKUP_KEY`;
+  losing or changing that value makes every identity unreachable:
 
   ```bash
   docker compose exec app tar cf - /app/config/secrets > secrets.tar

@@ -31,9 +31,6 @@ private val SESSION_EXPIRED_CODE_RANGE = 401..403
 // A kick must not be silently undone by the stored credential; only token expiry auto-rejoins.
 const val ERROR_KEY_PLAYER_LEFT = "identity.player_left"
 
-// The stored name is bound to another device: the user must change the name on the connect screen.
-const val ERROR_KEY_JOIN_DEVICE_MISMATCH = "join.device_mismatch"
-
 // The backend emits RFC 7807 problems; the human-readable reason is "detail" ("hydra:description" under Hydra).
 private val PROBLEM_DETAIL_KEYS = listOf("detail", "hydra:description", "description")
 

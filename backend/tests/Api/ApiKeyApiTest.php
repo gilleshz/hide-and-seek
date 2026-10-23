@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Api;
 
 use ApiPlatform\Test\ApiTestCase;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\Test;
 
 final class ApiKeyApiTest extends ApiTestCase
@@ -61,7 +62,7 @@ final class ApiKeyApiTest extends ApiTestCase
         self::assertIsString($game['uuid']);
 
         $client->request('POST', "/api/games/{$game['uuid']}/join", [
-            'json' => ['name' => 'no-key-user', 'deviceKey' => 'test-device-key'],
+            'json' => ['name' => 'no-key-user', 'deviceKey' => IdentityFactory::deviceKey('no-key-user')],
         ]);
 
         self::assertResponseStatusCodeSame(401);

@@ -75,11 +75,10 @@ final class IdentityResolverTest extends TestCase
     }
 
     #[Test]
-    public function aTokenFromBeforeACredentialReplacementIsRejected(): void
+    public function aTokenFromAnOlderTokenEpochIsRejected(): void
     {
         $player = $this->player();
-        $stale = $this->tokenFor($player);
-        $player->getIdentity()->replaceCredential('new-device-key');
+        $stale = $this->tokenFor($player, 0);
         $resolver = $this->resolver($player, $this->requestWith($stale));
 
         $this->expectException(IdentityRequiredException::class);
@@ -88,11 +87,10 @@ final class IdentityResolverTest extends TestCase
     }
 
     #[Test]
-    public function aTokenMintedAfterTheReplacementWorks(): void
+    public function aTokenMintedForTheCurrentEpochWorks(): void
     {
         $player = $this->player();
-        $player->getIdentity()->replaceCredential('new-device-key');
-        $resolver = $this->resolver($player, $this->requestWith($this->tokenFor($player, 2)));
+        $resolver = $this->resolver($player, $this->requestWith($this->tokenFor($player, 1)));
 
         self::assertSame($player, $resolver->requirePlayer());
     }

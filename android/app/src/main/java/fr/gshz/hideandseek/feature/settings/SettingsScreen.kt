@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,9 +45,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.gshz.hideandseek.BuildConfig
@@ -107,6 +110,8 @@ fun SettingsScreen(
             (context as? Activity)?.recreate()
         },
         onThemeSelected = viewModel::onThemeSelected,
+        onDisplayNameChange = viewModel::onDisplayNameChange,
+        onSaveDisplayName = viewModel::saveDisplayName,
         onPickAvatar = pickPhoto,
         onRemoveAvatar = { showRemoveDialog = true },
         onBackClick = onBackClick,
@@ -172,6 +177,8 @@ internal fun SettingsContent(
     versionName: String,
     onLocaleSelected: (String) -> Unit,
     onThemeSelected: (String) -> Unit,
+    onDisplayNameChange: (String) -> Unit,
+    onSaveDisplayName: () -> Unit,
     onPickAvatar: () -> Unit,
     onRemoveAvatar: () -> Unit,
     onBackClick: () -> Unit,
@@ -199,14 +206,31 @@ internal fun SettingsContent(
                 .padding(padding)
                 .padding(Spacing.lg),
         ) {
-            if (uiState.playerName != null) {
+            val displayName = uiState.displayName
+            if (displayName != null) {
                 ProfilePhotoRow(
-                    name = uiState.playerName,
+                    name = displayName,
                     avatarUrl = uiState.avatarUrl,
                     isUploading = uiState.isUploadingAvatar,
                     onPickAvatar = onPickAvatar,
                     onRemoveAvatar = onRemoveAvatar,
                 )
+                DisplayNameRow(
+                    value = uiState.nameDraft,
+                    isSaving = uiState.isSavingName,
+                    canSave = uiState.nameDraft.trim().isNotEmpty() &&
+                        uiState.nameDraft.trim() != displayName,
+                    onValueChange = onDisplayNameChange,
+                    onSave = onSaveDisplayName,
+                    modifier = Modifier.padding(top = Spacing.sm),
+                )
+                uiState.nameError?.let { error ->
+                    ErrorText(
+                        error = error,
+                        errorKey = uiState.nameErrorKey,
+                        modifier = Modifier.padding(top = Spacing.sm),
+                    )
+                }
                 uiState.avatarError?.let { error ->
                     ErrorText(
                         error = error,
@@ -236,6 +260,18 @@ internal fun SettingsContent(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+            uiState.identityUuid?.let { uuid ->
+                Text(
+                    text = uuid,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -314,6 +350,33 @@ private fun ProfilePhotoRow(
             ) {
                 Text(stringResource(R.string.settings_profile_photo_remove))
             }
+        }
+    }
+}
+
+@Composable
+private fun DisplayNameRow(
+    value: String,
+    isSaving: Boolean,
+    canSave: Boolean,
+    onValueChange: (String) -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(stringResource(R.string.settings_profile_name_label)) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        TextButton(onClick = onSave, enabled = canSave && !isSaving) {
+            Text(stringResource(R.string.settings_profile_name_save))
         }
     }
 }
@@ -420,11 +483,15 @@ private fun SettingsContentPreview() {
             uiState = SettingsUiState(
                 selectedLocaleTag = "en",
                 availableLocales = defaultLocales,
-                playerName = "Alice",
+                displayName = "Alice",
+                nameDraft = "Alice",
+                identityUuid = "0e9d7c1a-4c94-4a0e-9d63-6f1c0a2b7e11",
             ),
             versionName = "0.0.22",
             onLocaleSelected = {},
             onThemeSelected = {},
+            onDisplayNameChange = {},
+            onSaveDisplayName = {},
             onPickAvatar = {},
             onRemoveAvatar = {},
             onBackClick = {},

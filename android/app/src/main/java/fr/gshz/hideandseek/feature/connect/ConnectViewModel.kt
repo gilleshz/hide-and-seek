@@ -1,5 +1,6 @@
 package fr.gshz.hideandseek.feature.connect
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,7 +8,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
+import fr.gshz.hideandseek.core.util.serverErrorKey
+import fr.gshz.hideandseek.core.util.toErrorType
+import fr.gshz.hideandseek.domain.repository.AvatarRepository
 import fr.gshz.hideandseek.domain.repository.ConnectionRepository
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
@@ -21,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import retrofit2.HttpException
 
 @Serializable
 private data class QrConnectPayload(val apiUrl: String, val apiKey: String, val joinCode: String? = null)
@@ -69,6 +75,7 @@ private const val HTTP_FORBIDDEN = 403
 @HiltViewModel
 class ConnectViewModel @Inject constructor(
     private val connectionRepository: ConnectionRepository,
+    private val avatarRepository: AvatarRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -195,14 +202,24 @@ class ConnectViewModel @Inject constructor(
         scannedGameCode: String?,
     ) {
         connectionRepository.connect(ConnectionConfig(apiUrl = normalized, apiKey = key))
-        connectionRepository.savePlayerName(name)
-        // A QR with a join code navigates to join, not to the home screen.
-        _uiState.update {
-            it.copy(
-                isConnecting = false,
-                connected = scannedGameCode == null,
-                scannedGameCode = scannedGameCode,
-            )
+        try {
+            val profile = avatarRepository.bootstrap(name)
+            connectionRepository.savePlayerName(profile.name)
+            // A QR with a join code navigates to join, not to the home screen.
+            _uiState.update {
+                it.copy(
+                    isConnecting = false,
+                    displayName = profile.name,
+                    connected = scannedGameCode == null,
+                    scannedGameCode = scannedGameCode,
+                )
+            }
+        } catch (e: HttpException) {
+            Log.w(TAG, "Identity bootstrap rejected", e)
+            onAttemptError(e.toErrorType(), e.serverErrorKey())
+        } catch (e: IOException) {
+            Log.w(TAG, "Identity bootstrap failed", e)
+            onAttemptError(ErrorType.Network)
         }
     }
 
@@ -219,5 +236,6 @@ class ConnectViewModel @Inject constructor(
 
     private companion object {
         const val NAME_MAX_LENGTH = 80
+        const val TAG = "ConnectViewModel"
     }
 }

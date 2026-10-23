@@ -27,7 +27,7 @@ class ApiKeyInterceptor @Inject constructor(
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val apiKey = cachedApiKey
+        val apiKey = connectionStore.currentCached()?.apiKey ?: cachedApiKey
         val request = chain.request().let { original ->
             if (apiKey != null) {
                 original.newBuilder().addHeader(HEADER, apiKey).build()

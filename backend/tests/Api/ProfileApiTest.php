@@ -8,11 +8,129 @@ use ApiPlatform\Test\Client;
 use ApiPlatform\Test\Response;
 use App\Repository\IdentityRepository;
 use App\Service\ProfileIdentityResolver;
+use App\Tests\Fake\FakeMercureHub;
+use App\Tests\Support\IdentityFactory;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\Mercure\Update;
 
 final class ProfileApiTest extends ApiTestCase
 {
+    #[Test]
+    public function itBootstrapsAProfileByDeviceKeyAndIsIdempotent(): void
+    {
+        $client = static::createClient();
+        $deviceKey = $this->deviceKeyFor('Alice');
+
+        $created = $client->request('POST', '/api/profile', $this->profileHeaders($deviceKey) + [
+            'json' => ['name' => 'Alice'],
+        ])->toArray();
+        self::assertResponseIsSuccessful();
+        self::assertIsString($created['uuid']);
+        self::assertSame('Alice', $created['name']);
+
+        // The device key is the identity: a second bootstrap keeps the server-side name.
+        $again = $client->request('POST', '/api/profile', $this->profileHeaders($deviceKey) + [
+            'json' => ['name' => 'Alicia'],
+        ])->toArray();
+        self::assertResponseIsSuccessful();
+        self::assertSame($created['uuid'], $again['uuid']);
+        self::assertSame('Alice', $again['name']);
+    }
+
+    #[Test]
+    public function itAllowsDuplicateDisplayNamesAcrossDevices(): void
+    {
+        $client = static::createClient();
+
+        $first = $client->request('POST', '/api/profile', $this->profileHeaders('first-device') + [
+            'json' => ['name' => 'Alice'],
+        ])->toArray();
+        $second = $client->request('POST', '/api/profile', $this->profileHeaders('second-device') + [
+            'json' => ['name' => 'Alice'],
+        ])->toArray();
+
+        self::assertResponseIsSuccessful();
+        self::assertNotSame($first['uuid'], $second['uuid']);
+        self::assertSame('Alice', $first['name']);
+        self::assertSame('Alice', $second['name']);
+    }
+
+    #[Test]
+    public function itReadsTheProfileFromTheDeviceKeyHeaderOnly(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $this->joinGame($game, 'Alice');
+        $deviceKey = $this->deviceKeyFor('Alice');
+
+        $profile = $client->request(
+            'GET',
+            '/api/profile?name=Bob',
+            $this->profileHeaders($deviceKey),
+        )->toArray();
+        self::assertResponseIsSuccessful();
+        self::assertSame('Alice', $profile['name']);
+
+        $client->request('GET', '/api/profile', self::AUTH);
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'profile.credential_invalid']);
+
+        $client->request('GET', '/api/profile', $this->profileHeaders('not-the-device-key'));
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'profile.credential_invalid']);
+    }
+
+    #[Test]
+    public function itNeverCachesProfileResponses(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $this->joinGame($game, 'Alice');
+
+        $client->request('GET', '/api/profile', $this->profileHeaders($this->deviceKeyFor('Alice')));
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('no-store', $this->cacheControl($client));
+
+        $client->request('POST', '/api/profile', $this->profileHeaders('bootstrap-device') + [
+            'json' => ['name' => 'Bob'],
+        ]);
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('no-store', $this->cacheControl($client));
+    }
+
+    #[Test]
+    public function itRenamesTheProfileAndBroadcastsTheRoster(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $this->joinGame($game, 'Alice');
+        $deviceKey = $this->deviceKeyFor('Alice');
+
+        $renamed = $client->request('PATCH', '/api/profile', [
+            'headers' => self::AUTH['headers'] + [
+                ProfileIdentityResolver::HEADER => $deviceKey,
+                'Content-Type' => 'application/merge-patch+json',
+            ],
+            'json' => ['name' => 'Alicia'],
+        ])->toArray();
+        self::assertResponseIsSuccessful();
+        self::assertSame('Alicia', $renamed['name']);
+
+        /** @var FakeMercureHub $hub */
+        $hub = self::getContainer()->get(FakeMercureHub::class);
+        self::assertTrue(
+            $this->hasRosterUpdateFor($hub->published(), "game/{$game['uuid']}/roster", 'Alicia'),
+            'The rename must broadcast the roster to every active game.',
+        );
+
+        $roster = $client->request('GET', "/api/games/{$game['uuid']}/players", self::AUTH)->toArray();
+        $members = $roster['member'];
+        self::assertIsArray($members);
+        self::assertIsArray($members[0]);
+        self::assertSame('Alicia', $members[0]['displayName']);
+    }
+
     #[Test]
     public function itUploadsAnAvatarAndServesItToTheProfileAndTheRoster(): void
     {
@@ -20,14 +138,18 @@ final class ProfileApiTest extends ApiTestCase
         $game = $this->createGame();
         $this->joinGame($game, 'Alice');
 
-        $uploaded = $this->uploadAvatar($client, 'Alice', self::DEVICE_KEY)->toArray();
+        $uploaded = $this->uploadAvatar($client, $this->deviceKeyFor('Alice'))->toArray();
 
         self::assertResponseStatusCodeSame(201);
         self::assertSame('Alice', $uploaded['name']);
         self::assertIsString($uploaded['avatarRef']);
         self::assertStringEndsWith('.jpg', $uploaded['avatarRef']);
 
-        $profile = $client->request('GET', '/api/profile', $this->profileHeaders('Alice'))->toArray();
+        $profile = $client->request(
+            'GET',
+            '/api/profile',
+            $this->profileHeaders($this->deviceKeyFor('Alice')),
+        )->toArray();
         self::assertResponseIsSuccessful();
         self::assertSame('Alice', $profile['name']);
         self::assertSame($uploaded['avatarRef'], $profile['avatarRef']);
@@ -63,7 +185,7 @@ final class ProfileApiTest extends ApiTestCase
         $game = $this->createGame();
         $this->joinGame($game, 'Alice');
 
-        $this->uploadAvatar($client, 'Alice', self::OTHER_DEVICE_KEY);
+        $this->uploadAvatar($client, 'not-the-device-key');
 
         self::assertResponseStatusCodeSame(400);
         self::assertJsonContains(['errorKey' => 'profile.credential_invalid']);
@@ -75,31 +197,31 @@ final class ProfileApiTest extends ApiTestCase
         $client = static::createClient();
         $game = $this->createGame();
         $this->joinGame($game, 'Alice');
+        $deviceKey = $this->deviceKeyFor('Alice');
 
-        $uploaded = $this->uploadAvatar($client, 'Alice', self::DEVICE_KEY)->toArray();
+        $uploaded = $this->uploadAvatar($client, $deviceKey)->toArray();
         self::assertIsString($uploaded['avatarRef']);
 
-        $client->request('DELETE', '/api/profile/avatar', $this->profileHeaders('Alice'));
+        $client->request('DELETE', '/api/profile/avatar', $this->profileHeaders($deviceKey));
 
         self::assertResponseStatusCodeSame(204);
-        $profile = $client->request('GET', '/api/profile', $this->profileHeaders('Alice'))->toArray();
+        $profile = $client->request('GET', '/api/profile', $this->profileHeaders($deviceKey))->toArray();
         self::assertArrayNotHasKey('avatarRef', $profile);
 
         $identities = self::getContainer()->get(IdentityRepository::class);
         self::assertInstanceOf(IdentityRepository::class, $identities);
-        $identity = $identities->findByName('Alice');
+        $identity = $identities->findByLookupHash(IdentityFactory::lookupHash($deviceKey));
         self::assertNotNull($identity);
         self::assertNull($identity->getAvatarRef());
     }
 
-    private function uploadAvatar(Client $client, string $name, string $deviceKey): Response
+    private function uploadAvatar(Client $client, string $deviceKey): Response
     {
         $response = $client->request('POST', '/api/profile/avatar', [
             'headers' => self::AUTH['headers'] + [
                 'Content-Type' => 'multipart/form-data',
                 ProfileIdentityResolver::HEADER => $deviceKey,
             ],
-            'query' => ['name' => $name],
             'extra' => [
                 'parameters' => [],
                 'files' => ['image' => $this->createJpegUpload()],
@@ -111,14 +233,47 @@ final class ProfileApiTest extends ApiTestCase
     }
 
     /**
-     * @return array{query: array{name: string}, headers: array<string, string>}
+     * @return array{headers: array<string, string>}
      */
-    private function profileHeaders(string $name): array
+    private function profileHeaders(string $deviceKey): array
     {
         return [
-            'query' => ['name' => $name],
-            'headers' => self::AUTH['headers'] + [ProfileIdentityResolver::HEADER => self::DEVICE_KEY],
+            'headers' => self::AUTH['headers'] + [ProfileIdentityResolver::HEADER => $deviceKey],
         ];
+    }
+
+    private function cacheControl(Client $client): string
+    {
+        $response = $client->getResponse();
+        self::assertNotNull($response);
+        $headers = $response->getHeaders(false);
+
+        return implode(', ', $headers['cache-control'] ?? []);
+    }
+
+    /**
+     * @param list<Update> $updates
+     */
+    private function hasRosterUpdateFor(array $updates, string $topic, string $displayName): bool
+    {
+        foreach ($updates as $update) {
+            if ($update->getTopics() !== [$topic]) {
+                continue;
+            }
+
+            $payload = json_decode($update->getData(), true, 512, JSON_THROW_ON_ERROR);
+            self::assertIsArray($payload);
+            $players = $payload['players'] ?? null;
+            self::assertIsArray($players);
+            foreach ($players as $player) {
+                self::assertIsArray($player);
+                if (($player['displayName'] ?? null) === $displayName) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function createJpegUpload(): UploadedFile

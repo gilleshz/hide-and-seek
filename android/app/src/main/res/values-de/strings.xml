@@ -18,11 +18,11 @@
     <string name="connect_title">Mit Server verbinden</string>
     <string name="connect_api_url_label">API-URL</string>
     <string name="connect_api_key_label">API-Schlüssel</string>
-    <string name="connect_account_name_label">Dein Name</string>
+    <string name="connect_account_name_label">Anzeigename</string>
     <string name="connect_button">Verbinden</string>
     <string name="connect_plain_http_warning">Unverschlüsseltes HTTP ist nicht sicher. Verwenden Sie nach Möglichkeit https.</string>
     <string name="connect_location_shared">Dein Standort wird mit dem Server geteilt, mit dem du dich verbindest. Verbinde dich nur mit einem Host, dem du vertraust.</string>
-    <string name="connect_account_helper">Nutze denselben Namen auf diesem Gerät, um wieder beizutreten. Frag den Host, wenn du das Telefon wechselst.</string>
+    <string name="connect_account_helper">So sehen dich andere Spieler. Du kannst den Namen später in den Einstellungen ändern.</string>
     <string name="form_error_blank">Bitte alle erforderlichen Felder ausfüllen.</string>
 
     <string name="home_create_game">Spiel erstellen</string>
@@ -642,6 +642,8 @@
     <string name="settings_profile_photo_remove_title">Profilbild entfernen?</string>
     <string name="settings_profile_photo_remove_body">Deine Initialen werden wieder auf der Karte angezeigt.</string>
     <string name="settings_profile_photo_remove_confirm">Entfernen</string>
+    <string name="settings_profile_name_label">Anzeigename</string>
+    <string name="settings_profile_name_save">Speichern</string>
     <string name="avatar_crop_title">Foto anpassen</string>
     <string name="avatar_crop_hint">Zum Zoomen kneifen oder den Regler verwenden. Zum Verschieben ziehen.</string>
     <string name="avatar_crop_zoom">Zoom</string>
@@ -651,7 +653,7 @@
     <string name="avatar_crop_uploading">Foto wird hochgeladen</string>
     <string name="avatar_crop_close">Schließen</string>
     <string name="avatar_crop_open_failed">Dieses Foto konnte nicht geöffnet werden. Versuche es mit einem anderen.</string>
-    <string name="error_profile_credential_invalid">Dieser Name ist auf einem anderen Gerät registriert.</string>
+    <string name="error_profile_credential_invalid">Dein Profil konnte nicht geladen werden. Versuche es erneut.</string>
 
     <!-- Backend-Fehlermeldungen -->
     <string name="error_seeker_only">Nur die suchende Person kann Fragen stellen.</string>
@@ -767,7 +769,6 @@
     <string name="lobby_remove_player_dialog_body">Die Person kann später mit demselben Namen wieder beitreten.</string>
     <string name="lobby_remove_player_confirm">Entfernen</string>
     <string name="system_player_removed">%1$s wurde aus dem Spiel entfernt.</string>
-    <string name="error_join_device_mismatch">Dieser Name wird bereits auf einem anderen Gerät verwendet. Bitte die Person, die euren Spielserver betreibt, ein neues Gerät zuzulassen, oder wähle einen anderen Namen.</string>
     <string name="lobby_precise_location_title">Genaue Position erforderlich</string>
     <string name="lobby_precise_location_body">Das Spiel braucht deinen genauen Standort, damit die anderen Spieler dich auf der Karte finden. Aktiviere den genauen Standort in den Einstellungen.</string>
     <string name="lobby_precise_location_settings">Einstellungen öffnen</string>

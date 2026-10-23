@@ -8,13 +8,12 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Validator\ValidatorInterface;
 use App\Dto\JoinInput;
 use App\Entity\Game;
+use App\Entity\Identity;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Enum\Edition;
 use App\Enum\GameSize;
-use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
-use App\Exception\FunctionalException;
 use App\Repository\ChatMessageRepository;
 use App\Repository\GameRepository;
 use App\Repository\IdentityRepository;
@@ -22,6 +21,8 @@ use App\Repository\PlayerRepository;
 use App\Repository\RoundMembershipRepository;
 use App\Repository\RoundRepository;
 use App\Service\ChatService;
+use App\Service\IdentityLookupHasher;
+use App\Service\IdentityService;
 use App\Service\JoinService;
 use App\Service\MercureJwtService;
 use App\Service\RosterNotifier;
@@ -39,8 +40,6 @@ use PHPUnit\Framework\TestCase;
 final class JoinProcessorTest extends TestCase
 {
     private const string SECRET = 'test-mercure-secret-at-least-32-bytes-long!';
-    private const string DEVICE_KEY = 'test-device-key';
-    private const string OTHER_DEVICE_KEY = 'other-device-key';
 
     #[Test]
     public function theJoinResponseNeverExposesACredential(): void
@@ -48,17 +47,26 @@ final class JoinProcessorTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
         $game->setJoinCode('ABCDEF');
+        $created = null;
 
-        $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndIdentity')->willReturn(null);
+        $identities = $this->createMock(IdentityRepository::class);
+        $identities->method('findByLookupHash')->willReturn(null);
+        $identities->method('lockLookup');
+        $identities->expects(self::once())
+            ->method('save')
+            ->willReturnCallback(static function (Identity $identity) use (&$created): void {
+                $created = $identity;
+            });
 
-        $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn(null);
-
-        $processor = $this->processor($game, $round, $players, $identities);
+        $processor = $this->processor(
+            $game,
+            $round,
+            $this->createStub(PlayerRepository::class),
+            $identities,
+        );
         $input = new JoinInput();
         $input->name = 'Alice';
-        $input->deviceKey = self::DEVICE_KEY;
+        $input->deviceKey = 'device-key';
 
         $resource = $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
 
@@ -67,6 +75,8 @@ final class JoinProcessorTest extends TestCase
         self::assertObjectNotHasProperty('joinSecret', $resource);
         self::assertObjectNotHasProperty('deviceKey', $resource);
         self::assertObjectNotHasProperty('credentialHash', $resource);
+        self::assertInstanceOf(Identity::class, $created);
+        self::assertSame('Alice', $created->getDisplayName());
     }
 
     #[Test]
@@ -74,20 +84,17 @@ final class JoinProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
+        $identity = IdentityFactory::create('Alice');
         $player = new Player($game, $identity);
         $game->setJoinCode('ABCDEF');
 
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByGameAndIdentity')->willReturn($player);
 
-        $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn($identity);
-
-        $processor = $this->processor($game, $round, $players, $identities);
+        $processor = $this->processor($game, $round, $players, $this->identitiesReturning($identity));
         $input = new JoinInput();
         $input->name = 'Alice';
-        $input->deviceKey = self::DEVICE_KEY;
+        $input->deviceKey = IdentityFactory::deviceKey('Alice');
 
         $resource = $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
 
@@ -96,31 +103,36 @@ final class JoinProcessorTest extends TestCase
     }
 
     #[Test]
-    public function aRejoinWithADifferentDeviceIsRefused(): void
+    public function aDifferentDeviceCreatesADifferentIdentityWithTheSameDisplayName(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
-        $player = new Player($game, $identity);
         $game->setJoinCode('ABCDEF');
+        $created = null;
 
         $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndIdentity')->willReturn($player);
+        $players->method('findOneByGameAndIdentity')->willReturn(null);
 
         $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn($identity);
+        $identities->method('findByLookupHash')->willReturn(null);
+        $identities->method('save')->willReturnCallback(
+            static function (Identity $identity) use (&$created): void {
+                $created = $identity;
+            },
+        );
 
         $processor = $this->processor($game, $round, $players, $identities);
         $input = new JoinInput();
         $input->name = 'Alice';
-        $input->deviceKey = self::OTHER_DEVICE_KEY;
+        $input->deviceKey = 'a-second-device';
 
-        try {
-            $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
-            self::fail('Expected a FunctionalException for a different device.');
-        } catch (FunctionalException $e) {
-            self::assertSame(ErrorKey::JOIN_DEVICE_MISMATCH, $e->getErrorKey());
-        }
+        $resource = $processor->process($input, new Post(), ['gameKey' => 'ABCDEF']);
+
+        self::assertSame('Alice', $resource->displayName);
+        self::assertInstanceOf(Identity::class, $created);
+        self::assertSame('Alice', $created->getDisplayName());
+        self::assertTrue($created->credentialMatches('a-second-device'));
+        self::assertNotSame(IdentityFactory::lookupHash(IdentityFactory::deviceKey('Alice')), $created->getLookupHash());
     }
 
     #[Test]
@@ -142,6 +154,14 @@ final class JoinProcessorTest extends TestCase
             $this->createStub(IdentityRepository::class),
             games: $games,
         )->process(new JoinInput(), new Post(), ['gameKey' => 'UNKNOWN']);
+    }
+
+    private function identitiesReturning(?Identity $identity): IdentityRepository
+    {
+        $identities = $this->createStub(IdentityRepository::class);
+        $identities->method('findByLookupHash')->willReturn($identity);
+
+        return $identities;
     }
 
     private function processor(
@@ -178,12 +198,22 @@ final class JoinProcessorTest extends TestCase
             $resolvedGames,
             $rounds,
             $players,
-            $identities,
             $entityManager,
             new RosterNotifier($hub, $mercure, new RosterService($players, $rounds, $memberships)),
             $chat,
         );
+        $identityService = new IdentityService(
+            $identities,
+            new IdentityLookupHasher(IdentityFactory::LOOKUP_KEY),
+            $entityManager,
+        );
 
-        return new JoinProcessor($this->createStub(ValidatorInterface::class), $joinService, $mercure);
+        return new JoinProcessor(
+            $this->createStub(ValidatorInterface::class),
+            $identityService,
+            $joinService,
+            $mercure,
+            $entityManager,
+        );
     }
 }

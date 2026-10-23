@@ -6,18 +6,14 @@ namespace App\Tests\Service;
 
 use App\Entity\ChatMessage;
 use App\Entity\Game;
-use App\Entity\Identity;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Enum\ChatMessageType;
 use App\Enum\Edition;
 use App\Enum\GameSize;
-use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
-use App\Exception\FunctionalException;
 use App\Repository\ChatMessageRepository;
 use App\Repository\GameRepository;
-use App\Repository\IdentityRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\RoundMembershipRepository;
 use App\Repository\RoundRepository;
@@ -38,8 +34,6 @@ use Symfony\Component\Mercure\HubInterface;
 final class JoinServiceTest extends TestCase
 {
     private const string SECRET = 'test-mercure-secret-at-least-32-bytes-long!';
-    private const string DEVICE_KEY = 'test-device-key';
-    private const string OTHER_DEVICE_KEY = 'other-device-key';
 
     private function silentRoster(): RosterNotifier
     {
@@ -85,7 +79,6 @@ final class JoinServiceTest extends TestCase
     private function service(
         GameRepository $games,
         PlayerRepository $players,
-        IdentityRepository $identities,
         ?RosterNotifier $roster = null,
         ?ChatService $chat = null,
     ): JoinService {
@@ -93,7 +86,6 @@ final class JoinServiceTest extends TestCase
             $games,
             $this->createStub(RoundRepository::class),
             $players,
-            $identities,
             $this->transactionalEntityManager(),
             $roster ?? $this->silentRoster(),
             $chat ?? $this->silentChat(),
@@ -106,10 +98,10 @@ final class JoinServiceTest extends TestCase
     }
 
     #[Test]
-    public function itReconnectsToTheExistingPlayerForTheSameIdentityAndDevice(): void
+    public function itReconnectsToTheExistingPlayerForTheSameIdentity(): void
     {
         $game = $this->game();
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
+        $identity = IdentityFactory::create('Alice');
         $existing = new Player($game, $identity);
 
         $games = $this->createStub(GameRepository::class);
@@ -119,97 +111,17 @@ final class JoinServiceTest extends TestCase
         $players->method('findOneByGameAndIdentity')->willReturn($existing);
         $players->expects(self::never())->method('save');
 
-        $identities = $this->createMock(IdentityRepository::class);
-        $identities->expects(self::once())->method('lockName')->with('Alice');
-        $identities->method('findByName')->willReturn($identity);
-
-        $result = $this->service($games, $players, $identities)->join('game-key', 'Alice', self::DEVICE_KEY);
+        $result = $this->service($games, $players)->join('game-key', $identity);
 
         self::assertSame($existing, $result->player);
         self::assertFalse($result->isNew);
     }
 
     #[Test]
-    public function itRejectsADifferentDeviceWhenNoResetWasRequested(): void
+    public function itCreatesANewPlayerForANewIdentity(): void
     {
         $game = $this->game();
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
-        $existing = new Player($game, $identity);
-
-        $games = $this->createStub(GameRepository::class);
-        $games->method('findOneByUuid')->willReturn($game);
-
-        $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndIdentity')->willReturn($existing);
-
-        $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn($identity);
-
-        try {
-            $this->service($games, $players, $identities)->join('game-key', 'Alice', self::OTHER_DEVICE_KEY);
-            self::fail('Expected a FunctionalException for a second device.');
-        } catch (FunctionalException $e) {
-            self::assertSame(ErrorKey::JOIN_DEVICE_MISMATCH, $e->getErrorKey());
-            self::assertStringContainsString('another device', $e->getMessage());
-        }
-    }
-
-    #[Test]
-    public function itAcceptsANewDeviceWhenTheResetWasRequested(): void
-    {
-        $game = $this->game();
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY)->requestCredentialReset();
-        $existing = new Player($game, $identity);
-
-        $games = $this->createStub(GameRepository::class);
-        $games->method('findOneByUuid')->willReturn($game);
-
-        $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndIdentity')->willReturn($existing);
-
-        $identities = $this->createMock(IdentityRepository::class);
-        $identities->expects(self::once())->method('lockName')->with('Alice');
-        $identities->method('findByName')->willReturn($identity);
-        $identities->expects(self::once())->method('save')->with($identity);
-
-        $result = $this->service($games, $players, $identities)->join(
-            'game-key',
-            'Alice',
-            self::OTHER_DEVICE_KEY,
-        );
-
-        self::assertSame($existing, $result->player);
-        self::assertTrue($identity->credentialMatches(self::OTHER_DEVICE_KEY));
-        self::assertFalse($identity->credentialMatches(self::DEVICE_KEY));
-        self::assertFalse($identity->isCredentialResetRequested());
-    }
-
-    #[Test]
-    public function itKeepsTheResetFlagWhenTheSameDeviceJoins(): void
-    {
-        $game = $this->game();
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY)->requestCredentialReset();
-        $existing = new Player($game, $identity);
-
-        $games = $this->createStub(GameRepository::class);
-        $games->method('findOneByUuid')->willReturn($game);
-
-        $players = $this->createStub(PlayerRepository::class);
-        $players->method('findOneByGameAndIdentity')->willReturn($existing);
-
-        $identities = $this->createMock(IdentityRepository::class);
-        $identities->method('findByName')->willReturn($identity);
-        $identities->expects(self::never())->method('save');
-
-        $this->service($games, $players, $identities)->join('game-key', 'Alice', self::DEVICE_KEY);
-
-        self::assertTrue($identity->isCredentialResetRequested());
-    }
-
-    #[Test]
-    public function itCreatesANewIdentityAndPlayerWithAHashedDeviceKey(): void
-    {
-        $game = $this->game();
+        $identity = IdentityFactory::create('Bob');
 
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -218,25 +130,12 @@ final class JoinServiceTest extends TestCase
         $players->method('findOneByGameAndIdentity')->willReturn(null);
         $players->expects(self::once())->method('save');
 
-        $created = null;
-        $identities = $this->createMock(IdentityRepository::class);
-        $identities->expects(self::once())->method('lockName')->with('Bob');
-        $identities->method('findByName')->willReturn(null);
-        $identities->expects(self::once())
-            ->method('save')
-            ->willReturnCallback(static function (Identity $identity) use (&$created): void {
-                $created = $identity;
-            });
-
-        $result = $this->service($games, $players, $identities)->join('game-key', 'Bob', self::DEVICE_KEY);
+        $result = $this->service($games, $players)->join('game-key', $identity);
 
         self::assertTrue($result->isNew);
         self::assertSame('Bob', $result->player->getDisplayName());
+        self::assertSame($identity, $result->player->getIdentity());
         self::assertSame($game, $result->player->getGame());
-        self::assertInstanceOf(Identity::class, $created);
-        self::assertTrue($created->credentialMatches(self::DEVICE_KEY));
-        self::assertFalse($created->credentialMatches('not-the-device-key'));
-        self::assertFalse($created->isCredentialResetRequested());
     }
 
     #[Test]
@@ -250,9 +149,6 @@ final class JoinServiceTest extends TestCase
         $players = $this->createStub(PlayerRepository::class);
         $players->method('findOneByGameAndIdentity')->willReturn(null);
 
-        $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn(null);
-
         $posted = null;
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())
@@ -261,8 +157,8 @@ final class JoinServiceTest extends TestCase
                 $posted = $message;
             });
 
-        $this->service($games, $players, $identities, chat: $this->silentChat($messages))
-            ->join('game-key', 'Bob', self::DEVICE_KEY);
+        $this->service($games, $players, chat: $this->silentChat($messages))
+            ->join('game-key', IdentityFactory::create('Bob'));
 
         self::assertInstanceOf(ChatMessage::class, $posted);
         self::assertSame(ChatMessageType::System, $posted->getType());
@@ -275,7 +171,7 @@ final class JoinServiceTest extends TestCase
     public function itStaysSilentWhenAPlayerWhoNeverLeftReconnects(): void
     {
         $game = $this->game();
-        $identity = IdentityFactory::create('Alice', self::DEVICE_KEY);
+        $identity = IdentityFactory::create('Alice');
         $existing = new Player($game, $identity);
 
         $games = $this->createStub(GameRepository::class);
@@ -285,21 +181,18 @@ final class JoinServiceTest extends TestCase
         $players->method('findOneByGameAndIdentity')->willReturn($existing);
         $players->expects(self::never())->method('save');
 
-        $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn($identity);
-
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::never())->method('save');
 
-        $this->service($games, $players, $identities, chat: $this->silentChat($messages))
-            ->join('game-key', 'Alice', self::DEVICE_KEY);
+        $this->service($games, $players, chat: $this->silentChat($messages))
+            ->join('game-key', $identity);
     }
 
     #[Test]
     public function itReinstatesAPlayerWhoHadLeft(): void
     {
         $game = $this->game();
-        $identity = IdentityFactory::create('Carol', self::DEVICE_KEY);
+        $identity = IdentityFactory::create('Carol');
         $departed = new Player($game, $identity)->markLeft(new \DateTimeImmutable());
 
         $games = $this->createStub(GameRepository::class);
@@ -309,9 +202,6 @@ final class JoinServiceTest extends TestCase
         $players->method('findOneByGameAndIdentity')->willReturn($departed);
         $players->expects(self::once())->method('save');
 
-        $identities = $this->createStub(IdentityRepository::class);
-        $identities->method('findByName')->willReturn($identity);
-
         $posted = null;
         $messages = $this->createMock(ChatMessageRepository::class);
         $messages->expects(self::once())
@@ -320,8 +210,8 @@ final class JoinServiceTest extends TestCase
                 $posted = $message;
             });
 
-        $result = $this->service($games, $players, $identities, chat: $this->silentChat($messages))
-            ->join('game-key', 'Carol', self::DEVICE_KEY);
+        $result = $this->service($games, $players, chat: $this->silentChat($messages))
+            ->join('game-key', $identity);
 
         self::assertSame($departed, $result->player);
         self::assertFalse($result->isNew);
@@ -337,11 +227,8 @@ final class JoinServiceTest extends TestCase
         $games->method('findOneByUuid')->willReturn(null);
 
         self::expectException(EntityNotFoundException::class);
-        $this->service(
-            $games,
-            $this->createStub(PlayerRepository::class),
-            $this->createStub(IdentityRepository::class),
-        )->join('unknown-key', 'Alice', self::DEVICE_KEY);
+        $this->service($games, $this->createStub(PlayerRepository::class))
+            ->join('unknown-key', IdentityFactory::create('Alice'));
     }
 
     #[Test]
@@ -359,7 +246,6 @@ final class JoinServiceTest extends TestCase
             $this->createStub(GameRepository::class),
             $rounds,
             $this->createStub(PlayerRepository::class),
-            $this->createStub(IdentityRepository::class),
             $this->transactionalEntityManager(),
             $this->silentRoster(),
             $this->silentChat(),
@@ -382,7 +268,6 @@ final class JoinServiceTest extends TestCase
             $this->createStub(GameRepository::class),
             $rounds,
             $this->createStub(PlayerRepository::class),
-            $this->createStub(IdentityRepository::class),
             $this->transactionalEntityManager(),
             $this->silentRoster(),
             $this->silentChat(),

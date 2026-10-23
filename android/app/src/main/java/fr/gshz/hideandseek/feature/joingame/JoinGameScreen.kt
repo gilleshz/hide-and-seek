@@ -44,7 +44,6 @@ import fr.gshz.hideandseek.core.ui.theme.Spacing
 @Composable
 fun JoinGameScreen(
     onJoined: (gameUuid: String) -> Unit,
-    onNeedConnect: (errorKey: String?) -> Unit,
     onScanClick: () -> Unit = {},
     viewModel: JoinGameViewModel = hiltViewModel(),
 ) {
@@ -54,13 +53,10 @@ fun JoinGameScreen(
         uiState.joinedGameUuid?.let(onJoined)
     }
 
-    LaunchedEffect(uiState.needsConnect) {
-        if (uiState.needsConnect) onNeedConnect(uiState.needConnectErrorKey)
-    }
-
     JoinGameContent(
         uiState = uiState,
         onGameKeyChange = viewModel::onGameKeyChange,
+        onDisplayNameChange = viewModel::onDisplayNameChange,
         onJoinClick = viewModel::join,
         onScanClick = onScanClick,
     )
@@ -70,6 +66,7 @@ fun JoinGameScreen(
 internal fun JoinGameContent(
     uiState: JoinGameUiState,
     onGameKeyChange: (String) -> Unit,
+    onDisplayNameChange: (String) -> Unit,
     onJoinClick: () -> Unit,
     onScanClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -92,9 +89,41 @@ internal fun JoinGameContent(
             onJoin = onJoinClick,
         )
 
+        if (uiState.needsDisplayName) {
+            DisplayNameField(
+                value = uiState.displayName,
+                onValueChange = onDisplayNameChange,
+                onJoin = onJoinClick,
+            )
+        }
+
         ErrorText(uiState.error, uiState.errorDetail, uiState.errorKey, uiState.errorArgs)
 
         JoinGameButton(isLoading = uiState.isLoading, onClick = onJoinClick)
+    }
+}
+
+@Composable
+private fun DisplayNameField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onJoin: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(stringResource(R.string.connect_account_name_label)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onJoin() }),
+        )
+        Text(
+            text = stringResource(R.string.connect_account_helper),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -177,8 +206,9 @@ private fun JoinGameButton(isLoading: Boolean, onClick: () -> Unit, modifier: Mo
 private fun JoinGameContentPreview() {
     AppTheme {
         JoinGameContent(
-            uiState = JoinGameUiState(gameKey = "1234"),
+            uiState = JoinGameUiState(gameKey = "1234", needsDisplayName = true, displayName = "Alice"),
             onGameKeyChange = {},
+            onDisplayNameChange = {},
             onJoinClick = {},
             onScanClick = {},
         )

@@ -131,7 +131,7 @@ final class LeaderboardApiTest extends ApiTestCase
     private function join(Client $client, string $gameUuid, string $name): array
     {
         $join = $client->request('POST', "/api/games/{$gameUuid}/join", self::AUTH + [
-            'json' => ['name' => $name, 'deviceKey' => self::DEVICE_KEY],
+            'json' => ['name' => $name, 'deviceKey' => $this->deviceKeyFor($name)],
         ])->toArray();
         self::assertIsString($join['playerUuid']);
         self::assertIsString($join['mercureToken']);

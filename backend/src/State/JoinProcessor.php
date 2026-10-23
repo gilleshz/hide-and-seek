@@ -9,9 +9,12 @@ use ApiPlatform\State\ProcessorInterface;
 use ApiPlatform\Validator\ValidatorInterface;
 use App\ApiResource\JoinResource;
 use App\Dto\JoinInput;
+use App\Dto\JoinResult;
 use App\Exception\EntityNotFoundException;
+use App\Service\IdentityService;
 use App\Service\JoinService;
 use App\Service\MercureJwtService;
+use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * @implements ProcessorInterface<JoinInput, JoinResource>
@@ -20,8 +23,10 @@ final readonly class JoinProcessor implements ProcessorInterface
 {
     public function __construct(
         private ValidatorInterface $validator,
+        private IdentityService $identityService,
         private JoinService $joinService,
         private MercureJwtService $mercure,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -38,7 +43,14 @@ final readonly class JoinProcessor implements ProcessorInterface
             throw new EntityNotFoundException(message: 'Game not found.', errorKey: 'game.not_found');
         }
 
-        $result = $this->joinService->join($gameKey, $data->name, $data->deviceKey);
+        // The lookup lock stays held until the seat insert commits, so concurrent joins cannot race it.
+        $result = $this->entityManager->wrapInTransaction(
+            function () use ($gameKey, $data): JoinResult {
+                $identity = $this->identityService->resolveOrCreate($data->deviceKey, $data->name);
+
+                return $this->joinService->join($gameKey, $identity);
+            },
+        );
         $player = $result->player;
         $game = $player->getGame();
         $round = $this->joinService->roundFor($game);

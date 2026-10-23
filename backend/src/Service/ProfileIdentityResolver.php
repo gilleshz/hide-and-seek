@@ -11,8 +11,8 @@ use App\Repository\IdentityRepository;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Profile calls have no player token outside a game: the name plus the device credential
- * the identity was joined with are the whole proof of ownership.
+ * Profile calls have no player token outside a game: the device key header the identity was
+ * created with is the whole proof of ownership.
  */
 final readonly class ProfileIdentityResolver
 {
@@ -20,22 +20,15 @@ final readonly class ProfileIdentityResolver
 
     public function __construct(
         private IdentityRepository $identities,
+        private IdentityLookupHasher $hasher,
         private RequestStack $requestStack,
     ) {
     }
 
     public function resolve(): Identity
     {
-        $request = $this->requestStack->getCurrentRequest();
-        $name = $request?->query->get('name');
-        $name = is_string($name) ? trim($name) : '';
-        $deviceKey = $request?->headers->get(self::HEADER) ?? '';
-
-        if ($name === '' || $deviceKey === '') {
-            throw $this->invalidCredential();
-        }
-
-        $identity = $this->identities->findByName($name);
+        $deviceKey = $this->deviceKey();
+        $identity = $this->identities->findByLookupHash($this->hasher->lookup($deviceKey));
         if ($identity === null || !$identity->credentialMatches($deviceKey)) {
             throw $this->invalidCredential();
         }
@@ -43,10 +36,20 @@ final readonly class ProfileIdentityResolver
         return $identity;
     }
 
+    public function deviceKey(): string
+    {
+        $deviceKey = $this->requestStack->getCurrentRequest()?->headers->get(self::HEADER) ?? '';
+        if ($deviceKey === '') {
+            throw $this->invalidCredential();
+        }
+
+        return $deviceKey;
+    }
+
     private function invalidCredential(): FunctionalException
     {
         return new FunctionalException(
-            message: 'Invalid name or device credential.',
+            message: 'Invalid device credential.',
             errorKey: ErrorKey::PROFILE_CREDENTIAL_INVALID,
         );
     }

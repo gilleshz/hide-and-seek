@@ -13,43 +13,38 @@ use PHPUnit\Framework\TestCase;
 final class IdentityTest extends TestCase
 {
     #[Test]
-    public function itCreatesAUuidNameAndHashedDeviceCredential(): void
+    public function itCreatesAUuidDisplayNameLookupHashAndHashedDeviceCredential(): void
     {
-        $identity = new Identity('Alice', 'device-key');
+        $identity = new Identity('Alice', 'device-key', 'lookup-hash');
 
         self::assertNull($identity->getId());
         self::assertSame(36, \strlen($identity->getUuid()));
-        self::assertSame('Alice', $identity->getName());
+        self::assertSame('Alice', $identity->getDisplayName());
+        self::assertSame('lookup-hash', $identity->getLookupHash());
         self::assertTrue($identity->credentialMatches('device-key'));
         self::assertFalse($identity->credentialMatches('other-device-key'));
-        self::assertFalse($identity->isCredentialResetRequested());
         self::assertSame(1, $identity->getTokenEpoch());
+        self::assertGreaterThan(0, $identity->getCreatedAt()->getTimestamp());
     }
 
     #[Test]
-    public function itReplacesTheCredentialAndClearsTheResetFlag(): void
+    public function itRenamesTheDisplayNameAndTrimsIt(): void
     {
-        $identity = new Identity('Alice', 'device-key');
-        $identity->requestCredentialReset();
+        $identity = new Identity('Alice', 'device-key', 'lookup-hash');
 
-        self::assertTrue($identity->isCredentialResetRequested());
-
-        $identity->replaceCredential('new-device-key');
-
-        self::assertTrue($identity->credentialMatches('new-device-key'));
-        self::assertFalse($identity->credentialMatches('device-key'));
-        self::assertFalse($identity->isCredentialResetRequested());
-        self::assertSame(2, $identity->getTokenEpoch());
+        self::assertSame($identity, $identity->rename('  Alicia  '));
+        self::assertSame('Alicia', $identity->getDisplayName());
     }
 
     #[Test]
-    public function requestingAResetIsIdempotent(): void
+    public function itReplacesAndClearsTheAvatar(): void
     {
-        $identity = new Identity('Alice', 'device-key');
+        $identity = new Identity('Alice', 'device-key', 'lookup-hash');
 
-        $identity->requestCredentialReset();
-        $identity->requestCredentialReset();
+        self::assertSame($identity, $identity->replaceAvatar('avatar.jpg'));
+        self::assertSame('avatar.jpg', $identity->getAvatarRef());
 
-        self::assertTrue($identity->isCredentialResetRequested());
+        $identity->replaceAvatar(null);
+        self::assertNull($identity->getAvatarRef());
     }
 }
