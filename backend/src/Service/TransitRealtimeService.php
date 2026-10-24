@@ -9,7 +9,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Fetches and decodes a GTFS-RT trip-update feed.
@@ -28,9 +27,8 @@ final readonly class TransitRealtimeService
      * @param list<string> $decoderCommand
      */
     public function __construct(
-        private HttpClientInterface $httpClient,
+        private OutboundHttpFetcher $fetcher,
         private CacheInterface $cache,
-        private OutboundUrlGuard $urlGuard,
         private LoggerInterface $logger,
         private array $decoderCommand = ['/opt/osm2gtfs/bin/python', '/app/bin/gtfs_rt_decode.py'],
     ) {
@@ -139,29 +137,13 @@ final readonly class TransitRealtimeService
 
     private function fetch(string $url): string
     {
-        $pinned = $this->urlGuard->resolve($url);
-        $response = $this->httpClient->request('GET', $url, [
-            'timeout' => 5,
-            'max_duration' => 5,
-            'max_redirects' => 0,
-            'resolve' => [$pinned['host'] => $pinned['ip']],
-            'headers' => ['Accept' => 'application/x-protobuf, application/octet-stream'],
-        ]);
-
-        $status = $response->getStatusCode();
-        if ($status < 200 || $status >= 300) {
-            throw new \RuntimeException('GTFS-RT feed returned HTTP ' . $status . '.');
-        }
-
-        $content = '';
-        foreach ($this->httpClient->stream($response) as $chunk) {
-            $content .= $chunk->getContent();
-            if (strlen($content) > self::MAX_BYTES) {
-                throw new \RuntimeException('GTFS-RT feed exceeds the maximum size.');
-            }
-        }
-
-        return $content;
+        return $this->fetcher->fetchToString(
+            $url,
+            self::MAX_BYTES,
+            5.0,
+            5.0,
+            ['Accept' => 'application/x-protobuf, application/octet-stream'],
+        );
     }
 
     /** @return array<mixed> */

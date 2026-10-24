@@ -11,15 +11,18 @@ import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.model.withoutLocationTopics
+import fr.gshz.hideandseek.core.util.geoJsonBoundingBox
 import fr.gshz.hideandseek.core.util.serverDetail
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
+import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.RulesVariant
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.domain.repository.GameRepository
@@ -30,7 +33,9 @@ import javax.inject.Inject
 import fr.gshz.hideandseek.di.DefaultDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,7 +56,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import retrofit2.HttpException
 
 @OptIn(FlowPreview::class)
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 @HiltViewModel
 class CreateGameViewModel @Inject constructor(
     private val gameRepository: GameRepository,
@@ -65,6 +70,9 @@ class CreateGameViewModel @Inject constructor(
 
     private val transitPreviewRetries = MutableStateFlow(0)
 
+    private var catalogJob: Job? = null
+    private var catalogBboxCache: Pair<String, BoundingBox?>? = null
+
     /**
      * osmId to its GeoJSON feature, blank when the line has no drawable geometry. Ticking fetches only
      * what is missing; unticking never hits the network.
@@ -75,6 +83,7 @@ class CreateGameViewModel @Inject constructor(
         observeSelectedAreas()
         observeSelectedTransitLines()
         observeRealtimeProbe()
+        observeCatalogBoundary()
     }
 
     /**
@@ -108,6 +117,15 @@ class CreateGameViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .debounce(REALTIME_PROBE_DEBOUNCE_MS)
                 .collectLatest { raw -> checkRealtimeFeed(raw.trim()) }
+        }
+    }
+
+    /** The catalog follows the drawn boundary: reopening the dialog or redrawing the area refetches it. */
+    private fun observeCatalogBoundary() {
+        viewModelScope.launch {
+            _uiState.map { it.showGtfsDialog to it.boundaryGeoJson }
+                .distinctUntilChanged()
+                .collect { (show, _) -> if (show) launchCatalogLoad() }
         }
     }
 
@@ -292,6 +310,7 @@ class CreateGameViewModel @Inject constructor(
             }
             state.copy(
                 selectedAreas = current.toList(),
+                boundaryGeoJson = null,
                 transitLines = emptyList(),
                 selectedTransitLines = emptySet(),
                 hasDiscoveredTransit = false,
@@ -449,11 +468,113 @@ class CreateGameViewModel @Inject constructor(
     }
 
     fun showGtfsDialog() {
-        _uiState.update { it.copy(showGtfsDialog = true, gtfsError = null) }
+        _uiState.update {
+            it.copy(
+                showGtfsDialog = true,
+                gtfsDialogMode = GtfsDialogMode.Networks,
+                gtfsError = null,
+                catalogQuery = "",
+                catalogError = null,
+            )
+        }
     }
 
     fun dismissGtfsDialog() {
-        _uiState.update { it.copy(showGtfsDialog = false, gtfsError = null) }
+        catalogJob?.cancel()
+        _uiState.update { it.copy(showGtfsDialog = false, gtfsError = null, isCatalogLoading = false) }
+    }
+
+    fun onCatalogQueryChange(value: String) {
+        _uiState.update { it.copy(catalogQuery = value, catalogError = null) }
+        catalogJob?.cancel()
+        catalogJob = viewModelScope.launch {
+            delay(CATALOG_DEBOUNCE_MS)
+            loadCatalog()
+        }
+    }
+
+    fun retryCatalog() {
+        _uiState.update { it.copy(catalogError = null) }
+        launchCatalogLoad()
+    }
+
+    fun onSelectCatalogSuggestion(suggestion: TransitCatalogSuggestion) {
+        val name = suggestion.name.ifBlank { suggestion.provider }
+            .take(GTFS_FEED_NAME_MAX_LENGTH)
+            .ifBlank { DEFAULT_GTFS_FEED_NAME }
+        uploadGtfsUrl(
+            url = suggestion.downloadUrl,
+            name = name,
+            realtimeUrl = suggestion.realtimeUrl.takeIf { it.startsWith(REALTIME_URL_PREFIX, ignoreCase = true) },
+            fallbackUrl = suggestion.fallbackUrl.ifBlank { null },
+        )
+    }
+
+    private fun launchCatalogLoad() {
+        catalogJob?.cancel()
+        catalogJob = viewModelScope.launch { loadCatalog() }
+    }
+
+    private suspend fun loadCatalog() {
+        val state = _uiState.value
+        if (!state.showGtfsDialog) return
+        val areas = state.selectedAreas
+        val boundary = state.boundaryGeoJson
+        val bbox = boundary?.let { catalogBoundingBox(it) }
+        if (boundary == null || bbox == null) {
+            _uiState.update {
+                it.copy(
+                    isCatalogLoading = false,
+                    catalogError = UiText.fromResource(R.string.gtfs_catalog_preparing_area),
+                )
+            }
+            return
+        }
+
+        val query = state.catalogQuery
+        _uiState.update { it.copy(isCatalogLoading = true, catalogError = null) }
+        try {
+            val suggestions = gameRepository.searchTransitCatalog(bbox, query)
+            applyCatalogState(areas, boundary, query) {
+                it.copy(isCatalogLoading = false, catalogSuggestions = suggestions, catalogError = null)
+            }
+        } catch (e: IOException) {
+            Log.w(TAG, "GTFS catalog search failed", e)
+            applyCatalogState(areas, boundary, query) {
+                it.copy(isCatalogLoading = false, catalogError = UiText.fromResource(R.string.gtfs_catalog_error))
+            }
+        } catch (e: HttpException) {
+            Log.w(TAG, "GTFS catalog search failed", e)
+            val detail = e.serverDetail() ?: e.message()
+            applyCatalogState(areas, boundary, query) {
+                it.copy(isCatalogLoading = false, catalogError = UiText.fromDynamic(detail))
+            }
+        }
+    }
+
+    private suspend fun catalogBoundingBox(boundary: String): BoundingBox? {
+        val cached = catalogBboxCache
+        if (cached != null && cached.first == boundary) {
+            return cached.second
+        }
+
+        return withContext(parsingDispatcher) { geoJsonBoundingBox(boundary) }
+            .also { catalogBboxCache = boundary to it }
+    }
+
+    /** Applies a catalog response only while the dialog still shows the area and query it was fetched for. */
+    private fun applyCatalogState(
+        areas: List<AreaInfo>,
+        boundary: String,
+        query: String,
+        transform: (CreateGameUiState) -> CreateGameUiState,
+    ) {
+        val state = _uiState.value
+        val isCurrent = state.showGtfsDialog &&
+            state.selectedAreas == areas &&
+            state.catalogQuery == query &&
+            state.boundaryGeoJson == boundary
+        if (isCurrent) _uiState.update(transform)
     }
 
     fun onGtfsUrlChange(value: String) {
@@ -484,16 +605,22 @@ class CreateGameViewModel @Inject constructor(
             return
         }
         if (!realtimeUrlIsValid()) return
+        val feedName = url.substringAfterLast("/")
+            .take(GTFS_FEED_NAME_MAX_LENGTH).ifBlank { DEFAULT_GTFS_FEED_NAME }
+        uploadGtfsUrl(url, feedName, realtimeUrlOrNull(), fallbackUrl = null)
+    }
+
+    private fun uploadGtfsUrl(url: String, name: String, realtimeUrl: String?, fallbackUrl: String?) {
         viewModelScope.launch {
             _uiState.update { it.copy(gtfsUploading = true, gtfsError = null) }
             try {
-                val feedName = url.substringAfterLast("/")
-                    .take(GTFS_FEED_NAME_MAX_LENGTH).ifBlank { DEFAULT_GTFS_FEED_NAME }
-                val source = gameRepository.uploadGtfsFromUrl(url, feedName, realtimeUrlOrNull())
+                val source = gameRepository.uploadGtfsFromUrl(url, name, realtimeUrl, fallbackUrl)
+                catalogJob?.cancel()
                 _uiState.update { state ->
                     state.copy(
                         gtfsUploading = false,
                         showGtfsDialog = false,
+                        isCatalogLoading = false,
                         gtfsUrlInput = "",
                         gtfsRealtimeUrlInput = "",
                         realtimeProbe = null,
@@ -585,7 +712,9 @@ class CreateGameViewModel @Inject constructor(
 
         try {
             val geoJson = gameRepository.boundaryPreview(areas)
-            _uiState.update { it.copy(boundaryGeoJson = geoJson) }
+            if (_uiState.value.selectedAreas == areas) {
+                _uiState.update { it.copy(boundaryGeoJson = geoJson) }
+            }
         } catch (e: IOException) {
             Log.w(TAG, "Boundary preview failed", e)
             clearBoundaryPreview()
@@ -667,6 +796,7 @@ class CreateGameViewModel @Inject constructor(
         /** Long enough to swallow a run of ticks, short enough that the map still feels live. */
         const val PREVIEW_DEBOUNCE_MS = 500L
         const val REALTIME_PROBE_DEBOUNCE_MS = 600L
+        const val CATALOG_DEBOUNCE_MS = 300L
         const val FEATURE_COLLECTION_PREFIX = """{"type":"FeatureCollection","features":["""
         const val ERROR_KEY_NO_GEOMETRY = "transit.preview_no_geometry"
     }

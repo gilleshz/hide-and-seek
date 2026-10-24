@@ -13,6 +13,9 @@ final class GtfsSourceUploadInput
     #[Groups([Group::GTFS_SOURCE_WRITE])]
     public ?string $url = null;
 
+    #[Groups([Group::GTFS_SOURCE_WRITE])]
+    public ?string $fallbackUrl = null;
+
     #[Assert\NotBlank]
     #[Assert\Length(max: 200)]
     #[Groups([Group::GTFS_SOURCE_WRITE])]

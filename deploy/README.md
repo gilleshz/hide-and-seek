@@ -217,6 +217,15 @@ Read this before deploying this image over an older stack.
   identity. Real-time behavior is unchanged, but ship the new APK so Settings
   shows and edits the display name.
 
+### GTFS catalog (v1.6.0)
+
+The setup screen can pick a public GTFS network from the Mobility Database
+catalog, or keep using a pasted URL or an uploaded file. The compose file adds a
+`catalog` volume for the snapshot; compose creates it on the next
+`docker compose up -d`. There is no migration and no data loss. The app still
+works if the catalog host is unreachable: it serves the last snapshot and the
+manual URL and file paths stay available.
+
 ### Worker mode (optional)
 
 Worker mode is off by default. Set `FRANKENPHP_WORKER_MODE=1` in the stack env
@@ -250,6 +259,10 @@ it in dev, where bind mounts need hot reload.
 
 - `uploads` (chat photos) and `tiles` (map tile cache) volumes: back them up
   or accept the loss, the tile cache regenerates on demand.
+
+- `catalog` (the public GTFS network catalog): a cache. Losing it only forces a
+  re-download, and the app still accepts a feed URL or file if the catalog is
+  unreachable. It is refreshed at boot and lazily after 24 hours.
 
 ## Portainer
 

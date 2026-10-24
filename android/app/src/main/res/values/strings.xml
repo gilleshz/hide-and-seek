@@ -50,6 +50,12 @@
     <string name="transit_network_other">Other</string>
     <string name="transit_select_all_shown">Select all shown</string>
     <string name="transit_selected_count"><xliff:g>%1$d</xliff:g>/<xliff:g>%2$d</xliff:g></string>
+    <string name="transit_source_gtfs">GTFS feed</string>
+    <string name="transit_source_osm">OSM</string>
+    <string name="transit_source_hint">GTFS: official data. OSM: community data. Use whichever is better for your area.</string>
+    <string name="transit_source_select_area">Select an area first.</string>
+    <string name="transit_source_chip_gtfs">GTFS</string>
+    <string name="transit_source_chip_osm">OSM</string>
     <string name="create_game_loading">Creating game and loading map data, this can take a minute</string>
     <string name="area_search_game_boundary">Game boundary</string>
     <string name="area_search_selected">Selected: <xliff:g>%1$s</xliff:g></string>
@@ -529,13 +535,17 @@
     <string name="zone_moved_and_resized">The hiding zone moved and is now <xliff:g>%1$s</xliff:g> wide.</string>
 
 
-    <string name="gtfs_add_source">Add GTFS data</string>
     <string name="gtfs_dialog_title">Add GTFS transit data</string>
+    <string name="gtfs_networks_tab">Networks</string>
+    <string name="gtfs_catalog_search">Search networks</string>
+    <string name="gtfs_catalog_empty">No network found for this area. Paste a URL, upload a file, or try OpenStreetMap.</string>
+    <string name="gtfs_catalog_preparing_area">Preparing the area...</string>
+    <string name="gtfs_catalog_error">Could not load networks.</string>
+    <string name="gtfs_live_chip">Live</string>
     <string name="gtfs_url_label">GTFS feed URL</string>
     <string name="gtfs_file_label">Upload GTFS file (.zip)</string>
     <string name="gtfs_choose_file">Choose ZIP file</string>
     <string name="gtfs_uploading">Processing GTFS data…</string>
-    <string name="gtfs_source_label">GTFS: <xliff:g>%1$s</xliff:g></string>
     <string name="gtfs_remove_source">Remove GTFS source</string>
     <string name="gtfs_upload_url">Upload</string>
     <string name="gtfs_url_hint">https://example.com/gtfs.zip</string>
@@ -552,8 +562,6 @@
     <string name="gtfs_realtime_probe_invalid_url">The feed URL must start with https://.</string>
     <string name="gtfs_realtime_probe_seconds">%1$d s</string>
     <string name="gtfs_realtime_probe_minutes">%1$d min</string>
-    <string name="osm_discovery_button">Discover transit lines</string>
-    <string name="discovering_transit_label">Discovering transit lines...</string>
     <string name="transit_discovery_network_error">Discovery failed: check your connection and try again.</string>
     <string name="transit_discovery_empty">No transit lines found. Adjust the modes and search again.</string>
     <string name="transit_preview_loading">Drawing the selected lines…</string>

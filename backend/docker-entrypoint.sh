@@ -32,14 +32,22 @@ php bin/console doctrine:migrations:migrate --no-interaction
 # after them, and the top-level probe keeps steady-state boots from walking huge NAS bind mounts.
 install -d -o www-data -g www-data \
     "$SECRETS_DIR" \
-    /app/var/log /app/var/cache /app/var/uploads /app/var/tiles \
+    /app/var/log /app/var/cache /app/var/uploads /app/var/tiles /app/var/transit-catalog \
     /data /config
-if find "$SECRETS_DIR" /app/var/log /app/var/cache /app/var/uploads /app/var/tiles /data /config \
+if find "$SECRETS_DIR" /app/var/log /app/var/cache /app/var/uploads /app/var/tiles /app/var/transit-catalog /data /config \
     -maxdepth 1 -user root -print -quit | grep -q .; then
     chown -R www-data:www-data \
         "$SECRETS_DIR" \
-        /app/var/log /app/var/cache /app/var/uploads /app/var/tiles \
+        /app/var/log /app/var/cache /app/var/uploads /app/var/tiles /app/var/transit-catalog \
         /data /config
+fi
+
+# A fresh volume would otherwise make the first catalog search download the snapshot inline.
+catalog_pid=""
+if [ ! -s /app/var/transit-catalog/feeds.csv ]; then
+    setpriv --reuid=www-data --regid=www-data --init-groups \
+        php bin/console app:transit-catalog:refresh --no-interaction >/dev/null 2>&1 &
+    catalog_pid=$!
 fi
 
 # The worker runs here because the Mercure publisher JWT is exported above and exists nowhere else.
@@ -64,6 +72,9 @@ worker_pid=$!
 shutdown() {
     trap - TERM INT
     kill -TERM "$server_pid" "$worker_pid" 2>/dev/null || true
+    if [ -n "$catalog_pid" ]; then
+        kill -TERM "$catalog_pid" 2>/dev/null || true
+    fi
     wait
 }
 trap shutdown TERM INT

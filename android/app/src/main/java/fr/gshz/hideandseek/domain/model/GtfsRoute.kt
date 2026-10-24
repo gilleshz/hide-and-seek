@@ -38,6 +38,7 @@ data class GtfsSourceState(
     val uuid: String,
     val name: String,
     val routes: List<GtfsRoute>,
+    val hasRealtime: Boolean = false,
 )
 
 data class GtfsRealtimeProbe(

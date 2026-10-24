@@ -34,6 +34,7 @@ use App\Service\IdentityResolver;
 use App\Service\LeaveService;
 use App\Service\MercureJwtService;
 use App\Service\NominatimService;
+use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
@@ -180,7 +181,11 @@ final class GameDeleteProcessorTest extends TestCase
             new GtfsService(
                 $this->createStub(GtfsSourceRepository::class),
                 '/tmp/gtfs',
-                new MockHttpClient(),
+                new OutboundHttpFetcher(
+                    new MockHttpClient(),
+                    new OutboundUrlGuard(),
+                    $this->createStub(LoggerInterface::class),
+                ),
                 $this->createStub(LoggerInterface::class),
                 new OutboundUrlGuard(),
             ),

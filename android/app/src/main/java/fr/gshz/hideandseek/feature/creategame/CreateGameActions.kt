@@ -2,6 +2,7 @@ package fr.gshz.hideandseek.feature.creategame
 
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 
 data class CreateGameActions(
@@ -31,4 +32,7 @@ data class CreateGameActions(
     val onUploadGtfsFromFile: (ByteArray, String) -> Unit = { _, _ -> },
     val onRemoveGtfsSource: (String) -> Unit = {},
     val onToggleGtfsRoute: (String, String) -> Unit = { _, _ -> },
+    val onCatalogQueryChange: (String) -> Unit = {},
+    val onSelectCatalogSuggestion: (TransitCatalogSuggestion) -> Unit = {},
+    val onRetryCatalog: () -> Unit = {},
 )

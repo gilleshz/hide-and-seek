@@ -1,5 +1,6 @@
 package fr.gshz.hideandseek.domain.repository
 
+import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
@@ -9,6 +10,7 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
@@ -44,10 +46,16 @@ interface GameRepository {
         selectedGtfsLines: List<GtfsLineSelection>? = null,
     ): GameSummary
     suspend fun searchAreas(query: String): List<AreaInfo>
+    suspend fun searchTransitCatalog(bbox: BoundingBox, query: String): List<TransitCatalogSuggestion>
     suspend fun discoverTransitLines(areas: List<AreaInfo>, routeTypes: List<String>? = null): List<TransitLine>
     suspend fun boundaryPreview(areas: List<AreaInfo>): String
     suspend fun transitLinePreview(osmIds: Set<String>): String
-    suspend fun uploadGtfsFromUrl(url: String, name: String, realtimeUrl: String? = null): GtfsSourceState
+    suspend fun uploadGtfsFromUrl(
+        url: String,
+        name: String,
+        realtimeUrl: String? = null,
+        fallbackUrl: String? = null,
+    ): GtfsSourceState
     suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe
     suspend fun uploadGtfsFromFile(
         fileBytes: ByteArray,

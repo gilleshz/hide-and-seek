@@ -36,7 +36,11 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
 
         $uploadedFile = $request->files->get('file');
         $name = $request->request->get('name');
-        $realtimeUrl = $this->readRealtimeUrl($request->request->get('realtimeUrl'));
+        $realtimeUrl = $this->readUrl(
+            $request->request->get('realtimeUrl'),
+            'gtfs_source.realtime_url_too_long',
+            'The realtime feed URL is too long.',
+        );
 
         if ($uploadedFile instanceof UploadedFile) {
             if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
@@ -57,7 +61,17 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
             if (!is_string($sourceName)) {
                 $sourceName = 'GTFS feed';
             }
-            $source = $this->gtfsService->createFromUrl($url, $sourceName, $this->readRealtimeUrl($body['realtimeUrl'] ?? null));
+            $realtimeUrl = $this->readUrl(
+                $body['realtimeUrl'] ?? null,
+                'gtfs_source.realtime_url_too_long',
+                'The realtime feed URL is too long.',
+            );
+            $fallbackUrl = $this->readUrl(
+                $body['fallbackUrl'] ?? null,
+                'gtfs_source.fallback_url_too_long',
+                'The fallback feed URL is too long.',
+            );
+            $source = $this->gtfsService->createFromUrl($url, $sourceName, $realtimeUrl, $fallbackUrl);
         }
 
         $routes = $this->gtfsService->extractRoutes($source);
@@ -65,7 +79,7 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
         return GtfsSourceResource::fromSource($source, $routes);
     }
 
-    private function readRealtimeUrl(mixed $value): ?string
+    private function readUrl(mixed $value, string $errorKey, string $message): ?string
     {
         if (!is_string($value)) {
             return null;
@@ -76,8 +90,8 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
         }
         if (mb_strlen($trimmed) > 1000) {
             throw new FunctionalException(
-                message: 'The realtime feed URL is too long.',
-                errorKey: 'gtfs_source.realtime_url_too_long',
+                message: $message,
+                errorKey: $errorKey,
             );
         }
 

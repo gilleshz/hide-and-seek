@@ -6,7 +6,10 @@ and unofficial, see [Legal](#legal).
 
 ## What it does
 
-- Create a game: name, player count, area and transit lines
+- Create a game: name, player count, area, and transit lines from OpenStreetMap
+  or a GTFS feed
+- GTFS network catalog: pick a public feed for the area, with live departures
+  when the feed provides them
 - Join by game code or by scanning the host's QR code
 - Live map: player positions update in real time over a server-sent events stream
 - Profile photos on the map pins, picked from the camera or the gallery
@@ -32,7 +35,8 @@ The app talks to the server over HTTPS (API and map tiles) and keeps a live
 connection open for real-time updates. The server stores player names, games,
 positions, messages and photos in PostgreSQL, and caches map tiles on disk.
 At game setup it fetches the area's map features from Overpass, and at game
-creation it builds the transit overlay from OpenStreetMap data.
+creation it builds the transit overlay from OpenStreetMap data and the selected
+GTFS feeds.
 
 ## Self-host
 
@@ -57,8 +61,9 @@ key the app needs. TLS, a reverse proxy and the full guide are in
    this phone; the display name is how other players see you and can be
    changed in Settings. If you change phones, connect as a new identity, then
    leave the old seat or ask the host to remove it.
-3. Create or join a game. The host picks the area and the transit lines; the
-   others join with the game code or by scanning the host's QR code.
+3. Create or join a game. The host picks the area and the transit lines, from
+   OpenStreetMap or a GTFS feed; the others join with the game code or by
+   scanning the host's QR code.
 4. Play: hiders hide, seekers find them. The map shows live positions, zones
    and the street network, and the chat stays open the whole game.
 

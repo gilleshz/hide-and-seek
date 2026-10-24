@@ -50,6 +50,12 @@
     <string name="transit_network_other">Autre</string>
     <string name="transit_select_all_shown">Tout sélectionner</string>
     <string name="transit_selected_count"><xliff:g>%1$d</xliff:g>/<xliff:g>%2$d</xliff:g></string>
+    <string name="transit_source_gtfs">Flux GTFS</string>
+    <string name="transit_source_osm">OSM</string>
+    <string name="transit_source_hint">GTFS : données officielles. OSM : données communautaires. Choisissez selon votre secteur.</string>
+    <string name="transit_source_select_area">Sélectionnez d\'abord une zone.</string>
+    <string name="transit_source_chip_gtfs">GTFS</string>
+    <string name="transit_source_chip_osm">OSM</string>
     <string name="create_game_loading">Création de la partie et chargement des données cartographiques, cela peut prendre une minute</string>
     <string name="area_search_game_boundary">Zone de jeu</string>
     <string name="area_search_selected">Sélectionné : <xliff:g>%1$s</xliff:g></string>
@@ -323,13 +329,17 @@
     <string name="question_pending_chip">⏳ <xliff:g>%1$s</xliff:g> en attente de révélation</string>
     <string name="question_hider_chip">❓ Question en attente de votre réponse</string>
 
-    <string name="gtfs_add_source">Ajouter des données GTFS</string>
     <string name="gtfs_dialog_title">Ajouter des données de transport GTFS</string>
+    <string name="gtfs_networks_tab">Réseaux</string>
+    <string name="gtfs_catalog_search">Rechercher un réseau</string>
+    <string name="gtfs_catalog_empty">Aucun réseau trouvé pour cette zone. Collez une URL, importez un fichier ou essayez OpenStreetMap.</string>
+    <string name="gtfs_catalog_preparing_area">Préparation de la zone...</string>
+    <string name="gtfs_catalog_error">Impossible de charger les réseaux.</string>
+    <string name="gtfs_live_chip">Direct</string>
     <string name="gtfs_url_label">URL du flux GTFS</string>
     <string name="gtfs_file_label">Téléverser un fichier GTFS (.zip)</string>
     <string name="gtfs_choose_file">Choisir un fichier ZIP</string>
     <string name="gtfs_uploading">Traitement des données GTFS…</string>
-    <string name="gtfs_source_label">GTFS : <xliff:g>%1$s</xliff:g></string>
     <string name="gtfs_remove_source">Supprimer la source GTFS</string>
     <string name="gtfs_upload_url">Téléverser</string>
     <string name="gtfs_url_hint">https://example.com/gtfs.zip</string>
@@ -346,8 +356,6 @@
     <string name="gtfs_realtime_probe_invalid_url">L\'URL du flux doit commencer par https://.</string>
     <string name="gtfs_realtime_probe_seconds">%1$d s</string>
     <string name="gtfs_realtime_probe_minutes">%1$d min</string>
-    <string name="osm_discovery_button">Découvrir les lignes de transport</string>
-    <string name="discovering_transit_label">Découverte des lignes de transport...</string>
     <string name="transit_discovery_network_error">Échec de la découverte : vérifiez votre connexion et réessayez.</string>
     <string name="transit_discovery_empty">Aucune ligne de transport trouvée. Ajustez les modes et relancez la recherche.</string>
     <string name="transit_preview_loading">Tracé des lignes choisies…</string>

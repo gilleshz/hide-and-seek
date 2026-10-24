@@ -19,6 +19,8 @@ parameters:
         maptiler: '%env(default::MAPTILER_API_KEY)%'
     app.gtfs_storage_dir: '%env(GTFS_STORAGE_DIR)%'
     app.tiles_dir: '%env(TILES_DIR)%'
+    app.transit_catalog_url: 'https://files.mobilitydatabase.org/feeds_v2.csv'
+    app.transit_catalog_file: '%kernel.project_dir%/var/transit-catalog/feeds.csv'
 
 services:
     # default configuration for services in *this* file
@@ -37,7 +39,14 @@ services:
     # please note that last definitions always *replace* previous ones
 
 when@test:
+    parameters:
+        app.transit_catalog_file: '%kernel.cache_dir%/transit-catalog/feeds.csv'
     services:
+        App\Service\TransitCatalogService:
+            autowire: true
+            arguments:
+                $catalogFile: '%app.transit_catalog_file%'
+                $catalogUrl: 'https://8.8.8.8/feeds_v2.csv'
         App\Tests\Fake\FakeMercureHub:
             public: true
         Symfony\Component\Mercure\HubInterface: '@App\Tests\Fake\FakeMercureHub'

@@ -17,9 +17,11 @@ import fr.gshz.hideandseek.data.remote.dto.JoinRequest
 import fr.gshz.hideandseek.data.remote.dto.LeaveRequest
 import fr.gshz.hideandseek.data.remote.dto.DeleteGameRequest
 import fr.gshz.hideandseek.data.remote.dto.TeamRequest
+import fr.gshz.hideandseek.data.remote.dto.TransitCatalogSuggestionDto
 import fr.gshz.hideandseek.data.remote.dto.TransitLineDiscoveryRequest
 import fr.gshz.hideandseek.data.remote.dto.TransitLinePreviewRequest
 import fr.gshz.hideandseek.data.remote.dto.TransitLineRef
+import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
@@ -32,6 +34,7 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
@@ -110,12 +113,18 @@ class GameRepositoryImpl @Inject constructor(
         url: String,
         name: String,
         realtimeUrl: String?,
+        fallbackUrl: String?,
     ): GtfsSourceState {
-        val dto = api.uploadGtfsFromUrl(
+        val dto = longTimeoutApi.uploadGtfsFromUrl(
             url = urlFor("/api/gtfs-sources"),
-            body = GtfsSourceUrlRequest(url = url, name = name, realtimeUrl = realtimeUrl),
+            body = GtfsSourceUrlRequest(
+                url = url,
+                name = name,
+                realtimeUrl = realtimeUrl,
+                fallbackUrl = fallbackUrl,
+            ),
         )
-        return dto.toDomain()
+        return dto.toDomain(hasRealtime = !realtimeUrl.isNullOrBlank())
     }
 
     override suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe {
@@ -141,13 +150,13 @@ class GameRepositoryImpl @Inject constructor(
         val requestBody = fileBytes.toRequestBody("application/zip".toMediaType())
         val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
         val nameBody = name.toRequestBody("text/plain".toMediaType())
-        val dto = api.uploadGtfsFile(
+        val dto = longTimeoutApi.uploadGtfsFile(
             url = urlFor("/api/gtfs-sources"),
             file = part,
             name = nameBody,
             realtimeUrl = realtimeUrl?.toRequestBody("text/plain".toMediaType()),
         )
-        return dto.toDomain()
+        return dto.toDomain(hasRealtime = !realtimeUrl.isNullOrBlank())
     }
 
     override suspend fun searchAreas(query: String): List<AreaInfo> =
@@ -159,6 +168,18 @@ class GameRepositoryImpl @Inject constructor(
                 adminLevel = dto.adminLevel,
             )
         }
+
+    override suspend fun searchTransitCatalog(
+        bbox: BoundingBox,
+        query: String,
+    ): List<TransitCatalogSuggestion> {
+        val bboxParam = listOf(bbox.swLat, bbox.swLng, bbox.neLat, bbox.neLng).joinToString(",")
+        val queryParam = query.trim().takeIf { it.isNotEmpty() }
+            ?.let { "&q=${URLEncoder.encode(it, "UTF-8")}" }
+            .orEmpty()
+        return api.transitCatalog(url = urlFor("/api/transit/catalog?bbox=$bboxParam$queryParam"))
+            .map { it.toDomain() }
+    }
 
     override suspend fun discoverTransitLines(areas: List<AreaInfo>, routeTypes: List<String>?): List<TransitLine> =
         api.discoverTransitLines(
@@ -275,7 +296,7 @@ class GameRepositoryImpl @Inject constructor(
     private suspend fun urlFor(path: String): String =
         (connectionStore.current() ?: throw NotConnectedException()).apiUrl.trimEnd('/') + path
 
-    private fun GtfsSourceDto.toDomain() = GtfsSourceState(
+    private fun GtfsSourceDto.toDomain(hasRealtime: Boolean = false) = GtfsSourceState(
         uuid = uuid,
         name = name,
         routes = routes.map { dto ->
@@ -290,5 +311,20 @@ class GameRepositoryImpl @Inject constructor(
                 textColor = dto.textColor,
             )
         },
+        hasRealtime = hasRealtime,
+    )
+
+    private fun TransitCatalogSuggestionDto.toDomain() = TransitCatalogSuggestion(
+        id = id,
+        provider = provider,
+        name = name,
+        municipality = municipality,
+        countryCode = countryCode,
+        licenseUrl = licenseUrl.orEmpty(),
+        downloadUrl = downloadUrl,
+        fallbackUrl = fallbackUrl.orEmpty(),
+        realtimeUrl = realtimeUrl.orEmpty(),
+        live = live,
+        scope = scope,
     )
 }

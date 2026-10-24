@@ -1,5 +1,6 @@
 package fr.gshz.hideandseek.fake
 
+import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
@@ -12,6 +13,7 @@ import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TeamResult
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
@@ -21,7 +23,12 @@ import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
 import kotlinx.coroutines.CompletableDeferred
 
 class FakeGameRepository : GameRepository {
-    data class GtfsUploadCall(val source: String, val name: String, val realtimeUrl: String?)
+    data class GtfsUploadCall(
+        val source: String,
+        val name: String,
+        val realtimeUrl: String?,
+        val fallbackUrl: String? = null,
+    )
 
     val gtfsUploadCalls = mutableListOf<GtfsUploadCall>()
 
@@ -80,13 +87,26 @@ class FakeGameRepository : GameRepository {
 
     override suspend fun searchAreas(query: String): List<AreaInfo> = emptyList()
 
+    var searchTransitCatalogResult: Result<List<TransitCatalogSuggestion>> = Result.success(emptyList())
+    val searchTransitCatalogCalls = mutableListOf<Pair<BoundingBox, String>>()
+
+    override suspend fun searchTransitCatalog(
+        bbox: BoundingBox,
+        query: String,
+    ): List<TransitCatalogSuggestion> {
+        searchTransitCatalogCalls += bbox to query
+        return searchTransitCatalogResult.getOrThrow()
+    }
+
     override suspend fun discoverTransitLines(areas: List<AreaInfo>, routeTypes: List<String>?): List<TransitLine> =
         discoverTransitLinesResult.getOrThrow()
 
     var boundaryPreviewCalls = 0
+    var boundaryPreviewGate: CompletableDeferred<Unit>? = null
 
     override suspend fun boundaryPreview(areas: List<AreaInfo>): String {
         boundaryPreviewCalls++
+        boundaryPreviewGate?.await()
         return boundaryPreviewResult.getOrThrow()
     }
 
@@ -103,8 +123,9 @@ class FakeGameRepository : GameRepository {
         url: String,
         name: String,
         realtimeUrl: String?,
+        fallbackUrl: String?,
     ): GtfsSourceState {
-        gtfsUploadCalls += GtfsUploadCall(url, name, realtimeUrl)
+        gtfsUploadCalls += GtfsUploadCall(url, name, realtimeUrl, fallbackUrl)
         return uploadGtfsFromUrlResult.getOrThrow()
     }
 

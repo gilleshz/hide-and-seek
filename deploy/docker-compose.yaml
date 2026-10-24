@@ -31,6 +31,7 @@ services:
     volumes:
       - uploads:/app/var/uploads
       - tiles:/app/var/tiles
+      - catalog:/app/var/transit-catalog
       - secrets:/app/config/secrets
       # App logs (Symfony var/log) survive container recreates.
       - logs:/app/var/log
@@ -72,6 +73,7 @@ volumes:
   db_data:
   uploads:
   tiles:
+  catalog:
   secrets:
   # App logs (Symfony var/log) survive container recreates.
   logs:

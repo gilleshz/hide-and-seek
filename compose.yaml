@@ -28,6 +28,7 @@ services:
       - caddy_config:/config
       - uploads:/app/var/uploads
       - tiles:/app/var/tiles
+      - catalog:/app/var/transit-catalog
       - secrets:/app/config/secrets
     healthcheck:
       test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/healthz\") === false ? 1 : 0);'"]
@@ -60,4 +61,5 @@ volumes:
   caddy_config:
   uploads:
   tiles:
+  catalog:
   secrets:

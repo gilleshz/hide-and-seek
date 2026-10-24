@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Service;
 
 use App\Exception\EntityNotFoundException;
+use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\TransitDeparturesService;
 use App\Service\TransitRealtimeService;
@@ -244,9 +245,8 @@ final class TransitDeparturesServiceTest extends TestCase
     private function realtimeService(MockHttpClient $client): TransitRealtimeService
     {
         return new TransitRealtimeService(
-            $client,
+            new OutboundHttpFetcher($client, new OutboundUrlGuard(), new NullLogger()),
             new ArrayAdapter(),
-            new OutboundUrlGuard(),
             new NullLogger(),
             ['/bin/cat'],
         );

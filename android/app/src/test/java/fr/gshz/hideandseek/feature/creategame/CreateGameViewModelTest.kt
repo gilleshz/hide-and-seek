@@ -4,9 +4,12 @@ import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
+import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.RulesVariant
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.fake.FakeGameRepository
@@ -15,16 +18,20 @@ import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
 import io.mockk.mockk
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -511,5 +518,242 @@ class CreateGameViewModelTest {
         assertFalse(viewModel.uiState.value.compactMap)
         assertEquals(GameSize.Medium, gameRepository.lastCreateSize)
         assertEquals(RulesVariant.Official, gameRepository.lastCreateRulesVariant)
+    }
+
+    private val catalogBoundary =
+        """{"type":"Polygon","coordinates":[[[1.0,48.0],[2.0,48.0],[2.0,49.0],[1.0,49.0],[1.0,48.0]]]}"""
+
+    private fun catalogSuggestion(
+        id: String = "feed-1",
+        name: String = "Metz Metropole",
+        provider: String = "transport.data.gouv.fr",
+        live: Boolean = true,
+    ) = TransitCatalogSuggestion(
+        id = id,
+        provider = provider,
+        name = name,
+        municipality = "Metz",
+        countryCode = "FR",
+        licenseUrl = "https://license",
+        downloadUrl = "https://catalog/download.zip",
+        fallbackUrl = "https://catalog/fallback.zip",
+        realtimeUrl = "https://catalog/realtime.pb",
+        live = live,
+        scope = "regional",
+    )
+
+    private fun TestScope.openCatalogDialog(): CreateGameViewModel {
+        gameRepository.boundaryPreviewResult = Result.success(catalogBoundary)
+        val viewModel = createViewModel()
+        viewModel.toggleArea(AreaInfo("123", "relation", "Metz", 8))
+        advanceUntilIdle()
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+        return viewModel
+    }
+
+    @Test
+    fun `the gtfs dialog starts in the networks mode`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+
+        assertEquals(GtfsDialogMode.Networks, viewModel.uiState.value.gtfsDialogMode)
+    }
+
+    @Test
+    fun `the catalog is fetched only once the dialog is open`() = runTest(dispatcher) {
+        gameRepository.boundaryPreviewResult = Result.success(catalogBoundary)
+        val viewModel = createViewModel()
+        viewModel.toggleArea(AreaInfo("123", "relation", "Metz", 8))
+        advanceUntilIdle()
+
+        assertTrue(gameRepository.searchTransitCatalogCalls.isEmpty())
+
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+
+        assertEquals(1, gameRepository.searchTransitCatalogCalls.size)
+    }
+
+    @Test
+    fun `opening the dialog loads the catalog for the area boundary`() = runTest(dispatcher) {
+        val suggestion = catalogSuggestion()
+        gameRepository.searchTransitCatalogResult = Result.success(listOf(suggestion))
+
+        val viewModel = openCatalogDialog()
+
+        assertEquals(
+            listOf(BoundingBox(swLat = 48.0, swLng = 1.0, neLat = 49.0, neLng = 2.0) to ""),
+            gameRepository.searchTransitCatalogCalls,
+        )
+        assertEquals(listOf(suggestion), viewModel.uiState.value.catalogSuggestions)
+        assertFalse(viewModel.uiState.value.isCatalogLoading)
+        assertNull(viewModel.uiState.value.catalogError)
+    }
+
+    @Test
+    fun `a catalog query is debounced into a single request`() = runTest(dispatcher) {
+        val viewModel = openCatalogDialog()
+        val callsAfterOpen = gameRepository.searchTransitCatalogCalls.size
+
+        viewModel.onCatalogQueryChange("me")
+        viewModel.onCatalogQueryChange("metz")
+        assertEquals(callsAfterOpen, gameRepository.searchTransitCatalogCalls.size)
+
+        advanceUntilIdle()
+
+        assertEquals(callsAfterOpen + 1, gameRepository.searchTransitCatalogCalls.size)
+        assertEquals("metz", gameRepository.searchTransitCatalogCalls.last().second)
+    }
+
+    @Test
+    fun `an empty catalog response leaves no suggestions and no error`() = runTest(dispatcher) {
+        gameRepository.searchTransitCatalogResult = Result.success(emptyList())
+
+        val viewModel = openCatalogDialog()
+
+        assertTrue(viewModel.uiState.value.catalogSuggestions.isEmpty())
+        assertFalse(viewModel.uiState.value.isCatalogLoading)
+        assertNull(viewModel.uiState.value.catalogError)
+    }
+
+    @Test
+    fun `a catalog failure is shown and retrying loads it`() = runTest(dispatcher) {
+        gameRepository.searchTransitCatalogResult = Result.failure(IOException("offline"))
+        val viewModel = openCatalogDialog()
+
+        assertEquals(UiText.fromResource(R.string.gtfs_catalog_error), viewModel.uiState.value.catalogError)
+        assertFalse(viewModel.uiState.value.isCatalogLoading)
+
+        val suggestion = catalogSuggestion()
+        gameRepository.searchTransitCatalogResult = Result.success(listOf(suggestion))
+        viewModel.retryCatalog()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.catalogError)
+        assertEquals(listOf(suggestion), viewModel.uiState.value.catalogSuggestions)
+    }
+
+    @Test
+    fun `without a boundary the catalog asks for the area first`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+
+        assertTrue(gameRepository.searchTransitCatalogCalls.isEmpty())
+        assertEquals(UiText.fromResource(R.string.gtfs_catalog_preparing_area), viewModel.uiState.value.catalogError)
+        assertFalse(viewModel.uiState.value.isCatalogLoading)
+    }
+
+    @Test
+    fun `the catalog loads when the boundary arrives while the dialog is open`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+        assertTrue(gameRepository.searchTransitCatalogCalls.isEmpty())
+
+        gameRepository.boundaryPreviewResult = Result.success(catalogBoundary)
+        viewModel.toggleArea(AreaInfo("123", "relation", "Metz", 8))
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.catalogError)
+        assertEquals(1, gameRepository.searchTransitCatalogCalls.size)
+    }
+
+    @Test
+    fun `adding an area clears the boundary until the new preview arrives`() = runTest(dispatcher) {
+        gameRepository.boundaryPreviewResult = Result.success(catalogBoundary)
+        val viewModel = createViewModel()
+        viewModel.toggleArea(AreaInfo("123", "relation", "Metz", 8))
+        advanceUntilIdle()
+        assertNotNull(viewModel.uiState.value.boundaryGeoJson)
+
+        viewModel.toggleArea(AreaInfo("456", "relation", "Nancy", 8))
+
+        assertNull(viewModel.uiState.value.boundaryGeoJson)
+    }
+
+    @Test
+    fun `a boundary preview for a superseded area selection is discarded`() = runTest(dispatcher) {
+        val gate = CompletableDeferred<Unit>()
+        gameRepository.boundaryPreviewGate = gate
+        gameRepository.boundaryPreviewResult = Result.success(catalogBoundary)
+        val viewModel = createViewModel()
+        viewModel.toggleArea(AreaInfo("123", "relation", "Metz", 8))
+        advanceUntilIdle()
+
+        viewModel.toggleArea(AreaInfo("456", "relation", "Nancy", 8))
+        gate.complete(Unit)
+        runCurrent()
+
+        assertNull(viewModel.uiState.value.boundaryGeoJson)
+    }
+
+    @Test
+    fun `selecting a suggestion uploads it with fallback and realtime urls`() = runTest(dispatcher) {
+        val suggestion = catalogSuggestion()
+        val source = GtfsSourceState("src-2", suggestion.name, emptyList(), hasRealtime = true)
+        gameRepository.uploadGtfsFromUrlResult = Result.success(source)
+        val viewModel = openCatalogDialog()
+
+        viewModel.onSelectCatalogSuggestion(suggestion)
+        advanceUntilIdle()
+
+        assertEquals(
+            FakeGameRepository.GtfsUploadCall(
+                source = "https://catalog/download.zip",
+                name = "Metz Metropole",
+                realtimeUrl = "https://catalog/realtime.pb",
+                fallbackUrl = "https://catalog/fallback.zip",
+            ),
+            gameRepository.gtfsUploadCalls.single(),
+        )
+        assertFalse(viewModel.uiState.value.showGtfsDialog)
+        assertEquals(listOf(source), viewModel.uiState.value.gtfsSources)
+    }
+
+    @Test
+    fun `a suggestion without a name is uploaded under its provider`() = runTest(dispatcher) {
+        val suggestion = catalogSuggestion(name = "", provider = "Open Data")
+        gameRepository.uploadGtfsFromUrlResult = Result.success(
+            GtfsSourceState("src-2", "Open Data", emptyList()),
+        )
+        val viewModel = openCatalogDialog()
+
+        viewModel.onSelectCatalogSuggestion(suggestion)
+        advanceUntilIdle()
+
+        assertEquals("Open Data", gameRepository.gtfsUploadCalls.single().name)
+    }
+
+    @Test
+    fun `a failed suggestion upload keeps the dialog open`() = runTest(dispatcher) {
+        gameRepository.uploadGtfsFromUrlResult = Result.failure(IOException("offline"))
+        val viewModel = openCatalogDialog()
+
+        viewModel.onSelectCatalogSuggestion(catalogSuggestion())
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showGtfsDialog)
+        assertTrue(viewModel.uiState.value.gtfsError != null)
+        assertTrue(viewModel.uiState.value.gtfsSources.isEmpty())
+        assertFalse(viewModel.uiState.value.gtfsUploading)
+    }
+
+    @Test
+    fun `reopening the dialog clears the catalog error`() = runTest(dispatcher) {
+        gameRepository.searchTransitCatalogResult = Result.failure(IOException("offline"))
+        val viewModel = openCatalogDialog()
+        assertTrue(viewModel.uiState.value.catalogError != null)
+
+        gameRepository.searchTransitCatalogResult = Result.success(emptyList())
+        viewModel.dismissGtfsDialog()
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.catalogError)
     }
 }

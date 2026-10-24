@@ -63,6 +63,7 @@ import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 
+@Suppress("LongMethod")
 @Composable
 fun CreateGameScreen(
     onGameCreated: (gameUuid: String) -> Unit,
@@ -116,6 +117,9 @@ fun CreateGameScreen(
             onUploadGtfsFromFile = viewModel::uploadGtfsFromFile,
             onRemoveGtfsSource = viewModel::removeGtfsSource,
             onToggleGtfsRoute = viewModel::toggleGtfsRoute,
+            onCatalogQueryChange = viewModel::onCatalogQueryChange,
+            onSelectCatalogSuggestion = viewModel::onSelectCatalogSuggestion,
+            onRetryCatalog = viewModel::retryCatalog,
         ),
         onChooseGtfsFile = { filePickerLauncher.launch("application/zip") },
     )
@@ -166,6 +170,17 @@ private fun GtfsDialogIfShown(
             realtimeProbe = uiState.realtimeProbe,
             isUploading = uiState.gtfsUploading,
             error = uiState.gtfsError,
+            catalog = GtfsCatalogUi(
+                query = uiState.catalogQuery,
+                suggestions = uiState.catalogSuggestions,
+                isLoading = uiState.isCatalogLoading,
+                error = uiState.catalogError,
+            ),
+            catalogActions = GtfsCatalogActions(
+                onQueryChange = actions.onCatalogQueryChange,
+                onSelect = actions.onSelectCatalogSuggestion,
+                onRetry = actions.onRetryCatalog,
+            ),
             onModeChange = actions.onGtfsDialogModeChange,
             onUrlChange = actions.onGtfsUrlChange,
             onRealtimeUrlChange = actions.onGtfsRealtimeUrlChange,

@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsService;
+use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -24,13 +25,7 @@ final class GtfsServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->storageDir = sys_get_temp_dir() . '/gtfs-test-' . bin2hex(random_bytes(4));
-        $this->service = new GtfsService(
-            $this->createStub(GtfsSourceRepository::class),
-            $this->storageDir,
-            new MockHttpClient(),
-            new NullLogger(),
-            new OutboundUrlGuard(),
-        );
+        $this->service = $this->makeService(new MockHttpClient());
     }
 
     protected function tearDown(): void
@@ -131,13 +126,7 @@ final class GtfsServiceTest extends TestCase
         $client = new MockHttpClient(static function () use ($transport): MockResponse {
             throw $transport;
         });
-        $service = new GtfsService(
-            $this->createStub(GtfsSourceRepository::class),
-            $this->storageDir,
-            $client,
-            new NullLogger(),
-            new OutboundUrlGuard(),
-        );
+        $service = $this->makeService($client);
 
         try {
             $service->createFromUrl('https://example.com/gtfs.zip', 'Feed');
@@ -190,7 +179,7 @@ final class GtfsServiceTest extends TestCase
             throw new class extends \RuntimeException implements TransportExceptionInterface {
             };
         });
-        $service = new GtfsService($this->createStub(GtfsSourceRepository::class), $this->storageDir, $client, new NullLogger(), new OutboundUrlGuard());
+        $service = $this->makeService($client);
 
         try {
             $service->createFromUrl('https://8.8.8.8/gtfs.zip', 'Feed');
@@ -201,6 +190,102 @@ final class GtfsServiceTest extends TestCase
 
         self::assertIsArray($captured);
         self::assertSame(['8.8.8.8' => '8.8.8.8'], $captured['resolve']);
+    }
+
+    #[Test]
+    public function itFallsBackWhenThePrimaryReturnsAnError(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse('', ['http_code' => 500]),
+            new MockResponse($this->validZipContents()),
+        ]);
+
+        $source = $this->makeService($client)->createFromUrl(
+            'https://8.8.8.8/primary.zip',
+            'Feed',
+            null,
+            'https://1.1.1.1/fallback.zip',
+        );
+
+        self::assertSame('https://1.1.1.1/fallback.zip', $source->getSourceUrl());
+        self::assertSame(1, $source->getRouteCount());
+        self::assertSame(2, $client->getRequestsCount());
+    }
+
+    #[Test]
+    public function itFallsBackWhenThePrimaryIsNotAValidArchive(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse('not a zip'),
+            new MockResponse($this->validZipContents()),
+        ]);
+
+        $source = $this->makeService($client)->createFromUrl(
+            'https://8.8.8.8/primary.zip',
+            'Feed',
+            null,
+            'https://1.1.1.1/fallback.zip',
+        );
+
+        self::assertSame('https://1.1.1.1/fallback.zip', $source->getSourceUrl());
+        self::assertSame(1, $source->getRouteCount());
+    }
+
+    #[Test]
+    public function itDoesNotRequestTheFallbackWhenThePrimarySucceeds(): void
+    {
+        $client = new MockHttpClient([new MockResponse($this->validZipContents())]);
+
+        $source = $this->makeService($client)->createFromUrl(
+            'https://8.8.8.8/primary.zip',
+            'Feed',
+            null,
+            'https://1.1.1.1/fallback.zip',
+        );
+
+        self::assertSame('https://8.8.8.8/primary.zip', $source->getSourceUrl());
+        self::assertSame(1, $client->getRequestsCount());
+    }
+
+    #[Test]
+    public function itThrowsWhenThePrimaryAndTheFallbackBothFail(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse('', ['http_code' => 500]),
+            new MockResponse('', ['http_code' => 404]),
+        ]);
+
+        try {
+            $this->makeService($client)->createFromUrl(
+                'https://8.8.8.8/primary.zip',
+                'Feed',
+                null,
+                'https://1.1.1.1/fallback.zip',
+            );
+            self::fail('Expected FunctionalException when both candidates fail.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.download_failed', $e->getErrorKey());
+        }
+
+        self::assertSame([], glob($this->storageDir . '/*') ?: []);
+    }
+
+    #[Test]
+    public function itBlocksAFallbackOnAPrivateIp(): void
+    {
+        $client = new MockHttpClient([new MockResponse('', ['http_code' => 500])]);
+
+        try {
+            $this->makeService($client)->createFromUrl(
+                'https://8.8.8.8/primary.zip',
+                'Feed',
+                null,
+                'https://10.0.0.1/fallback.zip',
+            );
+            self::fail('Expected the fallback private IP to be blocked.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.private_ip_blocked', $e->getErrorKey());
+        }
     }
 
     #[Test]
@@ -217,6 +302,26 @@ final class GtfsServiceTest extends TestCase
     }
 
     #[Test]
+    public function itRejectsAnInsecureRealtimeUrlBeforeDownloading(): void
+    {
+        $client = new MockHttpClient();
+
+        try {
+            $this->makeService($client)->createFromUrl(
+                'https://8.8.8.8/feed.zip',
+                'Feed',
+                'http://example.com/rt',
+            );
+            self::fail('Expected the insecure realtime URL to be rejected.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.https_only', $e->getErrorKey());
+        }
+
+        self::assertSame(0, $client->getRequestsCount());
+        self::assertDirectoryDoesNotExist($this->storageDir);
+    }
+
+    #[Test]
     public function itRejectsAnInsecureRealtimeUrl(): void
     {
         try {
@@ -229,6 +334,22 @@ final class GtfsServiceTest extends TestCase
         } catch (FunctionalException $e) {
             self::assertSame('gtfs.https_only', $e->getErrorKey());
         }
+    }
+
+    private function makeService(MockHttpClient $client): GtfsService
+    {
+        return new GtfsService(
+            $this->createStub(GtfsSourceRepository::class),
+            $this->storageDir,
+            new OutboundHttpFetcher($client, new OutboundUrlGuard(), new NullLogger()),
+            new NullLogger(),
+            new OutboundUrlGuard(),
+        );
+    }
+
+    private function validZipContents(): string
+    {
+        return (string) file_get_contents($this->validZip());
     }
 
     private function validZip(): string

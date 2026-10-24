@@ -6,10 +6,11 @@ import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 
-enum class GtfsDialogMode { Url, File }
+enum class GtfsDialogMode { Networks, Url, File }
 
 sealed interface RealtimeProbeState {
     data object Checking : RealtimeProbeState
@@ -108,12 +109,16 @@ data class CreateGameUiState(
     val gtfsSources: List<GtfsSourceState> = emptyList(),
     val selectedGtfsRouteKeys: Set<String> = emptySet(),
     val showGtfsDialog: Boolean = false,
-    val gtfsDialogMode: GtfsDialogMode = GtfsDialogMode.Url,
+    val gtfsDialogMode: GtfsDialogMode = GtfsDialogMode.Networks,
     val gtfsUrlInput: String = "",
     val gtfsRealtimeUrlInput: String = "",
     val realtimeProbe: RealtimeProbeState? = null,
     val gtfsUploading: Boolean = false,
     val gtfsError: UiText? = null,
+    val catalogSuggestions: List<TransitCatalogSuggestion> = emptyList(),
+    val catalogQuery: String = "",
+    val isCatalogLoading: Boolean = false,
+    val catalogError: UiText? = null,
 ) {
 
     /** GTFS routes that are not already covered by OSM transit lines (dedup by ref). */

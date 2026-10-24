@@ -23,12 +23,11 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
@@ -88,7 +87,6 @@ internal fun TransitLinePicker(
         TransitActionButtons(
             onShowGtfsDialog = onShowGtfsDialog,
             isDiscoveringTransit = isDiscoveringTransit,
-            hasDiscoveredTransit = hasDiscoveredTransit,
             hasSelectedAreas = hasSelectedAreas,
             onShowDiscoveryModeDialog = onShowDiscoveryModeDialog,
         )
@@ -132,46 +130,51 @@ internal fun TransitLinePicker(
 private fun TransitActionButtons(
     onShowGtfsDialog: () -> Unit,
     isDiscoveringTransit: Boolean,
-    hasDiscoveredTransit: Boolean,
     hasSelectedAreas: Boolean,
     onShowDiscoveryModeDialog: () -> Unit,
 ) {
-    OutlinedButton(
-        onClick = onShowGtfsDialog,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Icon(
-            Icons.Filled.Add,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FilledTonalButton(
+                onClick = onShowGtfsDialog,
+                enabled = hasSelectedAreas,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(Spacing.xs))
+                Text(stringResource(R.string.transit_source_gtfs), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            FilledTonalButton(
+                onClick = onShowDiscoveryModeDialog,
+                enabled = hasSelectedAreas && !isDiscoveringTransit,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (isDiscoveringTransit) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(
+                        Icons.Filled.AddLocationAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(Modifier.width(Spacing.xs))
+                Text(stringResource(R.string.transit_source_osm), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        Text(
+            text = stringResource(
+                if (hasSelectedAreas) R.string.transit_source_hint
+                else R.string.transit_source_select_area,
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 3,
         )
-        Spacer(Modifier.width(Spacing.xs))
-        Text(stringResource(R.string.gtfs_add_source))
-    }
-
-    if (isDiscoveringTransit) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(Spacing.sm))
-            Text(stringResource(R.string.discovering_transit_label), style = MaterialTheme.typography.bodyMedium)
-        }
-    } else if (!hasDiscoveredTransit && hasSelectedAreas) {
-        Button(
-            onClick = onShowDiscoveryModeDialog,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(
-                Icons.Filled.AddLocationAlt,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(Spacing.xs))
-            Text(stringResource(R.string.osm_discovery_button))
-        }
     }
 }
 
@@ -194,12 +197,21 @@ private fun TransitLineList(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
+        GtfsSourceSection(
+            sources = gtfsSources,
+            routes = uniqueGtfsRoutes,
+            selectedKeys = selectedGtfsRouteKeys,
+            onToggleRoute = onToggleGtfsRoute,
+            onRemoveSource = onRemoveGtfsSource,
+        )
+
         if (groups.isNotEmpty()) {
             BulkSelectRow(
                 label = stringResource(R.string.transit_select_all_shown),
                 groups = groups,
                 selectedIds = selectedIds,
                 onToggle = onToggleGroups,
+                showOsmChip = true,
             )
         }
         groups.groupBy { it.network }.forEach { (network, networkGroups) ->
@@ -208,6 +220,7 @@ private fun TransitLineList(
                 groups = networkGroups,
                 selectedIds = selectedIds,
                 onToggle = onToggleGroups,
+                showOsmChip = true,
             )
             networkGroups.forEach { group ->
                 TransitLineGroupRow(
@@ -217,14 +230,6 @@ private fun TransitLineList(
                 )
             }
         }
-
-        GtfsSourceSection(
-            sources = gtfsSources,
-            routes = uniqueGtfsRoutes,
-            selectedKeys = selectedGtfsRouteKeys,
-            onToggleRoute = onToggleGtfsRoute,
-            onRemoveSource = onRemoveGtfsSource,
-        )
     }
 }
 
@@ -244,6 +249,7 @@ private fun BulkSelectRow(
     groups: List<TransitLineGroup>,
     selectedIds: Set<String>,
     onToggle: (List<TransitLineGroup>) -> Unit,
+    showOsmChip: Boolean = false,
 ) {
     val selectedCount = groups.count { group -> group.osmIds.any { it in selectedIds } }
     Row(
@@ -270,6 +276,10 @@ private fun BulkSelectRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        if (showOsmChip) {
+            SourceChip(stringResource(R.string.transit_source_chip_osm))
+            Spacer(Modifier.width(Spacing.xs))
+        }
         Text(
             text = stringResource(R.string.transit_selected_count, selectedCount, groups.size),
             style = MaterialTheme.typography.labelSmall,
@@ -288,11 +298,15 @@ private fun GtfsSourceSection(
 ) {
     sources.forEach { source ->
         Spacer(Modifier.height(Spacing.sm))
+        val sourceRoutes = routes.filter { it.first.uuid == source.uuid }
         GtfsSourceHeader(
             source = source,
+            selectedCount = sourceRoutes.count { (_, route) ->
+                "${source.uuid}|${route.routeId}" in selectedKeys
+            },
+            totalCount = sourceRoutes.size,
             onRemove = { onRemoveSource(source.uuid) },
         )
-        val sourceRoutes = routes.filter { it.first.uuid == source.uuid }
         sourceRoutes.forEach { (_, route) ->
             GtfsRouteRow(
                 route = route,
@@ -306,6 +320,8 @@ private fun GtfsSourceSection(
 @Composable
 private fun GtfsSourceHeader(
     source: GtfsSourceState,
+    selectedCount: Int,
+    totalCount: Int,
     onRemove: () -> Unit,
 ) {
     Row(
@@ -313,12 +329,22 @@ private fun GtfsSourceHeader(
             .fillMaxWidth()
             .padding(top = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         Text(
-            text = stringResource(R.string.gtfs_source_label, source.name),
+            text = source.name,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.secondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        SourceChip(stringResource(R.string.transit_source_chip_gtfs))
+        if (source.hasRealtime) LiveChip()
+        Text(
+            text = stringResource(R.string.transit_selected_count, selectedCount, totalCount),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         IconButton(
             onClick = onRemove,
@@ -331,6 +357,30 @@ private fun GtfsSourceHeader(
             )
         }
     }
+}
+
+@Composable
+internal fun SourceChip(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.extraSmall)
+            .padding(horizontal = Spacing.xs, vertical = 2.dp),
+    )
+}
+
+@Composable
+internal fun LiveChip() {
+    Text(
+        text = stringResource(R.string.gtfs_live_chip),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.extraSmall)
+            .padding(horizontal = Spacing.xs, vertical = 2.dp),
+    )
 }
 
 @Composable

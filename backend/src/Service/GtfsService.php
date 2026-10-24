@@ -11,7 +11,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Uid\Uuid;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final readonly class GtfsService
 {
@@ -34,7 +33,7 @@ final readonly class GtfsService
         private GtfsSourceRepository $sources,
         #[Autowire('%app.gtfs_storage_dir%')]
         private string $gtfsStorageDir,
-        private HttpClientInterface $httpClient,
+        private OutboundHttpFetcher $fetcher,
         private LoggerInterface $logger,
         private OutboundUrlGuard $urlGuard,
     ) {
@@ -42,6 +41,7 @@ final readonly class GtfsService
 
     public function createFromUpload(UploadedFile $file, string $name, ?string $realtimeUrl = null): GtfsSource
     {
+        $realtime = $this->validRealtimeUrl($realtimeUrl);
         $uuid = Uuid::v4()->toRfc4122();
         $destPath = $this->ensureStorageDir() . '/' . $uuid . '.zip';
 
@@ -57,94 +57,140 @@ final readonly class GtfsService
 
         $source = new GtfsSource($name, $destPath, $uuid);
         $source->setRouteCount($routeCount);
-        $this->applyRealtimeUrl($source, $realtimeUrl);
+        if ($realtime !== null) {
+            $source->setRealtimeUrl($realtime);
+        }
         $this->sources->save($source);
 
         return $source;
     }
 
-    public function createFromUrl(string $url, string $name, ?string $realtimeUrl = null): GtfsSource
-    {
-        $pinned = $this->urlGuard->resolve($url);
-
+    public function createFromUrl(
+        string $url,
+        string $name,
+        ?string $realtimeUrl = null,
+        ?string $fallbackUrl = null,
+    ): GtfsSource {
+        $realtime = $this->validRealtimeUrl($realtimeUrl);
         $uuid = Uuid::v4()->toRfc4122();
         $destPath = $this->ensureStorageDir() . '/' . $uuid . '.zip';
 
-        $handle = fopen($destPath, 'wb');
-        if ($handle === false) {
-            throw new \RuntimeException("Failed to open destination file: {$destPath}");
+        $candidates = [$url];
+        $fallback = $this->validFallbackUrl($fallbackUrl, $url);
+        if ($fallback !== null) {
+            $candidates[] = $fallback;
         }
 
-        try {
-            $response = $this->httpClient->request('GET', $url, [
-                'timeout' => 120,
-                'max_duration' => 180,
-                'max_redirects' => 0,
-                'resolve' => [$pinned['host'] => $pinned['ip']],
-            ]);
-
-            $statusCode = $response->getStatusCode();
-            if ($statusCode < 200 || $statusCode >= 300) {
-                throw new FunctionalException(message: "GTFS download failed: server returned HTTP {$statusCode}.", errorKey: 'gtfs.download_failed');
+        $routeCount = null;
+        $usedUrl = null;
+        $lastFailure = null;
+        foreach ($candidates as $candidate) {
+            try {
+                $routeCount = $this->downloadAndValidate($candidate, $destPath);
+                $usedUrl = $candidate;
+                break;
+            } catch (FunctionalException $e) {
+                @unlink($destPath);
+                $lastFailure = $e;
+                $this->logger->warning('GTFS import failed for {host} ({errorKey}).', [
+                    'host' => $this->hostOf($candidate),
+                    'errorKey' => $e->getErrorKey(),
+                ]);
             }
-
-            $bytesWritten = 0;
-            foreach ($this->httpClient->stream($response) as $chunk) {
-                $chunkContent = $chunk->getContent();
-                $chunkLen = strlen($chunkContent);
-                $bytesWritten += $chunkLen;
-                if ($bytesWritten > self::MAX_DOWNLOAD_BYTES) {
-                    throw new FunctionalException(
-                        message: 'GTFS download exceeds maximum size of ' . (self::MAX_DOWNLOAD_BYTES / 1_000_000) . ' MB.',
-                        errorKey: 'gtfs.download_too_large',
-                    );
-                }
-                $written = fwrite($handle, $chunkContent);
-                if ($written !== $chunkLen) {
-                    throw new \RuntimeException('Failed to write GTFS download chunk to disk.');
-                }
-            }
-        } catch (\Throwable $e) {
-            fclose($handle);
-            @unlink($destPath);
-            if ($e instanceof FunctionalException) {
-                throw $e;
-            }
-            // Transport exceptions carry host/IP/DNS details that must not reach the client.
-            $this->logger->error('GTFS download failed: {error}', [
-                'error' => $e->getMessage(),
-                'exception' => $e,
-            ]);
-            throw new FunctionalException(message: 'Failed to download GTFS feed.', errorKey: 'gtfs.download_failed', previous: $e);
         }
 
-        fclose($handle);
-
-        try {
-            $this->validate($destPath);
-            $routeCount = $this->countRoutes($destPath);
-        } catch (\Throwable $e) {
+        if ($usedUrl === null || $routeCount === null) {
             @unlink($destPath);
-            throw $e;
+
+            throw $lastFailure ?? new FunctionalException(
+                message: 'Failed to download GTFS feed.',
+                errorKey: 'gtfs.download_failed',
+            );
         }
 
         $source = new GtfsSource($name, $destPath, $uuid);
-        $source->setSourceUrl($url);
+        $source->setSourceUrl($usedUrl);
         $source->setRouteCount($routeCount);
-        $this->applyRealtimeUrl($source, $realtimeUrl);
+        if ($realtime !== null) {
+            $source->setRealtimeUrl($realtime);
+        }
         $this->sources->save($source);
 
         return $source;
     }
 
-    private function applyRealtimeUrl(GtfsSource $source, ?string $realtimeUrl): void
+    private function downloadAndValidate(string $url, string $destination): int
+    {
+        try {
+            $this->fetcher->fetchToFile($url, $destination, self::MAX_DOWNLOAD_BYTES, 120.0, 180.0);
+        } catch (FunctionalException $e) {
+            throw $e;
+        } catch (\LengthException $e) {
+            throw new FunctionalException(
+                message: 'GTFS download exceeds maximum size of ' . (self::MAX_DOWNLOAD_BYTES / 1_000_000) . ' MB.',
+                errorKey: 'gtfs.download_too_large',
+                previous: $e,
+            );
+        } catch (\Throwable $e) {
+            throw new FunctionalException(
+                message: 'Failed to download GTFS feed.',
+                errorKey: 'gtfs.download_failed',
+                previous: $e,
+            );
+        }
+
+        $issues = $this->validate($destination);
+        if ($issues !== []) {
+            throw new FunctionalException(
+                message: 'Invalid GTFS archive: ' . implode('; ', $issues),
+                errorKey: 'gtfs.invalid_archive',
+            );
+        }
+
+        return $this->countRoutes($destination);
+    }
+
+    private function validFallbackUrl(?string $fallbackUrl, string $primaryUrl): ?string
+    {
+        $trimmed = $fallbackUrl !== null ? trim($fallbackUrl) : '';
+        if ($trimmed === '' || $trimmed === $primaryUrl || mb_strlen($trimmed) > 1000) {
+            if ($trimmed !== '' && $trimmed !== $primaryUrl) {
+                $this->logger->warning('Ignoring a fallback GTFS URL longer than 1000 characters.');
+            }
+
+            return null;
+        }
+
+        try {
+            $this->urlGuard->assertShape($trimmed);
+        } catch (FunctionalException $e) {
+            $this->logger->warning(
+                'Ignoring an invalid fallback GTFS URL ({errorKey}).',
+                ['errorKey' => $e->getErrorKey()],
+            );
+
+            return null;
+        }
+
+        return $trimmed;
+    }
+
+    private function validRealtimeUrl(?string $realtimeUrl): ?string
     {
         $trimmed = $realtimeUrl !== null ? trim($realtimeUrl) : '';
         if ($trimmed === '') {
-            return;
+            return null;
         }
         $this->urlGuard->assertShape($trimmed);
-        $source->setRealtimeUrl($trimmed);
+
+        return $trimmed;
+    }
+
+    private function hostOf(string $url): string
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return is_string($host) ? $host : 'unknown';
     }
 
     /** @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string}> */

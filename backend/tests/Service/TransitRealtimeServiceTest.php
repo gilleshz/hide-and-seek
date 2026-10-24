@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\TransitRealtimeService;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -92,6 +94,45 @@ final class TransitRealtimeServiceTest extends TestCase
         self::assertSame('invalid_url', $result['status']);
     }
 
+    #[Test]
+    public function itFollowsARedirectToTheFeed(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse('', [
+                'http_code' => 302,
+                'response_headers' => ['Location' => 'https://1.1.1.1/feed-final.pb'],
+            ]),
+            new MockResponse('bytes', ['http_code' => 200]),
+        ]);
+
+        $result = $this->service(
+            ['type' => 'trip_update', 'headerTimestamp' => time()],
+            null,
+            $client,
+        )->probe('https://8.8.8.8/feed.pb');
+
+        self::assertSame('ok', $result['status']);
+    }
+
+    #[Test]
+    public function aRedirectToAPrivateIpYieldsNoRealtimeData(): void
+    {
+        $client = new MockHttpClient([
+            new MockResponse('', [
+                'http_code' => 302,
+                'response_headers' => ['Location' => 'https://10.0.0.1/feed.pb'],
+            ]),
+        ]);
+        $service = new TransitRealtimeService(
+            new OutboundHttpFetcher($client, new OutboundUrlGuard(), new NullLogger()),
+            new ArrayAdapter(),
+            new NullLogger(),
+            ['/bin/echo', '{"type":"trip_update"}'],
+        );
+
+        self::assertSame([], $service->tripUpdates('source-uuid', 'https://8.8.8.8/feed.pb'));
+    }
+
     /**
      * @param array<string, mixed> $decoded
      * @param list<string>|null    $decoderCommand
@@ -101,10 +142,11 @@ final class TransitRealtimeServiceTest extends TestCase
         ?array $decoderCommand = null,
         ?MockHttpClient $client = null,
     ): TransitRealtimeService {
+        $client ??= new MockHttpClient([new MockResponse('bytes', ['http_code' => 200])]);
+
         return new TransitRealtimeService(
-            $client ?? new MockHttpClient([new MockResponse('bytes', ['http_code' => 200])]),
+            new OutboundHttpFetcher($client, new OutboundUrlGuard(), new NullLogger()),
             $this->createStub(CacheInterface::class),
-            new OutboundUrlGuard(),
             new NullLogger(),
             $decoderCommand ?? ['/bin/echo', json_encode($decoded, JSON_THROW_ON_ERROR)],
         );

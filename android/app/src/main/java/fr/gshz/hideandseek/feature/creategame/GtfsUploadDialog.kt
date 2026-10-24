@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package fr.gshz.hideandseek.feature.creategame
 
 import androidx.compose.foundation.layout.Arrangement
@@ -5,13 +7,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -24,17 +30,33 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.ui.resolve
 import fr.gshz.hideandseek.core.ui.theme.Spacing
+import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
+
+internal data class GtfsCatalogUi(
+    val query: String = "",
+    val suggestions: List<TransitCatalogSuggestion> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: UiText? = null,
+)
+
+internal data class GtfsCatalogActions(
+    val onQueryChange: (String) -> Unit = {},
+    val onSelect: (TransitCatalogSuggestion) -> Unit = {},
+    val onRetry: () -> Unit = {},
+)
 
 @Suppress("LongParameterList")
 @Composable
@@ -45,6 +67,8 @@ internal fun GtfsUploadDialog(
     realtimeProbe: RealtimeProbeState?,
     isUploading: Boolean,
     error: UiText?,
+    catalog: GtfsCatalogUi,
+    catalogActions: GtfsCatalogActions,
     onModeChange: (GtfsDialogMode) -> Unit,
     onUrlChange: (String) -> Unit,
     onRealtimeUrlChange: (String) -> Unit,
@@ -65,6 +89,8 @@ internal fun GtfsUploadDialog(
                 realtimeProbe = realtimeProbe,
                 isUploading = isUploading,
                 error = error,
+                catalog = catalog,
+                catalogActions = catalogActions,
                 onModeChange = onModeChange,
                 onUrlChange = onUrlChange,
                 onRealtimeUrlChange = onRealtimeUrlChange,
@@ -85,6 +111,8 @@ private fun GtfsUploadDialogContent(
     realtimeProbe: RealtimeProbeState?,
     isUploading: Boolean,
     error: UiText?,
+    catalog: GtfsCatalogUi,
+    catalogActions: GtfsCatalogActions,
     onModeChange: (GtfsDialogMode) -> Unit,
     onUrlChange: (String) -> Unit,
     onRealtimeUrlChange: (String) -> Unit,
@@ -98,13 +126,20 @@ private fun GtfsUploadDialogContent(
     ) {
         GtfsDialogTitleBar(isUploading = isUploading, onDismiss = onDismiss)
         GtfsModeSelector(mode = mode, isUploading = isUploading, onModeChange = onModeChange)
-        GtfsRealtimeUrlField(
-            urlInput = realtimeUrlInput,
-            probeState = realtimeProbe,
-            isUploading = isUploading,
-            onUrlChange = onRealtimeUrlChange,
-        )
+        if (mode != GtfsDialogMode.Networks) {
+            GtfsRealtimeUrlField(
+                urlInput = realtimeUrlInput,
+                probeState = realtimeProbe,
+                isUploading = isUploading,
+                onUrlChange = onRealtimeUrlChange,
+            )
+        }
         when (mode) {
+            GtfsDialogMode.Networks -> GtfsNetworksTabContent(
+                catalog = catalog,
+                isUploading = isUploading,
+                actions = catalogActions,
+            )
             GtfsDialogMode.Url -> GtfsUrlTabContent(
                 urlInput = urlInput,
                 isUploading = isUploading,
@@ -154,25 +189,164 @@ private fun GtfsModeSelector(
     isUploading: Boolean,
     onModeChange: (GtfsDialogMode) -> Unit,
 ) {
+    val modes = GtfsDialogMode.entries
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        SegmentedButton(
-            selected = mode == GtfsDialogMode.Url,
-            onClick = { onModeChange(GtfsDialogMode.Url) },
-            enabled = !isUploading,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-        ) {
-            Text(stringResource(R.string.gtfs_url_tab))
-        }
-        SegmentedButton(
-            selected = mode == GtfsDialogMode.File,
-            onClick = { onModeChange(GtfsDialogMode.File) },
-            enabled = !isUploading,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-        ) {
-            Text(stringResource(R.string.gtfs_file_tab))
+        modes.forEachIndexed { index, item ->
+            SegmentedButton(
+                selected = mode == item,
+                onClick = { onModeChange(item) },
+                enabled = !isUploading,
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+            ) {
+                Text(item.label())
+            }
         }
     }
 }
+
+@Composable
+private fun GtfsDialogMode.label(): String = when (this) {
+    GtfsDialogMode.Networks -> stringResource(R.string.gtfs_networks_tab)
+    GtfsDialogMode.Url -> stringResource(R.string.gtfs_url_tab)
+    GtfsDialogMode.File -> stringResource(R.string.gtfs_file_tab)
+}
+
+@Composable
+private fun GtfsNetworksTabContent(
+    catalog: GtfsCatalogUi,
+    isUploading: Boolean,
+    actions: GtfsCatalogActions,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        val catalogError = catalog.error
+        OutlinedTextField(
+            value = catalog.query,
+            onValueChange = actions.onQueryChange,
+            placeholder = { Text(stringResource(R.string.gtfs_catalog_search)) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isUploading,
+        )
+        when {
+            isUploading -> CatalogProgress(label = stringResource(R.string.gtfs_uploading))
+            catalog.isLoading -> CatalogProgress(label = null)
+            catalogError != null -> CatalogError(error = catalogError, onRetry = actions.onRetry)
+            catalog.suggestions.isEmpty() -> CatalogEmpty()
+            else -> CatalogSuggestionList(
+                suggestions = catalog.suggestions,
+                enabled = !isUploading,
+                onSelect = actions.onSelect,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CatalogProgress(label: String?) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.md),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        if (label != null) {
+            Spacer(Modifier.width(Spacing.sm))
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun CatalogError(error: UiText, onRetry: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Text(
+            text = error.resolve(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onRetry) {
+            Text(stringResource(R.string.transit_preview_retry))
+        }
+    }
+}
+
+@Composable
+private fun CatalogEmpty() {
+    Text(
+        text = stringResource(R.string.gtfs_catalog_empty),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun CatalogSuggestionList(
+    suggestions: List<TransitCatalogSuggestion>,
+    enabled: Boolean,
+    onSelect: (TransitCatalogSuggestion) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .heightIn(max = CATALOG_LIST_MAX_HEIGHT)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        suggestions.forEach { suggestion ->
+            CatalogSuggestionRow(
+                suggestion = suggestion,
+                enabled = enabled,
+                onClick = { onSelect(suggestion) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CatalogSuggestionRow(
+    suggestion: TransitCatalogSuggestion,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val title = suggestion.name.ifBlank { suggestion.provider }
+    val subtitle = if (suggestion.provider != title) suggestion.provider else suggestion.municipality
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (suggestion.live) {
+                Spacer(Modifier.width(Spacing.sm))
+                LiveChip()
+            }
+        }
+    }
+}
+
+private val CATALOG_LIST_MAX_HEIGHT = 280.dp
 
 @Composable
 private fun GtfsRealtimeUrlField(

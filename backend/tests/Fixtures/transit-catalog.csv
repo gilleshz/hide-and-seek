@@ -1,0 +1,15 @@
+id,data_type,entity_type,location.country_code,location.subdivision_name,location.municipality,provider,is_official,name,note,feed_contact_email,static_reference,urls.direct_download,urls.authentication_type,urls.authentication_info,urls.api_key_parameter_name,urls.latest,urls.license,location.bounding_box.minimum_latitude,location.bounding_box.maximum_latitude,location.bounding_box.minimum_longitude,location.bounding_box.maximum_longitude,location.bounding_box.extracted_on,status,features,redirect.id,redirect.comment
+tdg-80725,gtfs,,FR,Grand Est,Metz,LeMet,True,LeMet,"LeMet, reseau de Metz
+lignes A et B",,,https://files.example.com/lemet.zip,0,,,https://files.example.com/lemet-latest.zip,https://example.com/lemet-license,48.9757,49.2037,6.0031,6.3245,,active,,,
+tdg-81512,gtfs_rt,vp,FR,,Metz,LeMet,True,LeMet vehicles,,,tdg-80725,https://rt.example.com/lemet-vp.pb,0,,,,,,,,,,active,,,
+tdg-81511,gtfs_rt,tu,FR,,Metz,LeMet,True,LeMet trip updates,,,tdg-80725,https://rt.example.com/lemet-tu.pb,0,,,,,,,,,,active,,,
+tdg-81513,gtfs_rt,tu,FR,,Metz,Fluo Grand Est,True,Fluo trip updates,,,tdg-80725|tdg-80427,https://rt.example.com/fluo-tu.pb,0,,,,,,,,,,active,,,
+tdg-80427,gtfs,,FR,Grand Est,Metz,Fluo Grand Est,True,Fluo Moselle,,,,https://files.example.com/moselle.zip,,,,,https://example.com/fluo-license,48.70,49.50,5.60,6.80,,active,,,
+tdg-80423,gtfs,,FR,Grand Est,Nancy,Fluo Grand Est,True,Fluo Nancy,,,,https://files.example.com/nancy.zip,,,,,,48.60,48.75,6.10,6.25,,active,,,
+tdg-83582,gtfs,,FR,Ile-de-France,Paris,SNCF,True,SNCF TER,,,,https://files.example.com/sncf.zip,,,,,https://example.com/sncf-license,41.0,51.5,-5.0,9.8,,active,,,
+mdb-1298,gtfs,,FR,,Metz,Old Metz,True,Old Metz,,,,https://files.example.com/old-metz.zip,,,,,,48.9757,49.2037,6.0031,6.3245,,deprecated,,,
+tdg-auth,gtfs,,FR,,Metz,Auth Feed,True,Auth Feed,,,,https://files.example.com/auth.zip,1,,,,,48.9757,49.2037,6.0031,6.3245,,active,,,
+tdg-nonofficial,gtfs,,FR,,Metz,Community Feed,False,Community Feed,,,,https://files.example.com/community.zip,,,,,,48.9757,49.2037,6.0031,6.3245,,active,,,
+tdg-redirect,gtfs,,FR,,Metz,Redirect Feed,True,Redirect Feed,,,,https://files.example.com/redirect.zip,,,,,,48.9757,49.2037,6.0031,6.3245,,active,,tdg-80725,Duplicate of LeMet
+tdg-badbbox,gtfs,,FR,,Metz,Broken Bbox,True,Broken Bbox,,,,https://files.example.com/broken.zip,,,,,,49.50,48.50,6.0031,6.3245,,active,,,
+tdg-directonly,gtfs,,FR,Grand Est,Thionville,Direct Bus,True,Direct Bus,,,,https://files.example.com/direct.zip,,,,,,49.30,49.45,6.10,6.25,,active,,,

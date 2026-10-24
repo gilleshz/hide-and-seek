@@ -53,6 +53,7 @@ import fr.gshz.hideandseek.data.remote.dto.GtfsRealtimeProbeDto
 import fr.gshz.hideandseek.data.remote.dto.GtfsRealtimeProbeRequest
 import fr.gshz.hideandseek.data.remote.dto.GtfsSourceDto
 import fr.gshz.hideandseek.data.remote.dto.GtfsSourceUrlRequest
+import fr.gshz.hideandseek.data.remote.dto.TransitCatalogSuggestionDto
 import fr.gshz.hideandseek.data.remote.dto.TransitLineDiscoveryRequest
 import fr.gshz.hideandseek.data.remote.dto.TransitLineDto
 import fr.gshz.hideandseek.data.remote.dto.TransitLinePreviewRequest
@@ -89,6 +90,9 @@ interface HideAndSeekApi {
     // Raw GeoJSON payload, not a typed DTO; the server marks it immutable and caches it.
     @GET
     suspend fun getTransitOverlay(@Url url: String): Response<ResponseBody>
+
+    @GET
+    suspend fun transitCatalog(@Url url: String): List<TransitCatalogSuggestionDto>
 
     @GET
     suspend fun getStationDepartures(
