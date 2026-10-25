@@ -33,8 +33,20 @@
     <string name="create_game_name_label">Nom de la partie</string>
     <string name="create_game_size_label">Taille</string>
     <string name="create_game_edition_label">Édition</string>
-    <string name="create_game_compact_map">Carte compacte (non officielle)</string>
-    <string name="create_game_compact_map_hint">Remplace le thermomètre de 5 km par 2 km (3 mi par 1 mi en impérial)</string>
+    <string name="custom_rules_title">Règles personnalisées</string>
+    <string name="custom_rules_intro">Ajustements facultatifs et non officiels. Tout le monde doit être d\'accord avant le début de la partie.</string>
+    <string name="custom_rules_none">Aucune</string>
+    <plurals name="custom_rules_active_count">
+        <item quantity="one"><xliff:g>%d</xliff:g> active</item>
+        <item quantity="other"><xliff:g>%d</xliff:g> actives</item>
+    </plurals>
+    <string name="custom_rule_smaller_thermometer">Thermomètre réduit</string>
+    <string name="custom_rule_smaller_thermometer_hint_metric">Les petites parties utilisent 2 km au lieu de 5 km.</string>
+    <string name="custom_rule_smaller_thermometer_hint_imperial">Les petites parties utilisent 1 mi au lieu de 3 mi.</string>
+    <string name="custom_rule_smaller_thermometer_summary_metric">Thermomètre réduit : 2 km au lieu de 5 km</string>
+    <string name="custom_rule_smaller_thermometer_summary_imperial">Thermomètre réduit : 1 mi au lieu de 3 mi</string>
+    <string name="section_expand">Développer</string>
+    <string name="section_collapse">Réduire</string>
     <string name="create_game_button">Créer</string>
     <string name="transit_lines_header">Lignes de transport</string>
     <string name="transit_line_search">Rechercher une ligne</string>
@@ -68,7 +80,6 @@
     <string name="join_game_button">Rejoindre</string>
 
     <string name="lobby_title">Salon</string>
-    <string name="lobby_compact_map">Carte compacte</string>
     <string name="lobby_game_code_label">Code du jeu</string>
     <string name="lobby_show_qr">Afficher le QR code</string>
     <string name="lobby_hide_qr">Masquer le QR code</string>

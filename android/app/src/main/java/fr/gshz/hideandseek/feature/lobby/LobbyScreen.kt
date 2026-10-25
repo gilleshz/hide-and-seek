@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,7 +64,6 @@ import androidx.core.content.ContextCompat
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Map
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -71,6 +71,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.location.LocationTrackingService
+import fr.gshz.hideandseek.core.ui.CollapsibleSection
 import fr.gshz.hideandseek.core.ui.ErrorText
 import fr.gshz.hideandseek.core.ui.QrCode
 import fr.gshz.hideandseek.core.ui.RoleBadge
@@ -78,6 +79,7 @@ import fr.gshz.hideandseek.core.ui.SectionHeader
 import fr.gshz.hideandseek.core.ui.theme.AppTheme
 import fr.gshz.hideandseek.core.ui.theme.BrandColors
 import fr.gshz.hideandseek.core.ui.theme.Spacing
+import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
 import fr.gshz.hideandseek.domain.model.Player
 import fr.gshz.hideandseek.domain.model.RulesVariant
@@ -344,10 +346,6 @@ internal fun LobbyContent(
             }
         }
 
-        if (uiState.gameVariant == RulesVariant.Compact) {
-            CompactMapBadge()
-        }
-
         ErrorText(
             uiState.error,
             detail = uiState.errorDetail,
@@ -369,6 +367,8 @@ internal fun LobbyContent(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
         }
+
+        CustomRulesDisclosure(variant = uiState.gameVariant, edition = uiState.gameEdition)
 
         if (uiState.hasLeaderboard) {
             LeaderboardSection(entries = uiState.leaderboard)
@@ -545,22 +545,30 @@ private fun DeleteGameDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun CompactMapBadge(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+private fun CustomRulesDisclosure(
+    variant: RulesVariant?,
+    edition: Edition?,
+    modifier: Modifier = Modifier,
+) {
+    if (variant != RulesVariant.Compact) return
+
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    CollapsibleSection(
+        text = stringResource(R.string.custom_rules_title),
+        summary = pluralStringResource(R.plurals.custom_rules_active_count, 1, 1),
+        expanded = expanded,
+        onToggle = { expanded = !expanded },
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Icon(
-            imageVector = Icons.Filled.Map,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp),
-        )
         Text(
-            text = stringResource(R.string.lobby_compact_map),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
+            text = stringResource(
+                if (edition == Edition.Imperial) {
+                    R.string.custom_rule_smaller_thermometer_summary_imperial
+                } else {
+                    R.string.custom_rule_smaller_thermometer_summary_metric
+                },
+            ),
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }

@@ -33,8 +33,20 @@
     <string name="create_game_name_label">Spielname</string>
     <string name="create_game_size_label">Größe</string>
     <string name="create_game_edition_label">Edition</string>
-    <string name="create_game_compact_map">Kompakte Karte (inoffiziell)</string>
-    <string name="create_game_compact_map_hint">Ersetzt das 5-km-Thermometer durch 2 km (3 mi durch 1 mi in der imperialen Edition)</string>
+    <string name="custom_rules_title">Eigene Regeln</string>
+    <string name="custom_rules_intro">Optionale, inoffizielle Anpassungen. Alle Mitspielenden sollten vor dem Spielstart zustimmen.</string>
+    <string name="custom_rules_none">Keine</string>
+    <plurals name="custom_rules_active_count">
+        <item quantity="one"><xliff:g>%d</xliff:g> aktiv</item>
+        <item quantity="other"><xliff:g>%d</xliff:g> aktiv</item>
+    </plurals>
+    <string name="custom_rule_smaller_thermometer">Kleineres Thermometer</string>
+    <string name="custom_rule_smaller_thermometer_hint_metric">Kleine Spiele nutzen 2 km statt 5 km.</string>
+    <string name="custom_rule_smaller_thermometer_hint_imperial">Kleine Spiele nutzen 1 mi statt 3 mi.</string>
+    <string name="custom_rule_smaller_thermometer_summary_metric">Kleineres Thermometer: 2 km statt 5 km</string>
+    <string name="custom_rule_smaller_thermometer_summary_imperial">Kleineres Thermometer: 1 mi statt 3 mi</string>
+    <string name="section_expand">Ausklappen</string>
+    <string name="section_collapse">Einklappen</string>
     <string name="create_game_button">Erstellen</string>
     <string name="transit_lines_header">Verkehrslinien</string>
     <string name="transit_line_search">Linien suchen</string>
@@ -68,7 +80,6 @@
     <string name="join_game_button">Beitreten</string>
 
     <string name="lobby_title">Lobby</string>
-    <string name="lobby_compact_map">Kompakte Karte</string>
     <string name="lobby_game_code_label">Spielcode</string>
     <string name="lobby_show_qr">QR-Code anzeigen</string>
     <string name="lobby_hide_qr">QR-Code ausblenden</string>
