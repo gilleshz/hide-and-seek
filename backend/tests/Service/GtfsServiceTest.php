@@ -8,8 +8,10 @@ use App\Entity\GtfsSource;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsService;
+use App\Service\GtfsShapeCompletionService;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
+use App\Service\OverpassHttpClient;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -21,6 +23,28 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 final class GtfsServiceTest extends TestCase
 {
+    private const string COMPLETION_DISCOVERY = <<<'JSON'
+        {"version":0.6,"elements":[
+         {"type":"relation","id":100,"tags":{"route":"tram","ref":"A"}}
+        ]}
+        JSON;
+
+    private const string COMPLETION_GEOMETRY = <<<'JSON'
+        {"version":0.6,"elements":[
+         {"type":"relation","id":100,"members":[
+           {"type":"way","role":"","geometry":[
+             {"lat":48.5001,"lon":7.6999},{"lat":48.5001,"lon":7.7100},{"lat":48.5001,"lon":7.7201}
+           ]}
+         ]}
+        ]}
+        JSON;
+
+    private const string COMPLETION_DISCOVERY_WITHOUT_MATCH = <<<'JSON'
+        {"version":0.6,"elements":[
+         {"type":"relation","id":999,"tags":{"route":"tram","ref":"Z"}}
+        ]}
+        JSON;
+
     private GtfsService $service;
     private string $storageDir;
 
@@ -454,6 +478,69 @@ final class GtfsServiceTest extends TestCase
     }
 
     #[Test]
+    public function anUploadWithoutShapesIsCompletedFromOsm(): void
+    {
+        $overpass = new MockHttpClient([
+            new MockResponse(self::COMPLETION_DISCOVERY),
+            new MockResponse(self::COMPLETION_GEOMETRY),
+        ]);
+        $service = $this->makeService(new MockHttpClient(), $overpass);
+        $path = $this->writeZip([
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,A,Line A,0",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'stops.txt' => "stop_id,stop_name,stop_lat,stop_lon\n"
+                . "S1,Alpha,48.5000,7.7000\nS2,Beta,48.5000,7.7100\nS3,Gamma,48.5000,7.7200",
+            'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1\nT1,S2,2\nT1,S3,3",
+        ]);
+
+        $source = $service->createFromUpload(
+            new UploadedFile($path, 'feed.zip', 'application/zip', null, true),
+            'Feed',
+        );
+
+        self::assertSame(1, $source->getRouteCount());
+        self::assertSame(2, $overpass->getRequestsCount());
+
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($source->getFilePath()));
+        $shapes = (string) $zip->getFromName('shapes.txt');
+        $zip->close();
+
+        self::assertStringContainsString('OSM_100', $shapes);
+    }
+
+    #[Test]
+    public function anUploadWithAnEmptyShapesStubThatCannotBeCompletedIsRejected(): void
+    {
+        $overpass = new MockHttpClient([
+            new MockResponse(self::COMPLETION_DISCOVERY_WITHOUT_MATCH),
+        ]);
+        $service = $this->makeService(new MockHttpClient(), $overpass);
+        $path = $this->writeZip([
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,A,Line A,0",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n",
+            'stops.txt' => "stop_id,stop_name,stop_lat,stop_lon\n"
+                . "S1,Alpha,48.5000,7.7000\nS2,Beta,48.5000,7.7100\nS3,Gamma,48.5000,7.7200",
+            'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1\nT1,S2,2\nT1,S3,3",
+        ]);
+
+        try {
+            $service->createFromUpload(
+                new UploadedFile($path, 'feed.zip', 'application/zip', null, true),
+                'Feed',
+            );
+            self::fail('Expected an uncompletable shape-less feed to be rejected.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.shapes_missing', $e->getErrorKey());
+        }
+
+        self::assertSame([], glob($this->storageDir . '/*') ?: []);
+    }
+
+    #[Test]
     public function deleteFileRemovesTheSourceAndItsSubsetCache(): void
     {
         $path = $this->validZip();
@@ -564,7 +651,7 @@ final class GtfsServiceTest extends TestCase
         return $path;
     }
 
-    private function makeService(MockHttpClient $client): GtfsService
+    private function makeService(MockHttpClient $client, ?MockHttpClient $overpassClient = null): GtfsService
     {
         return new GtfsService(
             $this->createStub(GtfsSourceRepository::class),
@@ -573,6 +660,16 @@ final class GtfsServiceTest extends TestCase
             new NullLogger(),
             new OutboundUrlGuard(),
             new Filesystem(),
+            new GtfsShapeCompletionService(
+                new OverpassHttpClient(
+                    $overpassClient ?? new MockHttpClient(),
+                    'https://test.example/api/',
+                    false,
+                    new NullLogger(),
+                ),
+                new NullLogger(),
+                32_000_000,
+            ),
         );
     }
 
@@ -586,7 +683,7 @@ final class GtfsServiceTest extends TestCase
         return $this->writeZip([
             'agency.txt' => "agency_id,agency_name\nA1,Agency",
             'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
-            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'trips.txt' => "route_id,service_id,trip_id,shape_id\nR1,S1,T1,SH1",
             'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nSH1,46.5,6.6,1",
             'stops.txt' => "stop_id,stop_name\nS1,Stop",
             'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",

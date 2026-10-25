@@ -75,7 +75,7 @@ final class GtfsSourceApiTest extends ApiTestCase
             [
             'agency.txt' => "agency_id,agency_name\nA1,Agency",
             'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
-            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'trips.txt' => "route_id,service_id,trip_id,shape_id\nR1,S1,T1,SH1",
             'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nSH1,46.5,6.6,1",
             'stops.txt' => "stop_id,stop_name\nS1,Stop",
             'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",

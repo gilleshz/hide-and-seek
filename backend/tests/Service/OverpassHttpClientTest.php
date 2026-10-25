@@ -20,6 +20,11 @@ final class OverpassHttpClientTest extends TestCase
     private const string GOOD_RESPONSE =
         '{"version": 0.6, "elements": [{"type": "relation", "id": 1, "tags": {"route": "tram"}}]}';
     private const string LEGIT_EMPTY = '{"version": 0.6, "elements": []}';
+    private const string TRUNCATED_GEOMETRY = '{"version": 0.6, "elements": [{"type": "relation", "id": 1,'
+        . ' "members": [{"type": "way", "ref": 2, "role": "", "geometry": []},'
+        . ' {"type": "way", "ref": 3, "role": "", "geometry": [{"lat": 48.5, "lon": 7.7}]}]}]}';
+    private const string COMPLETE_GEOMETRY = '{"version": 0.6, "elements": [{"type": "relation", "id": 1,'
+        . ' "members": [{"type": "way", "ref": 3, "role": "", "geometry": [{"lat": 48.5, "lon": 7.7}]}]}]}';
 
     #[Test]
     public function itFailsOverWhenAMirrorReturnsEmptyWithRemark(): void
@@ -72,6 +77,50 @@ final class OverpassHttpClientTest extends TestCase
         $body = $client->fetch('data', 60, 1_000_000, OverpassEmptyPolicy::RejectAny);
 
         self::assertSame(self::GOOD_RESPONSE, $body);
+    }
+
+    /** A regional extract answers a relation query with its member ways present but their geometry empty. */
+    #[Test]
+    public function itFailsOverWhenAMirrorReturnsTruncatedGeometry(): void
+    {
+        $httpClient = new MockHttpClient([
+            new MockResponse(self::TRUNCATED_GEOMETRY),
+            new MockResponse(self::COMPLETE_GEOMETRY),
+        ]);
+        $client = new OverpassHttpClient($httpClient, 'http://mirror-a/api,http://mirror-b/api', false);
+
+        $body = $client->fetch('data', 60, 1_000_000, OverpassEmptyPolicy::RejectIncompleteGeometry);
+
+        self::assertSame(self::COMPLETE_GEOMETRY, $body);
+    }
+
+    #[Test]
+    public function itReturnsThePartialGeometryWhenEveryMirrorIsTruncated(): void
+    {
+        $responses = array_fill(0, 5, new MockResponse(self::TRUNCATED_GEOMETRY));
+        $httpClient = new MockHttpClient($responses);
+        $client = new OverpassHttpClient($httpClient, 'http://mirror-a/api,http://mirror-b/api', false);
+
+        $body = $client->fetch('data', 60, 1_000_000, OverpassEmptyPolicy::RejectIncompleteGeometry);
+
+        self::assertSame(self::TRUNCATED_GEOMETRY, $body);
+    }
+
+    #[Test]
+    public function itAcceptsTruncatedGeometryWhenOnlyEmptinessIsRejected(): void
+    {
+        $requests = 0;
+        $httpClient = new MockHttpClient(static function () use (&$requests): MockResponse {
+            ++$requests;
+
+            return new MockResponse(self::TRUNCATED_GEOMETRY);
+        });
+        $client = new OverpassHttpClient($httpClient, 'http://mirror-a/api', false);
+
+        $body = $client->fetch('data', 60, 1_000_000, OverpassEmptyPolicy::RejectAny);
+
+        self::assertSame(self::TRUNCATED_GEOMETRY, $body);
+        self::assertSame(1, $requests);
     }
 
     #[Test]

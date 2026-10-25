@@ -8,9 +8,11 @@ use App\Entity\GtfsSource;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsService;
+use App\Service\GtfsShapeCompletionService;
 use App\Service\GtfsSubsetService;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
+use App\Service\OverpassHttpClient;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -33,6 +35,11 @@ final class GtfsSubsetServiceTest extends TestCase
             new NullLogger(),
             new OutboundUrlGuard(),
             new Filesystem(),
+            new GtfsShapeCompletionService(
+                new OverpassHttpClient(new MockHttpClient(), 'https://test.example/api/', false, new NullLogger()),
+                new NullLogger(),
+                32_000_000,
+            ),
         );
         $this->subsets = new GtfsSubsetService($gtfs, new Filesystem(), new NullLogger());
     }

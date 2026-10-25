@@ -42,6 +42,7 @@ final readonly class GtfsService
         private LoggerInterface $logger,
         private OutboundUrlGuard $urlGuard,
         private Filesystem $filesystem,
+        private GtfsShapeCompletionService $shapeCompletion,
     ) {
     }
 
@@ -54,6 +55,8 @@ final readonly class GtfsService
         $file->move(dirname($destPath), basename($destPath));
 
         try {
+            $this->validateSource($destPath, requireShapes: false);
+            $this->completeShapes($destPath);
             $this->validateSource($destPath);
             $routeCount = $this->countRoutes($destPath);
         } catch (\Throwable $e) {
@@ -151,9 +154,22 @@ final readonly class GtfsService
             );
         }
 
+        $this->validateSource($destination, requireShapes: false);
+        $this->completeShapes($destination);
         $this->validateSource($destination);
 
         return $this->countRoutes($destination);
+    }
+
+    private function completeShapes(string $zipPath): void
+    {
+        $result = $this->shapeCompletion->completeIfNeeded($zipPath);
+        if (!$result['completed']) {
+            throw new FunctionalException(
+                message: 'This GTFS feed has no route shapes, which the map needs.',
+                errorKey: ErrorKey::GTFS_SHAPES_MISSING,
+            );
+        }
     }
 
     private function validFallbackUrl(?string $fallbackUrl, string $primaryUrl): ?string
@@ -228,7 +244,7 @@ final readonly class GtfsService
      *
      * @return list<string>
      */
-    public function validateSource(string $zipPath): array
+    public function validateSource(string $zipPath, bool $requireShapes = true): array
     {
         $fileSize = is_file($zipPath) ? (int) filesize($zipPath) : 0;
         if ($fileSize > self::MAX_SOURCE_DOWNLOAD_BYTES) {
@@ -292,7 +308,7 @@ final readonly class GtfsService
 
         if ($issues === []) {
             foreach (self::REQUIRED_FILES as $required) {
-                if (!in_array($required, $presentFiles, true)) {
+                if (($required !== 'shapes.txt' || $requireShapes) && !in_array($required, $presentFiles, true)) {
                     $issues[] = "Missing required file: {$required}";
                 }
             }
@@ -301,10 +317,10 @@ final readonly class GtfsService
 
         $zip->close();
 
-        if (in_array('Missing required file: shapes.txt', $issues, true)) {
+        if ($requireShapes && in_array('Missing required file: shapes.txt', $issues, true)) {
             throw new FunctionalException(
                 message: 'This GTFS feed has no route shapes, which the map needs.',
-                errorKey: 'gtfs.shapes_missing',
+                errorKey: ErrorKey::GTFS_SHAPES_MISSING,
             );
         }
 
@@ -410,7 +426,7 @@ final readonly class GtfsService
         if (in_array('Missing required file: shapes.txt', $issues, true)) {
             throw new FunctionalException(
                 message: 'This GTFS feed has no route shapes, which the map needs.',
-                errorKey: 'gtfs.shapes_missing',
+                errorKey: ErrorKey::GTFS_SHAPES_MISSING,
             );
         }
 

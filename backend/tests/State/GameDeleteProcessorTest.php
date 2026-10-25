@@ -29,6 +29,7 @@ use App\Service\GameCleanupService;
 use App\Service\GameService;
 use App\Service\GameTransitBuilder;
 use App\Service\GtfsService;
+use App\Service\GtfsShapeCompletionService;
 use App\Service\GtfsSubsetService;
 use App\Service\HeavyWorkGuard;
 use App\Service\IdentityResolver;
@@ -37,6 +38,7 @@ use App\Service\MercureJwtService;
 use App\Service\NominatimService;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
+use App\Service\OverpassHttpClient;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
 use App\Service\TransitStationImporter;
@@ -187,6 +189,11 @@ final class GameDeleteProcessorTest extends TestCase
             $this->createStub(LoggerInterface::class),
             new OutboundUrlGuard(),
             new Filesystem(),
+            new GtfsShapeCompletionService(
+                new OverpassHttpClient(new MockHttpClient(), 'https://test.example/api/', false, new NullLogger()),
+                new NullLogger(),
+                32_000_000,
+            ),
         );
         $cleanup = new GameCleanupService(
             $this->createStub(GameGtfsLineRepository::class),

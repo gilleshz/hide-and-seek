@@ -62,6 +62,7 @@ final readonly class OverpassHttpClient
         $remaining = $this->mirrors;
         $lastException = null;
         $delay = self::INITIAL_DELAY_MS;
+        $partial = null;
 
         for ($attempt = 0; $attempt < self::MAX_RETRIES; ++$attempt) {
             $mirror = $this->pickMirror($remaining, $attempt);
@@ -89,14 +90,28 @@ final readonly class OverpassHttpClient
                     throw new \RuntimeException('Overpass mirror returned an error remark with no data.');
                 }
 
-                if ($emptyPolicy === OverpassEmptyPolicy::RejectAny && $this->hasNoElements($body)) {
+                if ($this->isEmptyAnswer($body, $emptyPolicy)) {
                     throw new \RuntimeException('Overpass mirror returned no elements at all.');
+                }
+
+                if ($emptyPolicy === OverpassEmptyPolicy::RejectIncompleteGeometry && $this->hasEmptyGeometry($body)) {
+                    $partial ??= $body;
+                    throw new \RuntimeException('Overpass mirror returned incomplete route geometry.');
                 }
 
                 return $body;
             } catch (TransportExceptionInterface | HttpExceptionInterface | \RuntimeException $e) {
                 $lastException = $e;
             }
+        }
+
+        // A partial answer still beats failing the import when no mirror holds the full geometry.
+        if ($partial !== null) {
+            $this->logger?->warning(
+                'Every Overpass mirror returned truncated route geometry; using the partial answer.',
+            );
+
+            return $partial;
         }
 
         throw new \RuntimeException(
@@ -144,11 +159,26 @@ final readonly class OverpassHttpClient
         return is_string($remark) && $remark !== '' && $elements === [];
     }
 
+    private function isEmptyAnswer(string $body, OverpassEmptyPolicy $emptyPolicy): bool
+    {
+        return match ($emptyPolicy) {
+            OverpassEmptyPolicy::RejectAny,
+            OverpassEmptyPolicy::RejectIncompleteGeometry => $this->hasNoElements($body),
+            default => false,
+        };
+    }
+
     /** Matched textually: decoding a multi-MB answer here would cost several times its size in memory. */
     private function hasNoElements(string $body): bool
     {
         return !str_contains($body, '"elements"')
             || preg_match('/"elements"\s*:\s*\[\s*\]/', $body) === 1;
+    }
+
+    /** Matched textually for the same reason. */
+    private function hasEmptyGeometry(string $body): bool
+    {
+        return preg_match('/"geometry"\s*:\s*\[\s*\]/', $body) === 1;
     }
 
     private function readCapped(ResponseInterface $response, int $maxResponseBytes): string
