@@ -8,7 +8,6 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ApiResource\FeatureCollectionResource;
 use App\Enum\FeatureType;
-use App\Enum\Side;
 use App\Exception\EntityNotFoundException;
 use App\Exception\FunctionalException;
 use App\Repository\FeatureRepository;
@@ -65,8 +64,11 @@ final readonly class FeatureCollectionProvider implements ProviderInterface
 
         $player = $this->identity->requirePlayer();
         $membership = $this->memberships->findOneByRoundAndPlayer($round, $player);
-        if ($membership?->getSide() !== Side::Seeker) {
-            throw new FunctionalException(message: 'Only a seeker may query features.', errorKey: 'feature_collection.seeker_only');
+        if ($membership === null) {
+            throw new FunctionalException(
+                message: 'Only a member of the round may query features.',
+                errorKey: 'feature_collection.not_member',
+            );
         }
 
         $game = $round->getGame();

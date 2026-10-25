@@ -35,6 +35,11 @@ class MapUiStateOverlayGatesTest {
     }
 
     @Test
+    fun `a hider browsing POIs does not see the question chip`() {
+        assertFalse(hiderState().copy(poiBrowse = PoiBrowseState()).showHiderQuestionChip)
+    }
+
+    @Test
     fun `tracing hides the zone placement panel it would otherwise cover`() {
         val placing = hiderState().copy(isPlacingZone = true)
         val tracing = placing.copy(drawing = DrawingUiState(isActive = true, kind = DrawKind.Trace))

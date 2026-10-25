@@ -56,6 +56,22 @@ class QuestionOptionsTest {
     }
 
     @Test
+    fun `browsable types are the matching and measuring union without coastline`() {
+        val browsable = browsableFeatureTypes()
+
+        val expected = (availableFeatureTypes(QuestionCategory.Matching, GameSize.Large) +
+            availableFeatureTypes(QuestionCategory.Measuring, GameSize.Large))
+            .distinct()
+            .filterNot { it == FeatureType.Coastline }
+
+        assertEquals(expected, browsable)
+        assertEquals(browsable.size, browsable.toSet().size)
+        assertTrue(FeatureType.BorderInternational in browsable)
+        assertTrue(FeatureType.RailStation in browsable)
+        assertFalse(FeatureType.Coastline in browsable)
+    }
+
+    @Test
     fun `the border wire values match the backend enum`() {
         assertEquals("border_international", FeatureType.BorderInternational.wireValue)
         assertEquals("border_admin_1st", FeatureType.Border1st.wireValue)

@@ -129,6 +129,8 @@
     <string name="map_style_satellite">Satellite</string>
     <string name="map_style_atlas">Atlas</string>    <string name="map_style_ign_plan">IGN Plan</string>
     <string name="map_style_ign_satellite">IGN Satellite</string>
+    <string name="map_browse_pois">Browse POIs</string>
+    <string name="map_browse_title">Points of interest</string>
 
     <string name="timetable_action">Next departures</string>
     <string name="timetable_title">Departures</string>

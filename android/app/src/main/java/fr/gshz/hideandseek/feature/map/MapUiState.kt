@@ -125,6 +125,7 @@ data class MapUiState(
     val halfZoneExcludesSelf: Boolean = false,
     val inMovePeriod: Boolean = false,
     val simulation: SimulationState? = null,
+    val poiBrowse: PoiBrowseState? = null,
     val outstandingQuestion: AskedQuestion? = null,
     val askedQuestions: List<AskedQuestion> = emptyList(),
     val mapStyleAvailable: Boolean = false,
@@ -189,7 +190,7 @@ data class MapUiState(
      * to chat mid-drawing; while tracing they are already answering that question anyway.
      */
     val showHiderQuestionChip: Boolean
-        get() = side == Side.Hider && simulation == null && !drawing.isActive &&
+        get() = side == Side.Hider && simulation == null && poiBrowse == null && !drawing.isActive &&
             outstandingQuestion?.revealDeadlineAt != null
 
     val seekersAreFrozen: Boolean get() = inMovePeriod

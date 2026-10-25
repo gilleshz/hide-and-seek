@@ -101,6 +101,10 @@ class MapTestFixture(
         questionSources, locationRepository, sessionEvents, possibleAreaRefreshFlow,
     )
 
+    fun createPoiBrowseViewModel() = PoiBrowseViewModel(
+        sessionEvents, questionPreviewRepository, connectionStore,
+    )
+
     companion object {
         const val TRACE_IMAGE_URI = "content://fr.gshz.hideandseek.fileprovider/traces/trace.png"
     }

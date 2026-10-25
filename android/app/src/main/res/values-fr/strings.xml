@@ -129,6 +129,8 @@
     <string name="map_style_satellite">Satellite</string>
     <string name="map_style_atlas">Atlas</string>    <string name="map_style_ign_plan">IGN Plan</string>
     <string name="map_style_ign_satellite">IGN Satellite</string>
+    <string name="map_browse_pois">Parcourir les points d\'intérêt</string>
+    <string name="map_browse_title">Points d\'intérêt</string>
 
     <string name="timetable_action">Prochains départs</string>
     <string name="timetable_title">Départs</string>

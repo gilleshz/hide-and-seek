@@ -21,6 +21,13 @@ internal fun tentaclesRangeMeters(size: GameSize): Double = when (size) {
     else -> TENTACLES_MEDIUM_RANGE_M
 }
 
+/**
+ * The feature types either side may browse on the map. Coastline is stored nameless and is not a
+ * point feature, so it is excluded like it is for seekers.
+ */
+internal fun browsableFeatureTypes(): List<FeatureType> =
+    (MATCHING_TYPES + MEASURING_TYPES).distinct().filterNot { it == FeatureType.Coastline }
+
 private fun tentaclesTypes(size: GameSize): List<FeatureType> = when (size) {
     GameSize.Small -> emptyList()
     GameSize.Medium -> TENTACLES_MEDIUM_TYPES

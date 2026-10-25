@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.TravelExplore
 import fr.gshz.hideandseek.core.ui.PresetChip
 import fr.gshz.hideandseek.core.ui.theme.BrandColors
 import fr.gshz.hideandseek.core.ui.theme.Spacing
@@ -166,7 +167,7 @@ internal data class DrawingOverlayState(
     val onSelectConstraint: (String?) -> Unit = {},
 )
 
-/** The seven concern ViewModels the map screen combines, one group so the composable stays short. */
+/** The eight concern ViewModels the map screen combines, one group so the composable stays short. */
 data class MapViewModels(
     val session: MapSessionViewModel,
     val zone: ZoneViewModel,
@@ -175,6 +176,7 @@ data class MapViewModels(
     val seekerMarkers: SeekerMarkersViewModel,
     val question: QuestionViewModel,
     val timetable: TimetableViewModel,
+    val poiBrowse: PoiBrowseViewModel,
 )
 
 @Composable
@@ -186,6 +188,7 @@ private fun mapViewModels(): MapViewModels = MapViewModels(
     seekerMarkers = hiltViewModel(),
     question = hiltViewModel(),
     timetable = hiltViewModel(),
+    poiBrowse = hiltViewModel(),
 )
 
 @Suppress("LongMethod")
@@ -202,6 +205,7 @@ fun MapScreen(
     val seekerMarkersViewModel = viewModels.seekerMarkers
     val questionViewModel = viewModels.question
     val timetableViewModel = viewModels.timetable
+    val poiBrowseViewModel = viewModels.poiBrowse
     val uiState = assembleScreenState(viewModels)
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
     val timetableState by timetableViewModel.uiState.collectAsStateWithLifecycle()
@@ -229,6 +233,11 @@ fun MapScreen(
             sessionViewModel::setTransitFocus,
         ),
         drawingActions = drawingActionsFor(drawingViewModel, sessionState.edition),
+        browseActions = PoiBrowseActions(
+            onOpen = poiBrowseViewModel::open,
+            onSelectFeatureType = poiBrowseViewModel::selectFeatureType,
+            onDismiss = poiBrowseViewModel::close,
+        ),
         onEnterSimulation = { category ->
             questionViewModel.enterSimulation(category, sessionState.selectedTransitLines)
         },
@@ -276,10 +285,12 @@ private fun assembleScreenState(viewModels: MapViewModels): MapUiState {
     val trapState by viewModels.timeTrap.uiState.collectAsStateWithLifecycle()
     val seekerState by viewModels.seekerMarkers.uiState.collectAsStateWithLifecycle()
     val questionState by viewModels.question.uiState.collectAsStateWithLifecycle()
+    val browseState by viewModels.poiBrowse.uiState.collectAsStateWithLifecycle()
     return remember(
-        sessionState, zoneState, drawingState, trapState, seekerState, questionState,
+        sessionState, zoneState, drawingState, trapState, seekerState, questionState, browseState,
     ) {
         assembleMapUiState(sessionState, zoneState, drawingState, trapState, seekerState, questionState)
+            .copy(poiBrowse = browseState)
     }
 }
 
@@ -460,6 +471,7 @@ internal fun MapContent(
     trapActions: TimeTrapActions = TimeTrapActions(),
     simActions: SimulationActions = SimulationActions(),
     drawingActions: DrawingActions = DrawingActions(),
+    browseActions: PoiBrowseActions = PoiBrowseActions(),
     onEnterSimulation: (QuestionCategory) -> Unit = {},
     onStyleSelected: (MapStyle) -> Unit = {},
     onMarkSuspectedStation: (Double, Double) -> Unit = { _, _ -> },
@@ -512,6 +524,7 @@ internal fun MapContent(
                         onEnterSimulation = onEnterSimulation,
                         onStyleSelected = onStyleSelected,
                         onEnterTimeTrapPlacement = trapActions.onEnterPlacement,
+                        onBrowsePois = browseActions.onOpen,
                     ),
                 )
             }
@@ -524,6 +537,7 @@ internal fun MapContent(
                 trapActions = trapActions,
                 simActions = simActions,
                 drawingActions = drawingActions,
+                browseActions = browseActions,
                 onEnterSimulation = onEnterSimulation,
                 recenterCounter = recenterCounter,
                 styleSource = uiState.currentStyleSource,
@@ -580,6 +594,7 @@ private fun BoxScope.MapContentLayout(
     trapActions: TimeTrapActions,
     simActions: SimulationActions,
     drawingActions: DrawingActions,
+    browseActions: PoiBrowseActions = PoiBrowseActions(),
     onEnterSimulation: (QuestionCategory) -> Unit,
     recenterCounter: MutableState<Int>,
     styleSource: StyleSource,
@@ -603,7 +618,9 @@ private fun BoxScope.MapContentLayout(
         boundaryGeoJson = uiState.boundaryGeoJson,
         recenterCounter = recenterCounter,
         simulationGeoJson = uiState.simulation?.previewGeoJson,
-        candidatePoiGeoJson = candidatePoiGeoJson(uiState.simulation),
+        candidatePoiGeoJson = poiGeoJson(
+            uiState.simulation?.candidateFeatures ?: uiState.poiBrowse?.features,
+        ),
         simulationPinGeoJson = simulationPinsGeoJson(uiState.simulation),
         styleSource = styleSource,
         zoneOverlay = zoneOverlayState(uiState, actions, trapActions, simActions, isPreviewMode),
@@ -616,7 +633,7 @@ private fun BoxScope.MapContentLayout(
     )
     MapOverlays(
         uiState = uiState,
-        overlayActions = MapOverlayActions(actions, trapActions, simActions, drawingActions),
+        overlayActions = MapOverlayActions(actions, trapActions, simActions, drawingActions, browseActions),
         onEnterSimulation = onEnterSimulation,
         navigation = navigation,
         onTransitLineTapped = onTransitLineTapped,
@@ -689,6 +706,7 @@ internal data class MapOverlayActions(
     val trap: TimeTrapActions = TimeTrapActions(),
     val sim: SimulationActions = SimulationActions(),
     val drawing: DrawingActions = DrawingActions(),
+    val browse: PoiBrowseActions = PoiBrowseActions(),
 )
 
 private fun drawingOverlayState(uiState: MapUiState, drawingActions: DrawingActions) = DrawingOverlayState(
@@ -807,6 +825,7 @@ private fun BoxScope.MapOverlays(
             askedQuestions = uiState.askedQuestions,
         )
     }
+    PoiBrowseOverlay(uiState.poiBrowse, overlayActions.browse)
     if (timetableState.isVisible) {
         TimetableSheet(
             state = timetableState,
@@ -816,6 +835,16 @@ private fun BoxScope.MapOverlays(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )
     }
+}
+
+@Composable
+private fun BoxScope.PoiBrowseOverlay(browse: PoiBrowseState?, actions: PoiBrowseActions) {
+    if (browse == null) return
+    PoiBrowseSheet(
+        state = browse,
+        actions = actions,
+        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -894,6 +923,7 @@ private data class MapFabActions(
     val onEnterSimulation: (QuestionCategory) -> Unit = {},
     val onStyleSelected: (MapStyle) -> Unit = {},
     val onEnterTimeTrapPlacement: () -> Unit = {},
+    val onBrowsePois: () -> Unit = {},
 )
 
 /**
@@ -933,7 +963,7 @@ private fun MapFabColumn(
 ) {
     val showingDeletePrompt = uiState.side == Side.Seeker && uiState.selectedManualConstraintUuid != null
     val hidden = uiState.isPlacingZone || uiState.isPlacingTimeTrap ||
-        uiState.simulation != null || uiState.drawing.isActive
+        uiState.simulation != null || uiState.poiBrowse != null || uiState.drawing.isActive
     if (hidden || showingDeletePrompt) return
     val styles = remember(uiState) { availableMapStyles(uiState) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
@@ -943,6 +973,11 @@ private fun MapFabColumn(
             }
             FloatingActionButton(onClick = onEnterDrawing) {
                 Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.draw_constraint_button))
+            }
+        }
+        if (uiState.side == Side.Hider) {
+            FloatingActionButton(onClick = fabActions.onBrowsePois) {
+                Icon(Icons.Filled.TravelExplore, contentDescription = stringResource(R.string.map_browse_pois))
             }
         }
         FloatingActionButton(onClick = { navigation.onOpenChatClick(uiState.gameUuid) }) {
@@ -1989,11 +2024,11 @@ private fun simulationPinsGeoJson(simulation: SimulationState?): String? {
     return """{"type":"FeatureCollection","features":[$features]}"""
 }
 
-private fun candidatePoiGeoJson(simulation: SimulationState?): String? {
-    val features = simulation?.candidateFeatures?.takeIf { it.isNotEmpty() } ?: return null
+private fun poiGeoJson(features: List<FeatureSummary>?): String? {
+    val visible = features?.takeIf { it.isNotEmpty() } ?: return null
     val sb = StringBuilder()
     sb.append("""{"type":"FeatureCollection","features":[""")
-    features.forEachIndexed { i, f ->
+    visible.forEachIndexed { i, f ->
         val label = f.name ?: f.uuid.take(UUID_PREFIX_LEN)
         sb.append("""{"type":"Feature","geometry":{"type":"Point","coordinates":[""")
         sb.append("${f.longitude},${f.latitude}")
@@ -2002,7 +2037,7 @@ private fun candidatePoiGeoJson(simulation: SimulationState?): String? {
         sb.append(""""name":"$label",""")
         sb.append(""""poiType":"candidate"""")
         sb.append("}}")
-        if (i < features.size - 1) sb.append(",")
+        if (i < visible.size - 1) sb.append(",")
     }
     sb.append("]}")
     return sb.toString()
