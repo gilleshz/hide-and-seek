@@ -18,6 +18,25 @@ final readonly class TransitCatalogSuggestion
         public ?string $realtimeUrl,
         public bool $live,
         public string $scope,
+        public ?int $sizeBytes = null,
     ) {
+    }
+
+    public function withSizeBytes(?int $sizeBytes): self
+    {
+        return new self(
+            id: $this->id,
+            provider: $this->provider,
+            name: $this->name,
+            municipality: $this->municipality,
+            countryCode: $this->countryCode,
+            licenseUrl: $this->licenseUrl,
+            downloadUrl: $this->downloadUrl,
+            fallbackUrl: $this->fallbackUrl,
+            realtimeUrl: $this->realtimeUrl,
+            live: $this->live,
+            scope: $this->scope,
+            sizeBytes: $sizeBytes,
+        );
     }
 }

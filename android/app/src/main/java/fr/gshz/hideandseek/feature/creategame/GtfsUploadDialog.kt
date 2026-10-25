@@ -34,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -292,10 +293,10 @@ private fun CatalogSuggestionList(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
-        suggestions.forEach { suggestion ->
+        catalogSuggestionsInDisplayOrder(suggestions).forEach { suggestion ->
             CatalogSuggestionRow(
                 suggestion = suggestion,
-                enabled = enabled,
+                enabled = enabled && !suggestion.isTooLarge,
                 onClick = { onSelect(suggestion) },
             )
         }
@@ -310,12 +311,16 @@ private fun CatalogSuggestionRow(
 ) {
     val title = suggestion.name.ifBlank { suggestion.provider }
     val subtitle = if (suggestion.provider != title) suggestion.provider else suggestion.municipality
+    val tooLarge = suggestion.isTooLarge
+    val sizeLabel = suggestion.sizeBytes?.let { stringResource(R.string.gtfs_catalog_size, (it / 1_000_000).toInt()) }
     Surface(
         onClick = onClick,
-        enabled = enabled,
+        enabled = enabled && !tooLarge,
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (tooLarge) 0.6f else 1f),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
@@ -337,6 +342,9 @@ private fun CatalogSuggestionRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                if (sizeLabel != null || tooLarge) {
+                    CatalogSizeRow(sizeLabel, tooLarge)
+                }
             }
             if (suggestion.live) {
                 Spacer(Modifier.width(Spacing.sm))
@@ -345,6 +353,35 @@ private fun CatalogSuggestionRow(
         }
     }
 }
+
+@Composable
+private fun CatalogSizeRow(sizeLabel: String?, tooLarge: Boolean) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        if (sizeLabel != null) {
+            Text(
+                text = sizeLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (tooLarge) {
+            Text(
+                text = stringResource(R.string.gtfs_catalog_too_large),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/** Mirrors the backend GtfsService download cap. */
+internal const val GTFS_MAX_DOWNLOAD_BYTES = 200_000_000L
+internal val TransitCatalogSuggestion.isTooLarge: Boolean
+    get() = sizeBytes != null && sizeBytes > GTFS_MAX_DOWNLOAD_BYTES
+
+internal fun catalogSuggestionsInDisplayOrder(
+    suggestions: List<TransitCatalogSuggestion>,
+): List<TransitCatalogSuggestion> = suggestions.sortedBy { it.isTooLarge }
 
 private val CATALOG_LIST_MAX_HEIGHT = 280.dp
 

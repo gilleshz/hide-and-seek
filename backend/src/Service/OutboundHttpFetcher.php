@@ -94,6 +94,45 @@ final readonly class OutboundHttpFetcher
     }
 
     /**
+     * Returns the final Content-Length of a HEAD response, or null when it is absent.
+     *
+     * Non-2xx responses throw, matching the GET paths; callers that want a best-effort
+     * size catch and keep the feed usable without one.
+     */
+    public function headContentLength(
+        string $url,
+        float $timeoutSeconds = 10.0,
+        ?float $maxDurationSeconds = null,
+    ): ?int {
+        try {
+            $response = $this->request(
+                'HEAD',
+                $url,
+                $timeoutSeconds,
+                $maxDurationSeconds ?? $timeoutSeconds,
+                [],
+            );
+            $length = $response->getHeaders(false)['content-length'][0] ?? null;
+        } catch (FunctionalException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->logger->warning('Outbound HEAD failed for {host}: {error}', [
+                'host' => $this->hostOf($url),
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            throw new \RuntimeException('Outbound request failed.', 0, $e);
+        }
+
+        if (!is_string($length) || preg_match('/^\d+$/', $length) !== 1) {
+            return null;
+        }
+
+        return (int) $length;
+    }
+
+    /**
      * @param array<string, string> $headers
      * @param callable(string): void $sink
      */
@@ -106,7 +145,7 @@ final readonly class OutboundHttpFetcher
         callable $sink,
     ): void {
         try {
-            $response = $this->request($url, $timeoutSeconds, $maxDurationSeconds, $headers);
+            $response = $this->request('GET', $url, $timeoutSeconds, $maxDurationSeconds, $headers);
             $received = 0;
             foreach ($this->httpClient->stream($response) as $chunk) {
                 if ($chunk->isTimeout()) {
@@ -136,6 +175,7 @@ final readonly class OutboundHttpFetcher
      * @param array<string, string> $headers
      */
     private function request(
+        string $method,
         string $url,
         float $timeoutSeconds,
         float $maxDurationSeconds,
@@ -149,7 +189,7 @@ final readonly class OutboundHttpFetcher
                 throw new \RuntimeException('Outbound request timed out.');
             }
             $pinned = $this->urlGuard->resolve($current);
-            $response = $this->httpClient->request('GET', $current, [
+            $response = $this->httpClient->request($method, $current, [
                 'timeout' => min($timeoutSeconds, $remaining),
                 'max_duration' => $remaining,
                 'max_redirects' => 0,

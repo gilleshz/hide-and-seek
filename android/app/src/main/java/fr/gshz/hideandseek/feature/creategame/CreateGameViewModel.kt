@@ -436,6 +436,10 @@ class CreateGameViewModel @Inject constructor(
         }
     }
 
+    fun onTransitLineQueryChange(value: String) {
+        _uiState.update { it.copy(transitLineQuery = value) }
+    }
+
     fun toggleDiscoveryMode(routeType: String) {
         _uiState.update { state ->
             val current = state.discoveryModeSelection.toMutableSet()

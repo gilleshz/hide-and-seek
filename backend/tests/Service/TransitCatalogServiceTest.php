@@ -18,12 +18,15 @@ final class TransitCatalogServiceTest extends TestCase
 {
     private string $workDir;
     private string $catalogFile;
+    private string $sizesFile;
 
     protected function setUp(): void
     {
         $this->workDir = sys_get_temp_dir() . '/transit-catalog-' . bin2hex(random_bytes(4));
         mkdir($this->workDir, 0o755, true);
         $this->catalogFile = $this->workDir . '/feeds.csv';
+        $this->sizesFile = $this->workDir . '/sizes.json';
+        $this->seedSizes();
     }
 
     protected function tearDown(): void
@@ -52,6 +55,7 @@ final class TransitCatalogServiceTest extends TestCase
         self::assertSame('https://example.com/lemet-license', $lemet->licenseUrl);
         self::assertSame('https://rt.example.com/lemet-tu.pb', $lemet->realtimeUrl);
         self::assertTrue($lemet->live);
+        self::assertSame(1000, $lemet->sizeBytes);
         self::assertSame('regional', $results[1]->scope);
         self::assertSame('https://rt.example.com/fluo-tu.pb', $results[1]->realtimeUrl);
     }
@@ -196,6 +200,58 @@ final class TransitCatalogServiceTest extends TestCase
         self::assertSame('tdg-80725', $results[0]->id);
     }
 
+    #[Test]
+    public function itUsesTheCachedSizeWithoutAHead(): void
+    {
+        $this->copyFixture();
+        $requests = 0;
+        $client = new MockHttpClient(function () use (&$requests): MockResponse {
+            ++$requests;
+
+            throw new \RuntimeException('No request expected.');
+        });
+
+        $results = $this->service($client)->search(48.9757, 6.0031, 49.2037, 6.3245, 'Metz');
+
+        self::assertSame(0, $requests);
+        self::assertSame(1000, $results[0]->sizeBytes);
+    }
+
+    #[Test]
+    public function itHeadsAndCachesAMissingSize(): void
+    {
+        $this->writeSizeCatalogRow();
+        file_put_contents($this->sizesFile, '{}');
+        $client = new MockHttpClient(function (string $method, string $url): MockResponse {
+            self::assertSame('HEAD', $method);
+            self::assertSame('https://8.8.8.8/feed.zip', $url);
+
+            return new MockResponse('', ['response_headers' => ['Content-Length' => '1234']]);
+        });
+
+        $results = $this->service($client)->search(49.0, 6.0, 49.1, 6.1, '');
+
+        self::assertSame('size-head', $results[0]->id);
+        self::assertSame(1234, $results[0]->sizeBytes);
+        self::assertSame(1234, $this->cacheEntry('https://8.8.8.8/feed.zip')['size'] ?? null);
+    }
+
+    #[Test]
+    public function itKeepsTheSuggestionWhenTheHeadFails(): void
+    {
+        $this->writeSizeCatalogRow();
+        file_put_contents($this->sizesFile, '{}');
+        $client = new MockHttpClient(static fn (): MockResponse => new MockResponse('', ['http_code' => 500]));
+
+        $results = $this->service($client)->search(49.0, 6.0, 49.1, 6.1, '');
+
+        self::assertSame('size-head', $results[0]->id);
+        self::assertNull($results[0]->sizeBytes);
+        $entry = $this->cacheEntry('https://8.8.8.8/feed.zip');
+        self::assertArrayHasKey('size', $entry);
+        self::assertNull($entry['size'] ?? null);
+    }
+
     private function service(?MockHttpClient $client = null): TransitCatalogService
     {
         $fetcher = new OutboundHttpFetcher($client ?? new MockHttpClient([]), new OutboundUrlGuard(), new NullLogger());
@@ -205,7 +261,77 @@ final class TransitCatalogServiceTest extends TestCase
             new NullLogger(),
             $this->catalogFile,
             'https://8.8.8.8/feeds_v2.csv',
+            $this->sizesFile,
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function cacheEntry(string $url): array
+    {
+        $cache = json_decode((string) file_get_contents($this->sizesFile), true);
+        $entry = is_array($cache) ? ($cache[$url] ?? null) : null;
+        if (!is_array($entry)) {
+            self::fail('Expected a sizes cache entry for ' . $url . '.');
+        }
+
+        $result = [];
+        foreach ($entry as $key => $value) {
+            if (is_string($key)) {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
+    }
+
+    private function seedSizes(): void
+    {
+        $handle = fopen($this->fixturePath(), 'rb');
+        if ($handle === false) {
+            return;
+        }
+
+        $sizes = [];
+        try {
+            $header = fgetcsv($handle, escape: '');
+            $columns = is_array($header) ? array_filter($header, 'is_string') : [];
+            $map = array_flip($columns);
+            while (($row = fgetcsv($handle, escape: '')) !== false) {
+                foreach (['urls.latest', 'urls.direct_download'] as $column) {
+                    $index = $map[$column] ?? null;
+                    $url = is_int($index) ? trim($row[$index] ?? '') : '';
+                    if ($url !== '') {
+                        $sizes[$url] = ['size' => 1000, 'at' => time()];
+                    }
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+        file_put_contents($this->sizesFile, json_encode($sizes, JSON_THROW_ON_ERROR));
+    }
+
+    private function writeSizeCatalogRow(): void
+    {
+        $header = explode("\n", $this->fixture(), 2)[0];
+        $row = $this->csvRow([
+            'id' => 'size-head',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Metz',
+            'provider' => 'Size Head',
+            'name' => 'Size Head',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://8.8.8.8/feed.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '49.0',
+            'location.bounding_box.maximum_latitude' => '49.1',
+            'location.bounding_box.minimum_longitude' => '6.0',
+            'location.bounding_box.maximum_longitude' => '6.1',
+        ]);
+        file_put_contents($this->catalogFile, $header . "\n" . $row . "\n");
     }
 
     private function copyFixture(): void

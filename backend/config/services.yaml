@@ -21,6 +21,7 @@ parameters:
     app.tiles_dir: '%env(TILES_DIR)%'
     app.transit_catalog_url: 'https://files.mobilitydatabase.org/feeds_v2.csv'
     app.transit_catalog_file: '%kernel.project_dir%/var/transit-catalog/feeds.csv'
+    app.transit_catalog_sizes_file: '%kernel.project_dir%/var/transit-catalog/sizes.json'
 
 services:
     # default configuration for services in *this* file
@@ -41,12 +42,14 @@ services:
 when@test:
     parameters:
         app.transit_catalog_file: '%kernel.cache_dir%/transit-catalog/feeds.csv'
+        app.transit_catalog_sizes_file: '%kernel.cache_dir%/transit-catalog/sizes.json'
     services:
         App\Service\TransitCatalogService:
             autowire: true
             arguments:
                 $catalogFile: '%app.transit_catalog_file%'
                 $catalogUrl: 'https://8.8.8.8/feeds_v2.csv'
+                $sizesFile: '%app.transit_catalog_sizes_file%'
         App\Tests\Fake\FakeMercureHub:
             public: true
         Symfony\Component\Mercure\HubInterface: '@App\Tests\Fake\FakeMercureHub'

@@ -69,6 +69,15 @@ class CreateGameViewModelTest {
     }
 
     @Test
+    fun `the transit line query is stored`() {
+        val viewModel = createViewModel()
+
+        viewModel.onTransitLineQueryChange("M1")
+
+        assertEquals("M1", viewModel.uiState.value.transitLineQuery)
+    }
+
+    @Test
     fun `showing the discovery mode dialog flips the flag`() = runTest {
         val viewModel = createViewModel()
 

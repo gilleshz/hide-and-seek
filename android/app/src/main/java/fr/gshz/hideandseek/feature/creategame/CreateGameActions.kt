@@ -17,6 +17,7 @@ data class CreateGameActions(
     val onToggleTransitLineGroup: (TransitLineGroup) -> Unit = {},
     val onToggleTransitLineGroups: (List<TransitLineGroup>) -> Unit = {},
     val onToggleModeFilter: (String) -> Unit = {},
+    val onTransitLineQueryChange: (String) -> Unit = {},
     val onToggleDiscoveryMode: (String) -> Unit = {},
     val onToggleAllDiscoveryModes: () -> Unit = {},
     val onShowDiscoveryModeDialog: () -> Unit = {},

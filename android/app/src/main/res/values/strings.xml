@@ -37,6 +37,7 @@
     <string name="create_game_compact_map_hint">Replaces the 5 km thermometer with 2 km (3 mi with 1 mi in imperial)</string>
     <string name="create_game_button">Create</string>
     <string name="transit_lines_header">Transit lines</string>
+    <string name="transit_line_search">Search lines</string>
     <string name="transit_line_focus_chip">Line <xliff:g>%1$s</xliff:g> highlighted</string>
     <string name="transit_line_focus_clear">Stop highlighting this line</string>
     <string name="transit_route_metro">Metro</string>
@@ -541,6 +542,8 @@
     <string name="gtfs_catalog_empty">No network found for this area. Paste a URL, upload a file, or try OpenStreetMap.</string>
     <string name="gtfs_catalog_preparing_area">Preparing the area...</string>
     <string name="gtfs_catalog_error">Could not load networks.</string>
+    <string name="gtfs_catalog_size">%1$d MB</string>
+    <string name="gtfs_catalog_too_large">Too large</string>
     <string name="gtfs_shapes_missing">This GTFS feed has no route shapes, which the map needs. Try another network or use OpenStreetMap.</string>
     <string name="gtfs_live_chip">Live</string>
     <string name="gtfs_url_label">GTFS feed URL</string>

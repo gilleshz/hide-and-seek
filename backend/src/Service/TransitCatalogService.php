@@ -25,6 +25,8 @@ final readonly class TransitCatalogService
     private const float LOCAL_F1_THRESHOLD = 0.5;
     private const float REGIONAL_F1_THRESHOLD = 0.02;
     private const int RETRY_BACKOFF_SECONDS = 300;
+    private const int SIZE_TTL_SECONDS = 86400;
+    private const float SIZE_HEAD_TIMEOUT_SECONDS = 5.0;
 
     private const array EXPECTED_COLUMNS = [
         'id',
@@ -63,6 +65,8 @@ final readonly class TransitCatalogService
         private string $catalogFile,
         #[Autowire('%app.transit_catalog_url%')]
         private string $catalogUrl,
+        #[Autowire('%app.transit_catalog_sizes_file%')]
+        private string $sizesFile,
     ) {
     }
 
@@ -99,10 +103,136 @@ final readonly class TransitCatalogService
             ? $national
             : array_merge($strong, array_filter($national, static fn (array $hit): bool => $hit['text'] > 0.0));
 
-        return array_map(
+        $limited = array_slice($selected, 0, max(1, min(50, $limit)));
+
+        return $this->withSizes(array_map(
             static fn (array $hit): TransitCatalogSuggestion => $hit['suggestion'],
-            array_slice($selected, 0, max(1, min(50, $limit))),
-        );
+            $limited,
+        ));
+    }
+
+    /**
+     * @param list<TransitCatalogSuggestion> $suggestions
+     *
+     * @return list<TransitCatalogSuggestion>
+     */
+    private function withSizes(array $suggestions): array
+    {
+        if ($suggestions === []) {
+            return [];
+        }
+
+        $sizes = $this->readSizes();
+        $now = time();
+        $changed = false;
+        $result = [];
+        foreach ($suggestions as $suggestion) {
+            $url = $suggestion->downloadUrl;
+            $entry = $sizes[$url] ?? null;
+            if ($this->sizeEntryIsFresh($entry, $now)) {
+                $size = is_array($entry) && is_int($entry['size'] ?? null) ? $entry['size'] : null;
+            } else {
+                $size = null;
+                try {
+                    $size = $this->fetcher->headContentLength(
+                        $url,
+                        self::SIZE_HEAD_TIMEOUT_SECONDS,
+                        self::SIZE_HEAD_TIMEOUT_SECONDS,
+                    );
+                } catch (\Throwable) {
+                    $this->logger->warning('Transit catalog size lookup failed for {id}.', ['id' => $suggestion->id]);
+                }
+                $sizes[$url] = ['size' => $size, 'at' => $now];
+                $changed = true;
+            }
+            $result[] = $suggestion->withSizeBytes($size);
+        }
+
+        if ($changed) {
+            $this->writeSizes($sizes);
+        }
+
+        return $result;
+    }
+
+    private function sizeEntryIsFresh(mixed $entry, int $now): bool
+    {
+        if (!is_array($entry) || !array_key_exists('size', $entry)) {
+            return false;
+        }
+        $at = $entry['at'] ?? null;
+        if (!is_int($at) || $at <= $now - self::SIZE_TTL_SECONDS) {
+            return false;
+        }
+
+        return $entry['size'] === null || is_int($entry['size']);
+    }
+
+    /**
+     * @return array<string, array{size: ?int, at: int}>
+     */
+    private function readSizes(): array
+    {
+        $raw = @file_get_contents($this->sizesFile);
+        if ($raw === false) {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $sizes = [];
+        foreach ($decoded as $url => $entry) {
+            if (!is_string($url) || !is_array($entry)) {
+                continue;
+            }
+            $size = $entry['size'] ?? null;
+            $at = $entry['at'] ?? null;
+            if (($size === null || is_int($size)) && is_int($at)) {
+                $sizes[$url] = ['size' => $size, 'at' => $at];
+            }
+        }
+
+        return $sizes;
+    }
+
+    /**
+     * @param array<string, array{size: ?int, at: int}> $sizes
+     */
+    private function writeSizes(array $sizes): void
+    {
+        $directory = dirname($this->sizesFile);
+        if (!is_dir($directory) && !mkdir($directory, 0o755, true) && !is_dir($directory)) {
+            $this->logger->warning('Failed to create the transit catalog sizes directory.');
+
+            return;
+        }
+        $lock = @fopen($this->sizesFile . '.lock', 'c');
+        if ($lock === false) {
+            return;
+        }
+
+        try {
+            // ponytail: non-blocking; a concurrent search owns the write and the next one retries.
+            if (!flock($lock, LOCK_EX | LOCK_NB)) {
+                return;
+            }
+            $temporary = $this->sizesFile . '.' . bin2hex(random_bytes(6)) . '.tmp';
+            try {
+                $json = json_encode($sizes, JSON_THROW_ON_ERROR);
+                if (file_put_contents($temporary, $json) === false || !rename($temporary, $this->sizesFile)) {
+                    throw new \RuntimeException('Failed to write the transit catalog sizes cache.');
+                }
+            } catch (\Throwable) {
+                @unlink($temporary);
+                $this->logger->warning('Failed to write the transit catalog sizes cache.');
+            } finally {
+                flock($lock, LOCK_UN);
+            }
+        } finally {
+            fclose($lock);
+        }
     }
 
     private function ensureSnapshot(): void

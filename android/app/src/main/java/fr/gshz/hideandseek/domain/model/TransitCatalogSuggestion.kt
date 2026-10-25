@@ -12,4 +12,5 @@ data class TransitCatalogSuggestion(
     val realtimeUrl: String,
     val live: Boolean,
     val scope: String,
+    val sizeBytes: Long? = null,
 )

@@ -82,6 +82,7 @@ final class RefreshTransitCatalogCommandTest extends TestCase
             new NullLogger(),
             $this->catalogFile,
             'https://8.8.8.8/feeds_v2.csv',
+            $this->workDir . '/sizes.json',
         );
 
         return new RefreshTransitCatalogCommand($service, $this->catalogFile, new NullLogger());

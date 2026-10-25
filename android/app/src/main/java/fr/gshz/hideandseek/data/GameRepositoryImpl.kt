@@ -326,5 +326,6 @@ class GameRepositoryImpl @Inject constructor(
         realtimeUrl = realtimeUrl.orEmpty(),
         live = live,
         scope = scope,
+        sizeBytes = sizeBytes,
     )
 }

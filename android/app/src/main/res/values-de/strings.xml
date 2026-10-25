@@ -37,6 +37,7 @@
     <string name="create_game_compact_map_hint">Ersetzt das 5-km-Thermometer durch 2 km (3 mi durch 1 mi in der imperialen Edition)</string>
     <string name="create_game_button">Erstellen</string>
     <string name="transit_lines_header">Verkehrslinien</string>
+    <string name="transit_line_search">Linien suchen</string>
     <string name="transit_line_focus_chip">Linie <xliff:g>%1$s</xliff:g> hervorgehoben</string>
     <string name="transit_line_focus_clear">Hervorhebung dieser Linie aufheben</string>
     <string name="transit_route_metro">U-Bahn</string>
@@ -538,6 +539,8 @@
     <string name="gtfs_catalog_empty">Kein Netz für dieses Gebiet gefunden. URL einfügen, Datei hochladen oder OpenStreetMap versuchen.</string>
     <string name="gtfs_catalog_preparing_area">Gebiet wird vorbereitet...</string>
     <string name="gtfs_catalog_error">Netze konnten nicht geladen werden.</string>
+    <string name="gtfs_catalog_size">%1$d MB</string>
+    <string name="gtfs_catalog_too_large">Zu groß</string>
     <string name="gtfs_shapes_missing">Dieser GTFS-Feed enthält keine Linienverläufe, die die Karte braucht. Versuchen Sie ein anderes Netz oder OpenStreetMap.</string>
     <string name="gtfs_live_chip">Live</string>
     <string name="gtfs_url_label">GTFS-Feed-URL</string>

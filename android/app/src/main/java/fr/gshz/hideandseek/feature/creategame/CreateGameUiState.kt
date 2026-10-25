@@ -74,6 +74,11 @@ internal fun splitNetworks(network: String): List<String> =
         .filter { it.isNotEmpty() }
         .ifEmpty { listOf(network) }
 
+private fun matchesTransitQuery(query: String, vararg fields: String): Boolean {
+    val needle = query.trim()
+    return needle.isEmpty() || fields.any { it.contains(needle, ignoreCase = true) }
+}
+
 data class CreateGameUiState(
     val name: String = "",
     val size: GameSize = GameSize.Medium,
@@ -100,6 +105,7 @@ data class CreateGameUiState(
     val transitLines: List<TransitLine> = emptyList(),
     val selectedTransitLines: Set<String> = emptySet(),
     val transitModeFilter: Set<String> = emptySet(),
+    val transitLineQuery: String = "",
     val discoveryModeSelection: Set<String> = DEFAULT_DISCOVERY_MODES,
     val showDiscoveryModeDialog: Boolean = false,
     val discoveryError: UiText? = null,
@@ -127,8 +133,22 @@ data class CreateGameUiState(
             val all = gtfsSources.flatMap { source ->
                 source.routes.map { source to it }
             }
-            if (transitModeFilter.isEmpty()) return all
-            return all.filter { (_, route) -> route.routeTypeString in transitModeFilter }
+            val modeFiltered = if (transitModeFilter.isEmpty()) {
+                all
+            } else {
+                all.filter { (_, route) -> route.routeTypeString in transitModeFilter }
+            }
+            if (transitLineQuery.isBlank()) return modeFiltered
+            return modeFiltered.filter { (source, route) ->
+                matchesTransitQuery(
+                    transitLineQuery,
+                    route.ref,
+                    route.shortName,
+                    route.longName,
+                    route.routeId,
+                    source.name,
+                )
+            }
         }
     val availableModes: List<String>
         get() = (
@@ -145,7 +165,7 @@ data class CreateGameUiState(
                 transitLines.filter { it.routeType in transitModeFilter }
             }
             val gtfsRefs = gtfsSources.flatMap { it.routes }.map { it.ref }.toSet()
-            return filtered
+            val groups = filtered
                 .filter { it.ref !in gtfsRefs }
                 .flatMap { line -> splitNetworks(line.network).map { net -> net to line } }
                 .groupBy { (net, line) -> Triple(net, line.routeType, line.ref) }
@@ -155,6 +175,19 @@ data class CreateGameUiState(
                 .sortedWith(compareBy<TransitLineGroup> { it.network }
                     .thenBy { it.routeType }
                     .thenComparing { a, b -> compareNatural(a.ref, b.ref) })
+            if (transitLineQuery.isBlank()) return groups
+            return groups.filter { group ->
+                matchesTransitQuery(
+                    transitLineQuery,
+                    group.ref,
+                    group.name,
+                    group.nameEn,
+                    group.primary,
+                    group.secondary,
+                    group.network,
+                    group.label,
+                )
+            }
         }
 
     /** Expand selected grouped IDs into flat osmIds for the create request. */

@@ -59,6 +59,9 @@ final class TransitCatalogSuggestionResource
     #[Groups([Group::TRANSIT_CATALOG_READ])]
     public string $scope;
 
+    #[Groups([Group::TRANSIT_CATALOG_READ])]
+    public ?int $sizeBytes = null;
+
     public static function fromSuggestion(TransitCatalogSuggestion $suggestion): self
     {
         $resource = new self();
@@ -73,6 +76,7 @@ final class TransitCatalogSuggestionResource
         $resource->realtimeUrl = $suggestion->realtimeUrl;
         $resource->live = $suggestion->live;
         $resource->scope = $suggestion->scope;
+        $resource->sizeBytes = $suggestion->sizeBytes;
 
         return $resource;
     }

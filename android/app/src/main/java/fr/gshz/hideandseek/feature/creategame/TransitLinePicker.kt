@@ -22,11 +22,13 @@ import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,13 +62,14 @@ internal fun TransitLinePicker(
     onToggleGroup: (TransitLineGroup) -> Unit,
     onToggleGroups: (List<TransitLineGroup>) -> Unit,
     onToggleModeFilter: (String) -> Unit,
+    query: String = "",
+    onQueryChange: (String) -> Unit = {},
     gtfsSources: List<GtfsSourceState> = emptyList(),
     uniqueGtfsRoutes: List<Pair<GtfsSourceState, GtfsRoute>> = emptyList(),
     selectedGtfsRouteKeys: Set<String> = emptySet(),
     onToggleGtfsRoute: (String, String) -> Unit = { _, _ -> },
     onShowGtfsDialog: () -> Unit = {},
     onRemoveGtfsSource: (String) -> Unit = {},
-    hasDiscoveredTransit: Boolean = false,
     isDiscoveringTransit: Boolean = false,
     onDiscoverOsmTransit: () -> Unit = {},
     hasSelectedAreas: Boolean = false,
@@ -104,10 +107,16 @@ internal fun TransitLinePicker(
             )
         }
 
-        DiscoveryErrorText(discoveryError)
+        if (discoveryError != null) {
+            Text(
+                text = discoveryError.resolve(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
 
-        if (hasDiscoveredTransit && availableModes.isNotEmpty()) {
-            ModeFilterChipRow(availableModes, selectedModeFilters, onToggleModeFilter)
+        if (availableModes.isNotEmpty()) {
+            TransitFilters(query, onQueryChange, availableModes, selectedModeFilters, onToggleModeFilter)
         }
 
         if (groups.isNotEmpty() || gtfsSources.isNotEmpty()) {
@@ -124,6 +133,25 @@ internal fun TransitLinePicker(
             )
         }
     }
+}
+
+@Composable
+private fun TransitFilters(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modes: List<String>,
+    selectedModes: Set<String>,
+    onToggleMode: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text(stringResource(R.string.transit_line_search)) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+    )
+    ModeFilterChipRow(modes, selectedModes, onToggleMode)
 }
 
 @Composable
@@ -231,16 +259,6 @@ private fun TransitLineList(
             }
         }
     }
-}
-
-@Composable
-private fun DiscoveryErrorText(error: UiText?) {
-    if (error == null) return
-    Text(
-        text = error.resolve(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error,
-    )
 }
 
 @Composable

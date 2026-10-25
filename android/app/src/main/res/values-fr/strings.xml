@@ -37,6 +37,7 @@
     <string name="create_game_compact_map_hint">Remplace le thermomètre de 5 km par 2 km (3 mi par 1 mi en impérial)</string>
     <string name="create_game_button">Créer</string>
     <string name="transit_lines_header">Lignes de transport</string>
+    <string name="transit_line_search">Rechercher une ligne</string>
     <string name="transit_line_focus_chip">Ligne <xliff:g>%1$s</xliff:g> mise en avant</string>
     <string name="transit_line_focus_clear">Ne plus mettre cette ligne en avant</string>
     <string name="transit_route_metro">Métro</string>
@@ -335,6 +336,8 @@
     <string name="gtfs_catalog_empty">Aucun réseau trouvé pour cette zone. Collez une URL, importez un fichier ou essayez OpenStreetMap.</string>
     <string name="gtfs_catalog_preparing_area">Préparation de la zone...</string>
     <string name="gtfs_catalog_error">Impossible de charger les réseaux.</string>
+    <string name="gtfs_catalog_size">%1$d Mo</string>
+    <string name="gtfs_catalog_too_large">Trop volumineux</string>
     <string name="gtfs_shapes_missing">Ce flux GTFS n\'a pas les tracés des lignes, nécessaires à la carte. Essayez un autre réseau ou OpenStreetMap.</string>
     <string name="gtfs_live_chip">Direct</string>
     <string name="gtfs_url_label">URL du flux GTFS</string>

@@ -247,6 +247,59 @@ final class OutboundHttpFetcherTest extends TestCase
         self::assertSame([['8.8.8.8' => '8.8.8.8'], ['1.1.1.1' => '1.1.1.1']], $captured);
     }
 
+    #[Test]
+    public function itReturnsTheContentLengthOfAHeadResponse(): void
+    {
+        $methods = [];
+        $client = new MockHttpClient(function (string $method) use (&$methods): MockResponse {
+            $methods[] = $method;
+
+            return new MockResponse('', ['response_headers' => ['Content-Length' => '1234']]);
+        });
+
+        self::assertSame(1234, $this->fetcher($client)->headContentLength('https://8.8.8.8/feed.zip', 1.0, 1.0));
+        self::assertSame(['HEAD'], $methods);
+    }
+
+    #[Test]
+    public function itFollowsARedirectForAHeadRequest(): void
+    {
+        $methods = [];
+        $client = new MockHttpClient(function (string $method) use (&$methods): MockResponse {
+            $methods[] = $method;
+
+            return count($methods) === 1
+                ? $this->redirect('https://1.1.1.1/final.zip')
+                : new MockResponse('', ['response_headers' => ['Content-Length' => '4321']]);
+        });
+
+        self::assertSame(4321, $this->fetcher($client)->headContentLength('https://8.8.8.8/feed.zip', 1.0, 1.0));
+        self::assertSame(['HEAD', 'HEAD'], $methods);
+    }
+
+    #[Test]
+    public function itReturnsNullWhenTheHeadResponseHasNoContentLength(): void
+    {
+        self::assertNull($this->fetcher(new MockHttpClient([new MockResponse('')]))
+            ->headContentLength('https://8.8.8.8/feed.zip', 1.0, 1.0));
+    }
+
+    #[Test]
+    public function itRejectsAHeadRedirectToAPrivateIp(): void
+    {
+        $client = new MockHttpClient([$this->redirect('https://10.0.0.1/feed.zip')]);
+
+        $this->expectFunctional('gtfs.private_ip_blocked', fn () => $this->fetcher($client)
+            ->headContentLength('https://8.8.8.8/feed.zip', 1.0, 1.0));
+    }
+
+    #[Test]
+    public function itRejectsANonSuccessHeadStatus(): void
+    {
+        $this->expectRuntime(fn () => $this->fetcher(new MockHttpClient([new MockResponse('', ['http_code' => 404])]))
+            ->headContentLength('https://8.8.8.8/feed.zip', 1.0, 1.0));
+    }
+
     private function fetcher(MockHttpClient $client, ?LoggerInterface $logger = null): OutboundHttpFetcher
     {
         return new OutboundHttpFetcher($client, new OutboundUrlGuard(), $logger ?? new NullLogger());

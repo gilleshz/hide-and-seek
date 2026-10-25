@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\Test;
 final class TransitCatalogApiTest extends ApiTestCase
 {
     private string $catalogFile = '';
+    private string $sizesFile = '';
 
     protected function setUp(): void
     {
@@ -23,12 +24,21 @@ final class TransitCatalogApiTest extends ApiTestCase
         // A copy inside the cache keeps the static fixture read-only and the snapshot fresh.
         copy(dirname(__DIR__) . '/Fixtures/transit-catalog.csv', $catalogFile);
         $this->catalogFile = $catalogFile;
+
+        $sizesFile = self::getContainer()->getParameter('app.transit_catalog_sizes_file');
+        self::assertIsString($sizesFile);
+        $this->seedSizes($sizesFile);
+        $this->sizesFile = $sizesFile;
     }
 
     protected function tearDown(): void
     {
         if ($this->catalogFile !== '') {
             @unlink($this->catalogFile);
+        }
+        if ($this->sizesFile !== '') {
+            @unlink($this->sizesFile);
+            @unlink($this->sizesFile . '.lock');
         }
         parent::tearDown();
     }
@@ -58,6 +68,7 @@ final class TransitCatalogApiTest extends ApiTestCase
                 'realtimeUrl',
                 'live',
                 'scope',
+                'sizeBytes',
             ],
             array_keys($data[0]),
         );
@@ -71,6 +82,7 @@ final class TransitCatalogApiTest extends ApiTestCase
         self::assertTrue($data[0]['live']);
         self::assertSame('local', $data[0]['scope']);
         self::assertSame('https://example.com/lemet-license', $data[0]['licenseUrl']);
+        self::assertSame(1000, $data[0]['sizeBytes']);
     }
 
     #[Test]
@@ -135,6 +147,33 @@ final class TransitCatalogApiTest extends ApiTestCase
         ]);
 
         self::assertResponseStatusCodeSame(401);
+    }
+
+    private function seedSizes(string $sizesFile): void
+    {
+        $handle = fopen(dirname(__DIR__) . '/Fixtures/transit-catalog.csv', 'rb');
+        if ($handle === false) {
+            return;
+        }
+
+        $sizes = [];
+        try {
+            $header = fgetcsv($handle, escape: '');
+            $columns = is_array($header) ? array_filter($header, 'is_string') : [];
+            $map = array_flip($columns);
+            while (($row = fgetcsv($handle, escape: '')) !== false) {
+                foreach (['urls.latest', 'urls.direct_download'] as $column) {
+                    $index = $map[$column] ?? null;
+                    $url = is_int($index) ? trim($row[$index] ?? '') : '';
+                    if ($url !== '') {
+                        $sizes[$url] = ['size' => 1000, 'at' => time()];
+                    }
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+        file_put_contents($sizesFile, json_encode($sizes, JSON_THROW_ON_ERROR));
     }
 
     /**

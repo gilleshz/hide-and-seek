@@ -116,6 +116,7 @@ class GameRepositoryImplTest {
         assertEquals("", suggestion.realtimeUrl)
         assertTrue(suggestion.live)
         assertEquals("regional", suggestion.scope)
+        assertEquals(151338107L, suggestion.sizeBytes)
     }
 
     @Test
@@ -205,5 +206,5 @@ private const val GTFS_SOURCE_JSON = """{"uuid":"src-1","name":"feed","routes":[
 private val CATALOG_JSON = """
     [{"id":"ch-1","provider":"opentransportdata.swiss","name":"Regional feed",
       "municipality":"Vaud","countryCode":"CH","downloadUrl":"https://example.test/feed.zip",
-      "live":true,"scope":"regional"}]
+      "live":true,"scope":"regional","sizeBytes":151338107}]
 """.trimIndent()
