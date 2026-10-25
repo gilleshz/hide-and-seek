@@ -52,7 +52,7 @@
     <string name="transit_selected_count"><xliff:g>%1$d</xliff:g>/<xliff:g>%2$d</xliff:g></string>
     <string name="transit_source_gtfs">GTFS-Feed</string>
     <string name="transit_source_osm">OSM</string>
-    <string name="transit_source_hint">GTFS: offizielle Daten. OSM: Community-Daten. Nutzen Sie, was für Ihr Gebiet besser passt.</string>
+    <string name="transit_source_hint">GTFS: offizielle Daten, Live-Daten wenn verfügbar. OSM: Linien und Stationen aus der Community.</string>
     <string name="transit_source_select_area">Wählen Sie zuerst ein Gebiet.</string>
     <string name="transit_source_chip_gtfs">GTFS</string>
     <string name="transit_source_chip_osm">OSM</string>
@@ -538,6 +538,7 @@
     <string name="gtfs_catalog_empty">Kein Netz für dieses Gebiet gefunden. URL einfügen, Datei hochladen oder OpenStreetMap versuchen.</string>
     <string name="gtfs_catalog_preparing_area">Gebiet wird vorbereitet...</string>
     <string name="gtfs_catalog_error">Netze konnten nicht geladen werden.</string>
+    <string name="gtfs_shapes_missing">Dieser GTFS-Feed enthält keine Linienverläufe, die die Karte braucht. Versuchen Sie ein anderes Netz oder OpenStreetMap.</string>
     <string name="gtfs_live_chip">Live</string>
     <string name="gtfs_url_label">GTFS-Feed-URL</string>
     <string name="gtfs_file_label">GTFS-Datei hochladen (.zip)</string>

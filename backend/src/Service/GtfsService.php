@@ -272,6 +272,13 @@ final readonly class GtfsService
 
         $zip->close();
 
+        if (in_array('Missing required file: shapes.txt', $issues, true)) {
+            throw new FunctionalException(
+                message: 'This GTFS feed has no route shapes, which the map needs.',
+                errorKey: 'gtfs.shapes_missing',
+            );
+        }
+
         if ($issues !== []) {
             throw new FunctionalException(message: 'Invalid GTFS archive: ' . implode('; ', $issues), errorKey: 'gtfs.invalid_archive');
         }

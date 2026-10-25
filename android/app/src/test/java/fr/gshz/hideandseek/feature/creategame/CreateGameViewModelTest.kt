@@ -756,4 +756,16 @@ class CreateGameViewModelTest {
 
         assertNull(viewModel.uiState.value.catalogError)
     }
+
+    @Test
+    fun `a missing shapes error is localized`() {
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_shapes_missing),
+            gtfsUploadError("gtfs.shapes_missing", "Invalid GTFS archive: Missing required file: shapes.txt"),
+        )
+        assertEquals(
+            UiText.fromDynamic("other"),
+            gtfsUploadError("gtfs.invalid_archive", "other"),
+        )
+    }
 }

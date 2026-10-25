@@ -55,6 +55,20 @@ final class GtfsServiceTest extends TestCase
     }
 
     #[Test]
+    public function aFeedWithoutShapesGetsADedicatedErrorKey(): void
+    {
+        $path = $this->writeZip([
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'stops.txt' => "stop_id,stop_name\nS1,Stop",
+            'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",
+        ]);
+
+        $this->expectInvalidArchive($path, 'gtfs.shapes_missing');
+    }
+
+    #[Test]
     public function anEntryBeyondTheUncompressedCapIsRejected(): void
     {
         $path = $this->writeZip([]);
@@ -398,13 +412,15 @@ final class GtfsServiceTest extends TestCase
         return $path;
     }
 
-    private function expectInvalidArchive(string $path): FunctionalException
-    {
+    private function expectInvalidArchive(
+        string $path,
+        string $errorKey = 'gtfs.invalid_archive',
+    ): FunctionalException {
         try {
             $this->service->validate($path);
             self::fail('Expected FunctionalException for the invalid archive.');
         } catch (FunctionalException $e) {
-            self::assertSame('gtfs.invalid_archive', $e->getErrorKey());
+            self::assertSame($errorKey, $e->getErrorKey());
 
             return $e;
         }

@@ -52,7 +52,7 @@
     <string name="transit_selected_count"><xliff:g>%1$d</xliff:g>/<xliff:g>%2$d</xliff:g></string>
     <string name="transit_source_gtfs">Flux GTFS</string>
     <string name="transit_source_osm">OSM</string>
-    <string name="transit_source_hint">GTFS : données officielles. OSM : données communautaires. Choisissez selon votre secteur.</string>
+    <string name="transit_source_hint">GTFS : données officielles, temps réel selon disponibilité. OSM : lignes et stations communautaires.</string>
     <string name="transit_source_select_area">Sélectionnez d\'abord une zone.</string>
     <string name="transit_source_chip_gtfs">GTFS</string>
     <string name="transit_source_chip_osm">OSM</string>
@@ -335,6 +335,7 @@
     <string name="gtfs_catalog_empty">Aucun réseau trouvé pour cette zone. Collez une URL, importez un fichier ou essayez OpenStreetMap.</string>
     <string name="gtfs_catalog_preparing_area">Préparation de la zone...</string>
     <string name="gtfs_catalog_error">Impossible de charger les réseaux.</string>
+    <string name="gtfs_shapes_missing">Ce flux GTFS n\'a pas les tracés des lignes, nécessaires à la carte. Essayez un autre réseau ou OpenStreetMap.</string>
     <string name="gtfs_live_chip">Direct</string>
     <string name="gtfs_url_label">URL du flux GTFS</string>
     <string name="gtfs_file_label">Téléverser un fichier GTFS (.zip)</string>

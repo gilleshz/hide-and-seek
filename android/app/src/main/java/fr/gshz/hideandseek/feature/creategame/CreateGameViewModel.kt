@@ -633,8 +633,8 @@ class CreateGameViewModel @Inject constructor(
                 _uiState.update { it.copy(gtfsUploading = false, gtfsError = error) }
             } catch (e: HttpException) {
                 Log.w(TAG, "GTFS URL upload failed", e)
-                val detail = e.serverDetail() ?: e.message()
-                _uiState.update { it.copy(gtfsUploading = false, gtfsError = UiText.fromDynamic(detail)) }
+                val error = gtfsUploadError(e.serverErrorKey(), e.serverDetail() ?: e.message())
+                _uiState.update { it.copy(gtfsUploading = false, gtfsError = error) }
             }
         }
     }
@@ -663,8 +663,8 @@ class CreateGameViewModel @Inject constructor(
                 _uiState.update { it.copy(gtfsUploading = false, gtfsError = error) }
             } catch (e: HttpException) {
                 Log.w(TAG, "GTFS file upload failed", e)
-                val detail = e.serverDetail() ?: e.message()
-                _uiState.update { it.copy(gtfsUploading = false, gtfsError = UiText.fromDynamic(detail)) }
+                val error = gtfsUploadError(e.serverErrorKey(), e.serverDetail() ?: e.message())
+                _uiState.update { it.copy(gtfsUploading = false, gtfsError = error) }
             }
         }
     }
@@ -801,3 +801,12 @@ class CreateGameViewModel @Inject constructor(
         const val ERROR_KEY_NO_GEOMETRY = "transit.preview_no_geometry"
     }
 }
+
+internal fun gtfsUploadError(serverKey: String?, detail: String?): UiText =
+    if (serverKey == ERROR_KEY_GTFS_SHAPES_MISSING) {
+        UiText.fromResource(R.string.gtfs_shapes_missing)
+    } else {
+        UiText.fromDynamic(detail ?: "")
+    }
+
+private const val ERROR_KEY_GTFS_SHAPES_MISSING = "gtfs.shapes_missing"
