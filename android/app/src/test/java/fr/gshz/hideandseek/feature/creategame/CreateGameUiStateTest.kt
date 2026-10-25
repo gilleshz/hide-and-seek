@@ -4,6 +4,8 @@ import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.TransitLine
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -74,5 +76,54 @@ class CreateGameUiStateTest {
 
         assertEquals(listOf("M1"), state.transitLineGroups.map { it.ref })
         assertTrue(state.uniqueGtfsRoutes.isEmpty())
+    }
+
+    @Test
+    fun `bulk selection adds filtered routes under the total limit`() {
+        val selected = (1..40).map { "source-1|route-$it" }.toSet()
+        val filtered = (41..90).map { "route-$it" }
+
+        val updated = toggleGtfsBulkSelection(selected, "source-1", filtered)
+
+        assertEquals(90, updated?.size ?: -1)
+        assertTrue(updated?.contains("source-1|route-90") == true)
+    }
+
+    @Test
+    fun `bulk selection refuses to exceed the total limit`() {
+        val selected = (1..60).map { "source-1|route-$it" }.toSet()
+        val filtered = (61..120).map { "route-$it" }
+
+        assertNull(toggleGtfsBulkSelection(selected, "source-1", filtered))
+    }
+
+    @Test
+    fun `bulk selection counts the total across sources`() {
+        val selected = (1..80).map { "source-1|route-$it" }.toSet()
+
+        assertNull(toggleGtfsBulkSelection(selected, "source-2", (1..25).map { "route-$it" }))
+        val updated = toggleGtfsBulkSelection(selected, "source-2", (1..20).map { "route-$it" })
+
+        assertEquals(100, updated?.size ?: -1)
+        assertTrue(updated?.contains("source-2|route-20") == true)
+    }
+
+    @Test
+    fun `bulk selection deselects every filtered route`() {
+        val filtered = (1..58).map { "route-$it" }
+        val selected = filtered.map { "source-1|$it" }.toSet() + "source-1|hidden"
+
+        val updated = toggleGtfsBulkSelection(selected, "source-1", filtered)
+
+        assertEquals(setOf("source-1|hidden"), updated)
+    }
+
+    @Test
+    fun `individual selection stops at the total limit`() {
+        val selected = (1..100).map { "source-1|route-$it" }.toSet()
+
+        assertFalse(canSelectGtfsRoute(selected))
+        assertTrue(canSelectGtfsRoute(emptySet()))
+        assertTrue(canSelectGtfsRoute(selected - "source-1|route-1"))
     }
 }

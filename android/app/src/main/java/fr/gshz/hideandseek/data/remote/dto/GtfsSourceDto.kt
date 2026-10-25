@@ -7,6 +7,9 @@ data class GtfsSourceDto(
     val uuid: String,
     val name: String,
     val routes: List<GtfsRouteEntryDto>,
+    val requiresSubset: Boolean = false,
+    val sizeBytes: Long? = null,
+    val uncompressedBytes: Long? = null,
 )
 
 @Serializable

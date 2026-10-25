@@ -164,6 +164,22 @@ class GameRepositoryImplTest {
     }
 
     @Test
+    fun `uploadGtfsFromUrl maps the subset metadata`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"uuid":"src-1","name":"Paris","routes":[],"requiresSubset":true,""" +
+                    """"sizeBytes":252628206,"uncompressedBytes":1376701696}""",
+            ),
+        )
+
+        val state = repository.uploadGtfsFromUrl("https://example.test/paris.zip", "Paris")
+
+        assertTrue(state.requiresSubset)
+        assertEquals(252628206L, state.sizeBytes)
+        assertEquals(1376701696L, state.uncompressedBytes)
+    }
+
+    @Test
     fun `uploadGtfsFromUrl reports no realtime without a realtime url`() = runTest {
         server.enqueue(MockResponse().setResponseCode(201).setBody(GTFS_SOURCE_JSON))
 

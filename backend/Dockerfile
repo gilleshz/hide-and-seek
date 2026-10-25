@@ -71,7 +71,7 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends git \
 # upload_max_filesize aligns with the GTFS ZIP upload path (feeds can be 50 MB+) and
 # chat images (8 MB limit enforced in ChatImageUploadProcessor).
 RUN echo "memory_limit = 1024M" > /usr/local/etc/php/conf.d/zz-app.ini \
-    && echo "max_execution_time = 420" >> /usr/local/etc/php/conf.d/zz-app.ini \
+    && echo "max_execution_time = 1200" >> /usr/local/etc/php/conf.d/zz-app.ini \
     && echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/zz-app.ini \
     && echo "post_max_size = 110M" >> /usr/local/etc/php/conf.d/zz-app.ini \
     && echo "date.timezone = UTC" >> /usr/local/etc/php/conf.d/zz-app.ini

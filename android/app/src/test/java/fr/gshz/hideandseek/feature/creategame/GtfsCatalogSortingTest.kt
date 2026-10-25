@@ -12,9 +12,9 @@ class GtfsCatalogSortingTest {
     fun `too large suggestions are last and keep the backend order otherwise`() {
         val suggestions = listOf(
             suggestion("small", 100_000_000),
-            suggestion("big", 250_000_000),
+            suggestion("big", 600_000_000),
             suggestion("unknown", null),
-            suggestion("small2", 150_000_000),
+            suggestion("small2", 300_000_000),
         )
 
         val sorted = catalogSuggestionsInDisplayOrder(suggestions)
@@ -26,6 +26,7 @@ class GtfsCatalogSortingTest {
 
     @Test
     fun `a suggestion at the cap is still selectable`() {
+        assertEquals(512L * 1024 * 1024, GTFS_MAX_DOWNLOAD_BYTES)
         assertFalse(suggestion("cap", GTFS_MAX_DOWNLOAD_BYTES).isTooLarge)
         assertTrue(suggestion("over", GTFS_MAX_DOWNLOAD_BYTES + 1).isTooLarge)
     }

@@ -57,7 +57,7 @@
     <string name="transit_source_select_area">Sélectionnez d\'abord une zone.</string>
     <string name="transit_source_chip_gtfs">GTFS</string>
     <string name="transit_source_chip_osm">OSM</string>
-    <string name="create_game_loading">Création de la partie et chargement des données cartographiques, cela peut prendre une minute</string>
+    <string name="create_game_loading">Création de la partie et chargement des données cartographiques, cela peut prendre quelques minutes pour les grands flux</string>
     <string name="area_search_game_boundary">Zone de jeu</string>
     <string name="area_search_selected">Sélectionné : <xliff:g>%1$s</xliff:g></string>
     <string name="area_search_hint">Rechercher une ville/région</string>
@@ -338,6 +338,13 @@
     <string name="gtfs_catalog_error">Impossible de charger les réseaux.</string>
     <string name="gtfs_catalog_size">%1$d Mo</string>
     <string name="gtfs_catalog_too_large">Trop volumineux</string>
+    <string name="gtfs_large_feed_note">Flux volumineux : seules les lignes sélectionnées sont traitées.</string>
+    <string name="gtfs_large_feed_sizes">%1$d Mo compressés, %2$d Mo décompressés</string>
+    <string name="gtfs_selection_too_large">Sélectionnez moins de lignes (100 maximum par partie).</string>
+    <string name="gtfs_selection_empty">Sélectionnez au moins une ligne.</string>
+    <string name="gtfs_subset_too_large">Cette sélection est trop volumineuse. Choisissez moins de lignes.</string>
+    <string name="gtfs_source_too_large">Ce flux GTFS est trop volumineux.</string>
+    <string name="gtfs_source_uncompressed_too_large">Ce flux GTFS est trop volumineux pour être traité.</string>
     <string name="gtfs_shapes_missing">Ce flux GTFS n\'a pas les tracés des lignes, nécessaires à la carte. Essayez un autre réseau ou OpenStreetMap.</string>
     <string name="gtfs_live_chip">Direct</string>
     <string name="gtfs_url_label">URL du flux GTFS</string>

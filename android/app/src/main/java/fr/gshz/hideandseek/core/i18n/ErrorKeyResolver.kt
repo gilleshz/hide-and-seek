@@ -64,6 +64,11 @@ private val ERROR_KEY_MAP: Map<String, Int> = mapOf(
     "profile.credential_invalid" to R.string.error_profile_credential_invalid,
     "rate_limit.exceeded" to R.string.error_rate_limit,
     "heavy_work.busy" to R.string.error_heavy_work_busy,
+    "gtfs.selection_too_large" to R.string.gtfs_selection_too_large,
+    "gtfs.selection_empty" to R.string.gtfs_selection_empty,
+    "gtfs.subset_too_large" to R.string.gtfs_subset_too_large,
+    "gtfs.source_too_large" to R.string.gtfs_source_too_large,
+    "gtfs.source_uncompressed_too_large" to R.string.gtfs_source_uncompressed_too_large,
 )
 
 /**

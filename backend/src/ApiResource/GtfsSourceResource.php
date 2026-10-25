@@ -37,6 +37,15 @@ final class GtfsSourceResource
     #[Groups([Group::GTFS_SOURCE_READ])]
     public array $routes = [];
 
+    #[Groups([Group::GTFS_SOURCE_READ])]
+    public bool $requiresSubset = false;
+
+    #[Groups([Group::GTFS_SOURCE_READ])]
+    public int $sizeBytes = 0;
+
+    #[Groups([Group::GTFS_SOURCE_READ])]
+    public ?int $uncompressedBytes = null;
+
     /**
      * @param list<array{
      *     routeId: string,
@@ -46,12 +55,16 @@ final class GtfsSourceResource
      *     color: string,
      *     textColor: string
      * }> $routes
+     * @param array{sizeBytes: int, uncompressedBytes: ?int, requiresSubset: bool} $metadata
      */
-    public static function fromSource(GtfsSource $source, array $routes): self
+    public static function fromSource(GtfsSource $source, array $routes, array $metadata): self
     {
         $resource = new self();
         $resource->uuid = $source->getUuid();
         $resource->name = $source->getName();
+        $resource->requiresSubset = $metadata['requiresSubset'];
+        $resource->sizeBytes = $metadata['sizeBytes'];
+        $resource->uncompressedBytes = $metadata['uncompressedBytes'];
         $resource->routes = array_map(static function (array $r): GtfsSourceRoute {
             $route = new GtfsSourceRoute();
             $route->routeId = $r['routeId'];

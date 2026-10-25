@@ -432,12 +432,12 @@ class CreateGameViewModel @Inject constructor(
             } else {
                 current.add(routeType)
             }
-            state.copy(transitModeFilter = current)
+            state.copy(transitModeFilter = current, gtfsSelectionError = null)
         }
     }
 
     fun onTransitLineQueryChange(value: String) {
-        _uiState.update { it.copy(transitLineQuery = value) }
+        _uiState.update { it.copy(transitLineQuery = value, gtfsSelectionError = null) }
     }
 
     fun toggleDiscoveryMode(routeType: String) {
@@ -678,20 +678,48 @@ class CreateGameViewModel @Inject constructor(
             val newSources = state.gtfsSources.filter { it.uuid != sourceUuid }
             val prefix = "$sourceUuid|"
             val newKeys = state.selectedGtfsRouteKeys.filterNot { it.startsWith(prefix) }
-            state.copy(gtfsSources = newSources, selectedGtfsRouteKeys = newKeys.toSet())
+            state.copy(
+                gtfsSources = newSources,
+                selectedGtfsRouteKeys = newKeys.toSet(),
+                gtfsSelectionError = null,
+            )
         }
     }
 
     fun toggleGtfsRoute(sourceUuid: String, routeId: String) {
         val key = "$sourceUuid|$routeId"
         _uiState.update { state ->
-            val current = state.selectedGtfsRouteKeys.toMutableSet()
-            if (key in current) {
-                current.remove(key)
-            } else {
-                current.add(key)
+            when {
+                key in state.selectedGtfsRouteKeys -> state.copy(
+                    selectedGtfsRouteKeys = state.selectedGtfsRouteKeys - key,
+                    gtfsSelectionError = null,
+                )
+                !canSelectGtfsRoute(state.selectedGtfsRouteKeys) -> state.copy(
+                    gtfsSelectionError = UiText.fromResource(R.string.gtfs_selection_too_large),
+                )
+                else -> state.copy(
+                    selectedGtfsRouteKeys = state.selectedGtfsRouteKeys + key,
+                    gtfsSelectionError = null,
+                )
             }
-            state.copy(selectedGtfsRouteKeys = current)
+        }
+    }
+
+    fun toggleAllGtfsRoutes(sourceUuid: String) {
+        val filteredIds = _uiState.value.uniqueGtfsRoutes
+            .filter { it.first.uuid == sourceUuid }
+            .map { it.second.routeId }
+        if (filteredIds.isEmpty()) return
+        _uiState.update { state ->
+            when (val updated = toggleGtfsBulkSelection(state.selectedGtfsRouteKeys, sourceUuid, filteredIds)) {
+                null -> state.copy(
+                    gtfsSelectionError = UiText.fromResource(R.string.gtfs_selection_too_large),
+                )
+                else -> state.copy(
+                    selectedGtfsRouteKeys = updated,
+                    gtfsSelectionError = null,
+                )
+            }
         }
     }
 
@@ -806,11 +834,19 @@ class CreateGameViewModel @Inject constructor(
     }
 }
 
-internal fun gtfsUploadError(serverKey: String?, detail: String?): UiText =
-    if (serverKey == ERROR_KEY_GTFS_SHAPES_MISSING) {
-        UiText.fromResource(R.string.gtfs_shapes_missing)
-    } else {
-        UiText.fromDynamic(detail ?: "")
-    }
+internal fun gtfsUploadError(serverKey: String?, detail: String?): UiText = when (serverKey) {
+    ERROR_KEY_GTFS_SHAPES_MISSING -> UiText.fromResource(R.string.gtfs_shapes_missing)
+    ERROR_KEY_GTFS_SELECTION_TOO_LARGE -> UiText.fromResource(R.string.gtfs_selection_too_large)
+    ERROR_KEY_GTFS_SELECTION_EMPTY -> UiText.fromResource(R.string.gtfs_selection_empty)
+    ERROR_KEY_GTFS_SUBSET_TOO_LARGE -> UiText.fromResource(R.string.gtfs_subset_too_large)
+    ERROR_KEY_GTFS_SOURCE_TOO_LARGE -> UiText.fromResource(R.string.gtfs_source_too_large)
+    ERROR_KEY_GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE -> UiText.fromResource(R.string.gtfs_source_uncompressed_too_large)
+    else -> UiText.fromDynamic(detail ?: "")
+}
 
 private const val ERROR_KEY_GTFS_SHAPES_MISSING = "gtfs.shapes_missing"
+private const val ERROR_KEY_GTFS_SELECTION_TOO_LARGE = "gtfs.selection_too_large"
+private const val ERROR_KEY_GTFS_SELECTION_EMPTY = "gtfs.selection_empty"
+private const val ERROR_KEY_GTFS_SUBSET_TOO_LARGE = "gtfs.subset_too_large"
+private const val ERROR_KEY_GTFS_SOURCE_TOO_LARGE = "gtfs.source_too_large"
+private const val ERROR_KEY_GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE = "gtfs.source_uncompressed_too_large"

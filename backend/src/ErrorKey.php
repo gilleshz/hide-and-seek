@@ -22,4 +22,9 @@ final class ErrorKey
     public const string CHAT_IMAGE_TOO_LARGE = 'chat_image.too_large';
     public const string HEAVY_WORK_BUSY = 'heavy_work.busy';
     public const string TOO_MANY_AREAS = 'game.too_many_areas';
+    public const string GTFS_SOURCE_TOO_LARGE = 'gtfs.source_too_large';
+    public const string GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE = 'gtfs.source_uncompressed_too_large';
+    public const string GTFS_SELECTION_EMPTY = 'gtfs.selection_empty';
+    public const string GTFS_SELECTION_TOO_LARGE = 'gtfs.selection_too_large';
+    public const string GTFS_SUBSET_TOO_LARGE = 'gtfs.subset_too_large';
 }

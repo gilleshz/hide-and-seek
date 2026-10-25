@@ -57,7 +57,7 @@
     <string name="transit_source_select_area">Select an area first.</string>
     <string name="transit_source_chip_gtfs">GTFS</string>
     <string name="transit_source_chip_osm">OSM</string>
-    <string name="create_game_loading">Creating game and loading map data, this can take a minute</string>
+    <string name="create_game_loading">Creating game and loading map data, this can take a few minutes for large feeds</string>
     <string name="area_search_game_boundary">Game boundary</string>
     <string name="area_search_selected">Selected: <xliff:g>%1$s</xliff:g></string>
     <string name="area_search_hint">Search city or region</string>
@@ -544,6 +544,13 @@
     <string name="gtfs_catalog_error">Could not load networks.</string>
     <string name="gtfs_catalog_size">%1$d MB</string>
     <string name="gtfs_catalog_too_large">Too large</string>
+    <string name="gtfs_large_feed_note">Large feed: only selected lines are processed.</string>
+    <string name="gtfs_large_feed_sizes">%1$d MB compressed, %2$d MB unpacked</string>
+    <string name="gtfs_selection_too_large">Select fewer lines (maximum 100 lines per game).</string>
+    <string name="gtfs_selection_empty">Select at least one line.</string>
+    <string name="gtfs_subset_too_large">This selection is too large. Choose fewer lines.</string>
+    <string name="gtfs_source_too_large">This GTFS feed is too large.</string>
+    <string name="gtfs_source_uncompressed_too_large">This GTFS feed is too large to process.</string>
     <string name="gtfs_shapes_missing">This GTFS feed has no route shapes, which the map needs. Try another network or use OpenStreetMap.</string>
     <string name="gtfs_live_chip">Live</string>
     <string name="gtfs_url_label">GTFS feed URL</string>

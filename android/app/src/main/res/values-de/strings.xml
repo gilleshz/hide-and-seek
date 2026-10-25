@@ -57,7 +57,7 @@
     <string name="transit_source_select_area">Wählen Sie zuerst ein Gebiet.</string>
     <string name="transit_source_chip_gtfs">GTFS</string>
     <string name="transit_source_chip_osm">OSM</string>
-    <string name="create_game_loading">Spiel wird erstellt und Kartendaten werden geladen, dies kann eine Minute dauern</string>
+    <string name="create_game_loading">Spiel wird erstellt und Kartendaten werden geladen, bei großen Feeds kann dies einige Minuten dauern</string>
     <string name="area_search_game_boundary">Spielfeldgrenze</string>
     <string name="area_search_selected">Ausgewählt: <xliff:g>%1$s</xliff:g></string>
     <string name="area_search_hint">Stadt oder Region suchen</string>
@@ -541,6 +541,13 @@
     <string name="gtfs_catalog_error">Netze konnten nicht geladen werden.</string>
     <string name="gtfs_catalog_size">%1$d MB</string>
     <string name="gtfs_catalog_too_large">Zu groß</string>
+    <string name="gtfs_large_feed_note">Großer Feed: Nur ausgewählte Linien werden verarbeitet.</string>
+    <string name="gtfs_large_feed_sizes">%1$d MB komprimiert, %2$d MB entpackt</string>
+    <string name="gtfs_selection_too_large">Wählen Sie weniger Linien (höchstens 100 pro Spiel).</string>
+    <string name="gtfs_selection_empty">Wählen Sie mindestens eine Linie.</string>
+    <string name="gtfs_subset_too_large">Diese Auswahl ist zu groß. Wählen Sie weniger Linien.</string>
+    <string name="gtfs_source_too_large">Dieser GTFS-Feed ist zu groß.</string>
+    <string name="gtfs_source_uncompressed_too_large">Dieser GTFS-Feed ist zu groß für die Verarbeitung.</string>
     <string name="gtfs_shapes_missing">Dieser GTFS-Feed enthält keine Linienverläufe, die die Karte braucht. Versuchen Sie ein anderes Netz oder OpenStreetMap.</string>
     <string name="gtfs_live_chip">Live</string>
     <string name="gtfs_url_label">GTFS-Feed-URL</string>

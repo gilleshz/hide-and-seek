@@ -312,6 +312,9 @@ class GameRepositoryImpl @Inject constructor(
             )
         },
         hasRealtime = hasRealtime,
+        requiresSubset = requiresSubset,
+        sizeBytes = sizeBytes,
+        uncompressedBytes = uncompressedBytes,
     )
 
     private fun TransitCatalogSuggestionDto.toDomain() = TransitCatalogSuggestion(

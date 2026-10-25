@@ -121,6 +121,7 @@ data class CreateGameUiState(
     val realtimeProbe: RealtimeProbeState? = null,
     val gtfsUploading: Boolean = false,
     val gtfsError: UiText? = null,
+    val gtfsSelectionError: UiText? = null,
     val catalogSuggestions: List<TransitCatalogSuggestion> = emptyList(),
     val catalogQuery: String = "",
     val isCatalogLoading: Boolean = false,
@@ -232,3 +233,28 @@ internal val ALL_ROUTE_TYPES = setOf(
 )
 
 internal val DEFAULT_DISCOVERY_MODES = setOf("subway", "light_rail", "tram", "train")
+
+internal const val MAX_GTFS_ROUTES_TOTAL = 100
+
+/** Returns the new selection, or null when adding the filtered routes would exceed the total cap. */
+internal fun toggleGtfsBulkSelection(
+    selectedKeys: Set<String>,
+    sourceUuid: String,
+    filteredRouteIds: Collection<String>,
+    maxTotal: Int = MAX_GTFS_ROUTES_TOTAL,
+): Set<String>? {
+    val keys = filteredRouteIds.mapTo(HashSet()) { "$sourceUuid|$it" }
+    return when {
+        filteredRouteIds.isEmpty() -> selectedKeys
+        keys.all { it in selectedKeys } -> selectedKeys - keys
+        else -> {
+            val added = keys.count { it !in selectedKeys }
+            if (selectedKeys.size + added > maxTotal) null else selectedKeys + keys
+        }
+    }
+}
+
+internal fun canSelectGtfsRoute(
+    selectedKeys: Set<String>,
+    maxTotal: Int = MAX_GTFS_ROUTES_TOTAL,
+): Boolean = selectedKeys.size < maxTotal

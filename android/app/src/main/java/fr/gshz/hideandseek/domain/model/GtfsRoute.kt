@@ -39,6 +39,9 @@ data class GtfsSourceState(
     val name: String,
     val routes: List<GtfsRoute>,
     val hasRealtime: Boolean = false,
+    val requiresSubset: Boolean = false,
+    val sizeBytes: Long? = null,
+    val uncompressedBytes: Long? = null,
 )
 
 data class GtfsRealtimeProbe(

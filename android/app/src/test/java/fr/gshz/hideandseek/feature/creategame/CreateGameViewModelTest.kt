@@ -773,6 +773,26 @@ class CreateGameViewModelTest {
             gtfsUploadError("gtfs.shapes_missing", "Invalid GTFS archive: Missing required file: shapes.txt"),
         )
         assertEquals(
+            UiText.fromResource(R.string.gtfs_selection_too_large),
+            gtfsUploadError("gtfs.selection_too_large", "too many"),
+        )
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_selection_empty),
+            gtfsUploadError("gtfs.selection_empty", "empty"),
+        )
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_subset_too_large),
+            gtfsUploadError("gtfs.subset_too_large", "too large"),
+        )
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_source_too_large),
+            gtfsUploadError("gtfs.source_too_large", "too large"),
+        )
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_source_uncompressed_too_large),
+            gtfsUploadError("gtfs.source_uncompressed_too_large", "too large"),
+        )
+        assertEquals(
             UiText.fromDynamic("other"),
             gtfsUploadError("gtfs.invalid_archive", "other"),
         )

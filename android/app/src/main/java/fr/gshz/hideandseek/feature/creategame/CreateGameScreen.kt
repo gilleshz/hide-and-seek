@@ -117,6 +117,7 @@ fun CreateGameScreen(
             onUploadGtfsFromFile = viewModel::uploadGtfsFromFile,
             onRemoveGtfsSource = viewModel::removeGtfsSource,
             onToggleGtfsRoute = viewModel::toggleGtfsRoute,
+            onToggleAllGtfsRoutes = viewModel::toggleAllGtfsRoutes,
             onCatalogQueryChange = viewModel::onCatalogQueryChange,
             onSelectCatalogSuggestion = viewModel::onSelectCatalogSuggestion,
             onRetryCatalog = viewModel::retryCatalog,
@@ -240,6 +241,7 @@ private fun TransitLineSection(uiState: CreateGameUiState, actions: CreateGameAc
         uniqueGtfsRoutes = uiState.uniqueGtfsRoutes,
         selectedGtfsRouteKeys = uiState.selectedGtfsRouteKeys,
         onToggleGtfsRoute = actions.onToggleGtfsRoute,
+        onToggleAllGtfsRoutes = actions.onToggleAllGtfsRoutes,
         onShowGtfsDialog = actions.onShowGtfsDialog,
         onRemoveGtfsSource = actions.onRemoveGtfsSource,
         isDiscoveringTransit = uiState.isDiscoveringTransit,
@@ -252,6 +254,7 @@ private fun TransitLineSection(uiState: CreateGameUiState, actions: CreateGameAc
         onShowDiscoveryModeDialog = actions.onShowDiscoveryModeDialog,
         onDismissDiscoveryModeDialog = actions.onDismissDiscoveryModeDialog,
         discoveryError = uiState.discoveryError,
+        selectionError = uiState.gtfsSelectionError,
     )
 }
 

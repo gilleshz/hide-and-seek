@@ -75,8 +75,9 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
         }
 
         $routes = $this->gtfsService->extractRoutes($source);
+        $metadata = $this->gtfsService->sourceMetadata($source);
 
-        return GtfsSourceResource::fromSource($source, $routes);
+        return GtfsSourceResource::fromSource($source, $routes, $metadata);
     }
 
     private function readUrl(mixed $value, string $errorKey, string $message): ?string

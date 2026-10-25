@@ -36,7 +36,7 @@ object NetworkModule {
 
     private const val PLACEHOLDER_BASE_URL = "http://localhost/"
     // Outlasts the server's own limits so a tile build reports its real error, not a socket timeout.
-    private const val CREATE_GAME_TIMEOUT_SECONDS = 480L
+    private const val CREATE_GAME_TIMEOUT_SECONDS = 1200L
     private const val CACHE_SIZE_BYTES = 10L * 1024 * 1024
 
     @Provides
@@ -100,6 +100,7 @@ object NetworkModule {
                 }
             }
             .readTimeout(CREATE_GAME_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .callTimeout(CREATE_GAME_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
 
     @Provides

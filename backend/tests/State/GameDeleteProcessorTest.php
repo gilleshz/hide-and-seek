@@ -29,6 +29,7 @@ use App\Service\GameCleanupService;
 use App\Service\GameService;
 use App\Service\GameTransitBuilder;
 use App\Service\GtfsService;
+use App\Service\GtfsSubsetService;
 use App\Service\HeavyWorkGuard;
 use App\Service\IdentityResolver;
 use App\Service\LeaveService;
@@ -175,20 +176,22 @@ final class GameDeleteProcessorTest extends TestCase
             $this->createStub(RoundMembershipRepository::class),
             $entityManager,
         );
+        $gtfsService = new GtfsService(
+            $this->createStub(GtfsSourceRepository::class),
+            '/tmp/gtfs',
+            new OutboundHttpFetcher(
+                new MockHttpClient(),
+                new OutboundUrlGuard(),
+                $this->createStub(LoggerInterface::class),
+            ),
+            $this->createStub(LoggerInterface::class),
+            new OutboundUrlGuard(),
+            new Filesystem(),
+        );
         $cleanup = new GameCleanupService(
             $this->createStub(GameGtfsLineRepository::class),
             $gtfsSources,
-            new GtfsService(
-                $this->createStub(GtfsSourceRepository::class),
-                '/tmp/gtfs',
-                new OutboundHttpFetcher(
-                    new MockHttpClient(),
-                    new OutboundUrlGuard(),
-                    $this->createStub(LoggerInterface::class),
-                ),
-                $this->createStub(LoggerInterface::class),
-                new OutboundUrlGuard(),
-            ),
+            $gtfsService,
             $entityManager,
             new Filesystem(),
             '/tmp/chat-images',
@@ -208,6 +211,8 @@ final class GameDeleteProcessorTest extends TestCase
                 $this->createStub(GameTransitLineRepository::class),
                 $this->createStub(GameGtfsLineRepository::class),
                 $this->createStub(GtfsSourceRepository::class),
+                $gtfsService,
+                new GtfsSubsetService($gtfsService, new Filesystem(), new NullLogger()),
                 new TransitTilePipeline(
                     'http://mirror/api',
                     '/tmp/tiles',

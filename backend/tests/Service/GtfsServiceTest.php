@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Entity\GtfsSource;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsService;
@@ -12,6 +13,7 @@ use App\Service\OutboundUrlGuard;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -25,17 +27,13 @@ final class GtfsServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->storageDir = sys_get_temp_dir() . '/gtfs-test-' . bin2hex(random_bytes(4));
+        mkdir($this->storageDir, 0o755, true);
         $this->service = $this->makeService(new MockHttpClient());
     }
 
     protected function tearDown(): void
     {
-        if (is_dir($this->storageDir)) {
-            foreach (glob($this->storageDir . '/*') ?: [] as $file) {
-                @unlink($file);
-            }
-            @rmdir($this->storageDir);
-        }
+        (new Filesystem())->remove($this->storageDir);
         parent::tearDown();
     }
 
@@ -332,7 +330,7 @@ final class GtfsServiceTest extends TestCase
         }
 
         self::assertSame(0, $client->getRequestsCount());
-        self::assertDirectoryDoesNotExist($this->storageDir);
+        self::assertSame([], glob($this->storageDir . '/*') ?: []);
     }
 
     #[Test]
@@ -350,6 +348,222 @@ final class GtfsServiceTest extends TestCase
         }
     }
 
+    #[Test]
+    public function aSmallSourcePassesSourceValidationAndDoesNotRequireASubset(): void
+    {
+        $source = new GtfsSource('Feed', $this->validZip());
+
+        self::assertSame([], $this->service->validateSource($source->getFilePath()));
+        $metadata = $this->service->sourceMetadata($source);
+        self::assertFalse($metadata['requiresSubset']);
+        self::assertGreaterThan(0, $metadata['sizeBytes']);
+        self::assertGreaterThan(0, $metadata['uncompressedBytes']);
+    }
+
+    #[Test]
+    public function aLargeSourcePassesSourceValidationButRequiresAValidatedSubset(): void
+    {
+        $path = $this->largeStopTimesZip(257);
+        $source = new GtfsSource('Large Feed', $path);
+
+        self::assertSame([], $this->service->validateSource($path));
+        self::assertTrue($this->service->sourceMetadata($source)['requiresSubset']);
+
+        $exception = $this->expectInvalidArchive($path);
+        self::assertStringContainsString('maximum uncompressed size', $exception->getMessage());
+    }
+
+    #[Test]
+    public function aSourceEntryOverTwoGigabytesIsRejected(): void
+    {
+        $path = $this->zipWithBigEntry(2049);
+
+        try {
+            $this->service->validateSource($path);
+            self::fail('Expected the source entry cap to reject the archive.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.source_uncompressed_too_large', $e->getErrorKey());
+        }
+    }
+
+    #[Test]
+    public function aSourceOverFourGigabytesUncompressedIsRejected(): void
+    {
+        $path = $this->zipWithTwoBigEntries(2049, 2049);
+
+        try {
+            $this->service->validateSource($path);
+            self::fail('Expected the source total cap to reject the archive.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.source_uncompressed_too_large', $e->getErrorKey());
+        }
+    }
+
+    #[Test]
+    public function aSourceOverTheCompressedCapIsRejected(): void
+    {
+        $path = $this->bigFile(513);
+
+        try {
+            $this->service->validateSource($path);
+            self::fail('Expected the compressed source cap to reject the archive.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.source_too_large', $e->getErrorKey());
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    #[Test]
+    public function aSourceBeyondTheCompressionRatioIsRejected(): void
+    {
+        $path = $this->writeZip([]);
+        $zeros = $this->bigFile(10);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE));
+        $zip->addFile($zeros, 'routes.txt');
+        $zip->close();
+        @unlink($zeros);
+
+        try {
+            $this->service->validateSource($path);
+            self::fail('Expected the source ratio cap to reject the archive.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.invalid_archive', $e->getErrorKey());
+            self::assertStringContainsString('compressed beyond the accepted ratio', $e->getMessage());
+        }
+    }
+
+    #[Test]
+    public function aShapelessSourceGetsTheShapesKey(): void
+    {
+        $path = $this->writeZip([
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'stops.txt' => "stop_id,stop_name\nS1,Stop",
+            'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",
+        ]);
+
+        try {
+            $this->service->validateSource($path);
+            self::fail('Expected the missing shapes key.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.shapes_missing', $e->getErrorKey());
+        }
+    }
+
+    #[Test]
+    public function deleteFileRemovesTheSourceAndItsSubsetCache(): void
+    {
+        $path = $this->validZip();
+        $source = new GtfsSource('Feed', $path, 'source-uuid');
+        $subsetDir = dirname($path) . '/subsets/' . $source->getUuid();
+        mkdir($subsetDir, 0o755, true);
+        file_put_contents($subsetDir . '/subset.zip', 'cached');
+
+        $this->service->deleteFile($source);
+
+        self::assertFileDoesNotExist($path);
+        self::assertDirectoryDoesNotExist($subsetDir);
+    }
+
+    #[Test]
+    public function aSourceWithAMalformedShapesHeaderIsRejected(): void
+    {
+        $path = $this->writeZip([
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'shapes.txt' => "shape_id,lat,lon\nSH1,46.5,6.6\n",
+            'stops.txt' => "stop_id,stop_name\nS1,Stop",
+            'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",
+        ]);
+
+        try {
+            $this->service->validateSource($path);
+            self::fail('Expected the malformed shapes header to be rejected.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs.invalid_archive', $e->getErrorKey());
+            self::assertStringContainsString("Missing required column 'shape_pt_lat' in shapes.txt", $e->getMessage());
+        }
+    }
+
+    private function largeStopTimesZip(int $sizeMiB): string
+    {
+        $path = $this->storageDir . '/large-' . bin2hex(random_bytes(4)) . '.zip';
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE));
+        foreach (
+            [
+            'agency.txt' => "agency_id,agency_name\nA1,Agency",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,S1,T1",
+            'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nSH1,46.5,6.6,1",
+            'stops.txt' => "stop_id,stop_name\nS1,Stop",
+            ] as $name => $content
+        ) {
+            $zip->addFromString($name, $content);
+        }
+        $big = $this->bigStopTimesFile($sizeMiB);
+        $zip->addFile($big, 'stop_times.txt');
+        $zip->close();
+        @unlink($big);
+
+        return $path;
+    }
+
+    private function zipWithBigEntry(int $sizeMiB): string
+    {
+        $path = $this->writeZip([]);
+        $big = $this->bigFile($sizeMiB);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE));
+        $zip->addFile($big, 'stop_times.txt');
+        $zip->close();
+        @unlink($big);
+
+        return $path;
+    }
+
+    private function zipWithTwoBigEntries(int $firstMiB, int $secondMiB): string
+    {
+        $path = $this->writeZip([]);
+        $first = $this->bigFile($firstMiB);
+        $second = $this->bigFile($secondMiB);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE));
+        $zip->addFile($first, 'stop_times.txt');
+        $zip->addFile($second, 'routes.txt');
+        $zip->close();
+        @unlink($first);
+        @unlink($second);
+
+        return $path;
+    }
+
+    private function bigStopTimesFile(int $sizeMiB): string
+    {
+        $path = $this->storageDir . '/big-stop-times-' . bin2hex(random_bytes(4));
+        $handle = fopen($path, 'wb');
+        self::assertIsResource($handle);
+
+        $header = "trip_id,stop_id,stop_sequence\n";
+        fwrite($handle, $header);
+        $bytes = strlen($header);
+        $target = $sizeMiB * 1024 * 1024;
+        $i = 0;
+        while ($bytes < $target) {
+            $line = 'T' . ($i % 5000) . ',S' . ($i % 500) . ",1\n";
+            fwrite($handle, $line);
+            $bytes += strlen($line);
+            ++$i;
+        }
+        fclose($handle);
+
+        return $path;
+    }
+
     private function makeService(MockHttpClient $client): GtfsService
     {
         return new GtfsService(
@@ -358,6 +572,7 @@ final class GtfsServiceTest extends TestCase
             new OutboundHttpFetcher($client, new OutboundUrlGuard(), new NullLogger()),
             new NullLogger(),
             new OutboundUrlGuard(),
+            new Filesystem(),
         );
     }
 

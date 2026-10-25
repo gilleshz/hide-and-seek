@@ -375,7 +375,7 @@ private fun CatalogSizeRow(sizeLabel: String?, tooLarge: Boolean) {
 }
 
 /** Mirrors the backend GtfsService download cap. */
-internal const val GTFS_MAX_DOWNLOAD_BYTES = 200_000_000L
+internal const val GTFS_MAX_DOWNLOAD_BYTES = 512L * 1024 * 1024
 internal val TransitCatalogSuggestion.isTooLarge: Boolean
     get() = sizeBytes != null && sizeBytes > GTFS_MAX_DOWNLOAD_BYTES
 

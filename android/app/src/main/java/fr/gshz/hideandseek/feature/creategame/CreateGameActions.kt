@@ -33,6 +33,7 @@ data class CreateGameActions(
     val onUploadGtfsFromFile: (ByteArray, String) -> Unit = { _, _ -> },
     val onRemoveGtfsSource: (String) -> Unit = {},
     val onToggleGtfsRoute: (String, String) -> Unit = { _, _ -> },
+    val onToggleAllGtfsRoutes: (String) -> Unit = {},
     val onCatalogQueryChange: (String) -> Unit = {},
     val onSelectCatalogSuggestion: (TransitCatalogSuggestion) -> Unit = {},
     val onRetryCatalog: () -> Unit = {},

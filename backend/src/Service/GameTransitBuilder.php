@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Game;
 use App\Entity\GameGtfsLine;
 use App\Entity\GameTransitLine;
+use App\Entity\GtfsSource;
 use App\Exception\FunctionalException;
 use App\Repository\GameGtfsLineRepository;
 use App\Repository\GameTransitLineRepository;
@@ -21,6 +22,8 @@ final readonly class GameTransitBuilder
         private GameTransitLineRepository $gameTransitLines,
         private GameGtfsLineRepository $gameGtfsLines,
         private GtfsSourceRepository $gtfsSources,
+        private GtfsService $gtfsService,
+        private GtfsSubsetService $gtfsSubsetService,
         private TransitTilePipeline $transitTilePipeline,
         private TransitStationImporter $transitStationImporter,
         private EntityManagerInterface $entityManager,
@@ -36,6 +39,29 @@ final readonly class GameTransitBuilder
      */
     public function buildForGame(Game $game, array $osmLines, array $gtfsLines = []): void
     {
+        // The app's long timeout is 1200 s; a fatal must still return a parseable JSON error.
+        @set_time_limit(1200);
+
+        register_shutdown_function(static function (): void {
+            $error = error_get_last();
+            if (
+                $error === null
+                || !in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)
+                || headers_sent()
+            ) {
+                return;
+            }
+            http_response_code(500);
+            header('Content-Type: application/problem+json');
+            echo json_encode([
+                'type' => '/errors/500',
+                'title' => 'An error occurred',
+                'detail' => 'The transit map could not be generated.',
+                'status' => 500,
+                'errorKey' => 'game.transit_tiles_failed',
+            ], JSON_THROW_ON_ERROR);
+        });
+
         if ($osmLines !== []) {
             $this->persistSelectedLines($game, $osmLines);
         }
@@ -54,6 +80,7 @@ final readonly class GameTransitBuilder
         $relationIds = $this->relationIds($osmLines);
         $osmRefs = $this->refsOf($osmLines);
 
+        /** @var array<string, array{source: GtfsSource, path: string, uuid: string, selectedRefs: list<string>, routeIds: list<string>}> $gtfsSourceSpecs */
         $gtfsSourceSpecs = [];
         foreach ($gtfsLines as $line) {
             $sourceUuid = $line['gtfsSourceUuid'] ?? '';
@@ -70,19 +97,38 @@ final readonly class GameTransitBuilder
             }
             if (!isset($gtfsSourceSpecs[$sourceUuid])) {
                 $gtfsSourceSpecs[$sourceUuid] = [
+                    'source' => $source,
                     'path' => $source->getFilePath(),
                     'uuid' => $sourceUuid,
                     'selectedRefs' => [],
+                    'routeIds' => [],
                 ];
             }
             $gtfsSourceSpecs[$sourceUuid]['selectedRefs'][] = $ref;
+            $routeId = $line['routeId'] ?? '';
+            if (is_string($routeId) && $routeId !== '') {
+                $gtfsSourceSpecs[$sourceUuid]['routeIds'][] = $routeId;
+            }
+        }
+
+        $pipelineSources = [];
+        foreach ($gtfsSourceSpecs as $spec) {
+            $path = $spec['path'];
+            if ($this->gtfsService->sourceMetadata($spec['source'])['requiresSubset']) {
+                $path = $this->gtfsSubsetService->build($spec['source'], $spec['routeIds']);
+            }
+            $pipelineSources[] = [
+                'path' => $path,
+                'uuid' => $spec['uuid'],
+                'selectedRefs' => $spec['selectedRefs'],
+            ];
         }
 
         try {
             $built = $this->transitTilePipeline->build(
                 $game->getUuid(),
                 $relationIds,
-                array_values($gtfsSourceSpecs),
+                $pipelineSources,
                 $osmRefs,
                 $game->getBoundaryGeoJson(),
             );

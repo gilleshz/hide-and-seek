@@ -10,7 +10,8 @@ use Symfony\Component\Process\Process;
 readonly class TransitTilePipeline
 {
     // Must stay under php's max_execution_time so an overrun surfaces as a tile failure, not a fatal.
-    private const int TIMEOUT_SECONDS = 360;
+    // Large selected subsets (for example Paris RER + metro + tram) need more than the old 6 minutes.
+    private const int TIMEOUT_SECONDS = 900;
     // transitmap only emits correct web-mercator XYZ tiles at zoom 14; a zoom range misprojects them.
     private const int NATIVE_ZOOM = 14;
     // LOOM's 2026-07 pin scales MVT widths by 0.1, so 10 restores the former geometry scale.
@@ -81,19 +82,30 @@ readonly class TransitTilePipeline
         chmod($shFile, 0o755);
 
         $process = new Process(
-            [$shFile, $routesCsv],
+            ['setsid', $shFile, $routesCsv],
             null,
             ['OVERPASS_MIRRORS' => $this->overpassMirrors],
             null,
             self::TIMEOUT_SECONDS,
         );
 
+        // A PHP fatal must not orphan topo/loom/gtfs2graph; the shell owns the whole tool chain.
+        $killGroup = static function () use ($process): void {
+            $pid = $process->getPid();
+            if ($pid !== null && function_exists('posix_kill')) {
+                @posix_kill(-$pid, defined('SIGTERM') ? SIGTERM : 15);
+            }
+        };
+        register_shutdown_function($killGroup);
+
         try {
-            $process->run();
+            $process->start();
+            $process->wait();
             if ($process->isSuccessful() && $gtfsSources !== []) {
                 $this->timetableBuilder->build($gameUuid, $mergedDir, $gtfsSources);
             }
         } finally {
+            $killGroup();
             @unlink($shFile);
             @unlink($clipFile);
             $this->removeDir($gtfsDir);

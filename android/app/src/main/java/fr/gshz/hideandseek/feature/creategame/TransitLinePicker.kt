@@ -68,6 +68,7 @@ internal fun TransitLinePicker(
     uniqueGtfsRoutes: List<Pair<GtfsSourceState, GtfsRoute>> = emptyList(),
     selectedGtfsRouteKeys: Set<String> = emptySet(),
     onToggleGtfsRoute: (String, String) -> Unit = { _, _ -> },
+    onToggleAllGtfsRoutes: (String) -> Unit = {},
     onShowGtfsDialog: () -> Unit = {},
     onRemoveGtfsSource: (String) -> Unit = {},
     isDiscoveringTransit: Boolean = false,
@@ -80,6 +81,7 @@ internal fun TransitLinePicker(
     onShowDiscoveryModeDialog: () -> Unit = {},
     onDismissDiscoveryModeDialog: () -> Unit = {},
     discoveryError: UiText? = null,
+    selectionError: UiText? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionHeader(
@@ -107,13 +109,8 @@ internal fun TransitLinePicker(
             )
         }
 
-        if (discoveryError != null) {
-            Text(
-                text = discoveryError.resolve(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
+        discoveryError?.let { PickerErrorText(it) }
+        selectionError?.let { PickerErrorText(it) }
 
         if (availableModes.isNotEmpty()) {
             TransitFilters(query, onQueryChange, availableModes, selectedModeFilters, onToggleModeFilter)
@@ -129,6 +126,7 @@ internal fun TransitLinePicker(
                 uniqueGtfsRoutes = uniqueGtfsRoutes,
                 selectedGtfsRouteKeys = selectedGtfsRouteKeys,
                 onToggleGtfsRoute = onToggleGtfsRoute,
+                onToggleAllGtfsRoutes = onToggleAllGtfsRoutes,
                 onRemoveGtfsSource = onRemoveGtfsSource,
             )
         }
@@ -152,6 +150,15 @@ private fun TransitFilters(
         singleLine = true,
     )
     ModeFilterChipRow(modes, selectedModes, onToggleMode)
+}
+
+@Composable
+private fun PickerErrorText(error: UiText) {
+    Text(
+        text = error.resolve(),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable
@@ -217,6 +224,7 @@ private fun TransitLineList(
     uniqueGtfsRoutes: List<Pair<GtfsSourceState, GtfsRoute>>,
     selectedGtfsRouteKeys: Set<String>,
     onToggleGtfsRoute: (String, String) -> Unit,
+    onToggleAllGtfsRoutes: (String) -> Unit,
     onRemoveGtfsSource: (String) -> Unit,
 ) {
     Column(
@@ -230,6 +238,7 @@ private fun TransitLineList(
             routes = uniqueGtfsRoutes,
             selectedKeys = selectedGtfsRouteKeys,
             onToggleRoute = onToggleGtfsRoute,
+            onToggleAllRoutes = onToggleAllGtfsRoutes,
             onRemoveSource = onRemoveGtfsSource,
         )
 
@@ -307,77 +316,6 @@ private fun BulkSelectRow(
 }
 
 @Composable
-private fun GtfsSourceSection(
-    sources: List<GtfsSourceState>,
-    routes: List<Pair<GtfsSourceState, GtfsRoute>>,
-    selectedKeys: Set<String>,
-    onToggleRoute: (String, String) -> Unit,
-    onRemoveSource: (String) -> Unit,
-) {
-    sources.forEach { source ->
-        Spacer(Modifier.height(Spacing.sm))
-        val sourceRoutes = routes.filter { it.first.uuid == source.uuid }
-        GtfsSourceHeader(
-            source = source,
-            selectedCount = sourceRoutes.count { (_, route) ->
-                "${source.uuid}|${route.routeId}" in selectedKeys
-            },
-            totalCount = sourceRoutes.size,
-            onRemove = { onRemoveSource(source.uuid) },
-        )
-        sourceRoutes.forEach { (_, route) ->
-            GtfsRouteRow(
-                route = route,
-                selected = "${route.sourceUuid}|${route.routeId}" in selectedKeys,
-                onToggle = { onToggleRoute(route.sourceUuid, route.routeId) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun GtfsSourceHeader(
-    source: GtfsSourceState,
-    selectedCount: Int,
-    totalCount: Int,
-    onRemove: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-    ) {
-        Text(
-            text = source.name,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.secondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        SourceChip(stringResource(R.string.transit_source_chip_gtfs))
-        if (source.hasRealtime) LiveChip()
-        Text(
-            text = stringResource(R.string.transit_selected_count, selectedCount, totalCount),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier.size(24.dp),
-        ) {
-            Icon(
-                Icons.Filled.Close,
-                contentDescription = stringResource(R.string.gtfs_remove_source),
-                modifier = Modifier.size(16.dp),
-            )
-        }
-    }
-}
-
-@Composable
 internal fun SourceChip(label: String) {
     Text(
         text = label,
@@ -399,56 +337,6 @@ internal fun LiveChip() {
             .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.extraSmall)
             .padding(horizontal = Spacing.xs, vertical = 2.dp),
     )
-}
-
-@Composable
-private fun GtfsRouteRow(
-    route: GtfsRoute,
-    selected: Boolean,
-    onToggle: () -> Unit,
-) {
-    Surface(
-        onClick = onToggle,
-        shape = MaterialTheme.shapes.small,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val icon = if (selected) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank
-            val iconTint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant
-            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = iconTint)
-            Spacer(Modifier.width(Spacing.sm))
-            if (route.color.isNotBlank()) {
-                Box(
-                    modifier = Modifier.size(14.dp).background(
-                        color = remember(route.color) { parseLineColor(route.color) },
-                        shape = MaterialTheme.shapes.extraSmall,
-                    ),
-                )
-                Spacer(Modifier.width(Spacing.sm))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = route.label,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (route.longName.isNotBlank() && route.longName != route.label) {
-                    Text(
-                        text = route.longName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
