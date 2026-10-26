@@ -29,7 +29,9 @@ final readonly class GtfsShapeCompletionService
     private const int GEOMETRY_MAX_BYTES = 8 * 1024 * 1024;
     private const int MAX_MATCH_POINTS = 2000;
     private const float MAX_MEAN_METERS = 250.0;
-    private const float MAX_MAX_METERS = 600.0;
+    // Beyond this the shape does not serve the stop and bends the tile pipeline's edge geometry.
+    private const float MAX_MAX_METERS = 300.0;
+    private const float MAX_STOP_MEMBER_METERS = 200.0;
     private const float GAP_METERS = 150.0;
     private const float DUPLICATE_ENDPOINT_METERS = 400.0;
     private const float SAME_POINT_METERS = 0.01;
@@ -692,7 +694,11 @@ final readonly class GtfsShapeCompletionService
     /**
      * @param list<array{id: int, ref: string}> $candidates
      *
-     * @return array<int, array{ref: string, points: list<array{lat: float, lon: float}>}>
+     * @return array<int, array{
+     *     ref: string,
+     *     points: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
+     * }>
      */
     private function fetchShapes(array $candidates, float $deadline): array
     {
@@ -704,10 +710,14 @@ final readonly class GtfsShapeCompletionService
         $shapes = [];
         foreach (array_chunk($refsById, self::GEOMETRY_CHUNK, true) as $chunk) {
             $this->assertWithinDeadline($deadline);
-            foreach ($this->fetchGeometryChunk($chunk) as $relationId => $ways) {
-                $points = $this->stitch($ways);
+            foreach ($this->fetchGeometryChunk($chunk) as $relationId => $relation) {
+                $points = $this->stitch($relation['ways']);
                 if (count($points) >= 2) {
-                    $shapes[$relationId] = ['ref' => $refsById[$relationId], 'points' => $points];
+                    $shapes[$relationId] = [
+                        'ref' => $refsById[$relationId],
+                        'points' => $points,
+                        'stops' => $relation['stops'],
+                    ];
                 }
             }
         }
@@ -718,7 +728,10 @@ final readonly class GtfsShapeCompletionService
     /**
      * @param array<int, string> $refsById
      *
-     * @return array<int, list<list<array{lat: float, lon: float}>>>
+     * @return array<int, array{
+     *     ways: list<list<array{lat: float, lon: float}>>,
+     *     stops: list<array{lat: float, lon: float}>
+     * }>
      */
     private function fetchGeometryChunk(array $refsById): array
     {
@@ -761,7 +774,10 @@ final readonly class GtfsShapeCompletionService
     }
 
     /**
-     * @return array<int, list<list<array{lat: float, lon: float}>>>
+     * @return array<int, array{
+     *     ways: list<list<array{lat: float, lon: float}>>,
+     *     stops: list<array{lat: float, lon: float}>
+     * }>
      */
     private function decodeGeometry(string $body): array
     {
@@ -774,7 +790,7 @@ final readonly class GtfsShapeCompletionService
         foreach ($elements as $element) {
             $relation = $this->relationWays($element);
             if ($relation !== null) {
-                $relations[$relation['id']] = $relation['ways'];
+                $relations[$relation['id']] = ['ways' => $relation['ways'], 'stops' => $relation['stops']];
             }
         }
 
@@ -782,7 +798,11 @@ final readonly class GtfsShapeCompletionService
     }
 
     /**
-     * @return array{id: int, ways: list<list<array{lat: float, lon: float}>>}|null
+     * @return array{
+     *     id: int,
+     *     ways: list<list<array{lat: float, lon: float}>>,
+     *     stops: list<array{lat: float, lon: float}>
+     * }|null
      */
     private function relationWays(mixed $element): ?array
     {
@@ -792,19 +812,40 @@ final readonly class GtfsShapeCompletionService
             $members = $element['members'] ?? null;
             if (is_int($id) && $id > 0 && is_array($members)) {
                 $ways = [];
+                $stops = [];
                 foreach ($members as $member) {
                     $way = $this->memberWays($member);
                     if ($way !== null) {
                         $ways[] = $way;
                     }
+                    $stop = $this->memberStop($member);
+                    if ($stop !== null) {
+                        $stops[] = $stop;
+                    }
                 }
                 if ($ways !== []) {
-                    $relation = ['id' => $id, 'ways' => $ways];
+                    $relation = ['id' => $id, 'ways' => $ways, 'stops' => $stops];
                 }
             }
         }
 
         return $relation;
+    }
+
+    /**
+     * @return array{lat: float, lon: float}|null
+     */
+    private function memberStop(mixed $member): ?array
+    {
+        $stop = null;
+        if (is_array($member) && ($member['type'] ?? null) === 'node') {
+            $role = $member['role'] ?? '';
+            if (is_string($role) && str_starts_with($role, 'stop')) {
+                $stop = $this->coordinate($member['lat'] ?? null, $member['lon'] ?? null);
+            }
+        }
+
+        return $stop;
     }
 
     /**
@@ -987,7 +1028,11 @@ final readonly class GtfsShapeCompletionService
 
     /**
      * @param list<array{routeId: string, ref: string, stops: list<string>, trips: list<string>}> $patterns
-     * @param array<int, array{ref: string, points: list<array{lat: float, lon: float}>}> $shapes
+     * @param array<int, array{
+     *     ref: string,
+     *     points: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
+     * }> $shapes
      * @param array<string, array{lat: float, lon: float}> $stops
      *
      * @return array{
@@ -1046,13 +1091,18 @@ final readonly class GtfsShapeCompletionService
     }
 
     /**
-     * @param array<int, array{ref: string, points: list<array{lat: float, lon: float}>}> $shapes
+     * @param array<int, array{
+     *     ref: string,
+     *     points: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
+     * }> $shapes
      *
      * @return array<string, list<array{
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
      *     points: list<array{float, float}>,
-     *     geometry: list<array{lat: float, lon: float}>
+     *     geometry: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * }>>
      */
     private function candidatesByRef(array $shapes): array
@@ -1065,6 +1115,7 @@ final readonly class GtfsShapeCompletionService
                 'origin' => $projected['origin'],
                 'points' => $projected['points'],
                 'geometry' => $shape['points'],
+                'stops' => $shape['stops'],
             ];
         }
 
@@ -1119,7 +1170,8 @@ final readonly class GtfsShapeCompletionService
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
      *     points: list<array{float, float}>,
-     *     geometry: list<array{lat: float, lon: float}>
+     *     geometry: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * }> $candidates
      * @param array<string, array{lat: float, lon: float}> $stops
      *
@@ -1135,7 +1187,7 @@ final readonly class GtfsShapeCompletionService
         $best = null;
         foreach ($candidates as $candidate) {
             $stats = $this->matchStats($stopIds, $candidate, $stops);
-            if ($stats['mean'] > self::MAX_MEAN_METERS || $stats['max'] > self::MAX_MAX_METERS) {
+            if (!$this->acceptable($stats)) {
                 continue;
             }
             $ranked = [
@@ -1158,14 +1210,16 @@ final readonly class GtfsShapeCompletionService
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
      *     points: list<array{float, float}>,
-     *     geometry: list<array{lat: float, lon: float}>
+     *     geometry: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * }> $candidates
      * @param array<string, array{lat: float, lon: float}> $stops
      * @param array<string, array{
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
      *     points: list<array{float, float}>,
-     *     geometry: list<array{lat: float, lon: float}>
+     *     geometry: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * }|null> $merged
      *
      * @return array{
@@ -1189,7 +1243,7 @@ final readonly class GtfsShapeCompletionService
         }
 
         $stats = $this->matchStats($stopIds, $candidate, $stops);
-        if ($stats['mean'] > self::MAX_MEAN_METERS || $stats['max'] > self::MAX_MAX_METERS) {
+        if (!$this->acceptable($stats)) {
             return null;
         }
 
@@ -1206,21 +1260,27 @@ final readonly class GtfsShapeCompletionService
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
      *     points: list<array{float, float}>,
-     *     geometry: list<array{lat: float, lon: float}>
+     *     geometry: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * }> $candidates
      *
      * @return array{
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
      *     points: list<array{float, float}>,
-     *     geometry: list<array{lat: float, lon: float}>
+     *     geometry: list<array{lat: float, lon: float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * }|null
      */
     private function buildMergedCandidate(array $candidates): ?array
     {
         $relationIds = [];
+        $stopMembers = [];
         foreach ($candidates as $candidate) {
             $relationIds[] = $candidate['relationId'];
+            foreach ($candidate['stops'] as $stop) {
+                $stopMembers[] = $stop;
+            }
         }
         $chains = $this->uniqueChains($candidates);
         if ($relationIds === [] || $chains === []) {
@@ -1238,6 +1298,7 @@ final readonly class GtfsShapeCompletionService
             'origin' => $projected['origin'],
             'points' => $projected['points'],
             'geometry' => $points,
+            'stops' => $stopMembers,
         ];
     }
 
@@ -1360,11 +1421,12 @@ final readonly class GtfsShapeCompletionService
      * @param array{
      *     relationId: int,
      *     origin: array{lat: float, lon: float},
-     *     points: list<array{float, float}>
+     *     points: list<array{float, float}>,
+     *     stops: list<array{lat: float, lon: float}>
      * } $candidate
      * @param array<string, array{lat: float, lon: float}> $stops
      *
-     * @return array{mean: float, max: float}
+     * @return array{mean: float, max: float, stopMax: float|null}
      */
     private function matchStats(array $stopIds, array $candidate, array $stops): array
     {
@@ -1380,7 +1442,48 @@ final readonly class GtfsShapeCompletionService
             $max = max($max, $distance);
         }
 
-        return ['mean' => $total / count($stopIds), 'max' => $max];
+        return [
+            'mean' => $total / count($stopIds),
+            'max' => $max,
+            'stopMax' => $this->stopMemberMax($stopIds, $candidate['stops'], $stops),
+        ];
+    }
+
+    /**
+     * Null when the relation lists fewer stops than the pattern, so it cannot confirm them all.
+     *
+     * @param list<string> $stopIds
+     * @param list<array{lat: float, lon: float}> $stopMembers
+     * @param array<string, array{lat: float, lon: float}> $stops
+     */
+    private function stopMemberMax(array $stopIds, array $stopMembers, array $stops): ?float
+    {
+        if ($stopMembers === [] || count($stopMembers) < count($stopIds)) {
+            return null;
+        }
+
+        $max = 0.0;
+        foreach ($stopIds as $stopId) {
+            $nearest = INF;
+            foreach ($stopMembers as $member) {
+                $nearest = min($nearest, $this->distanceMeters($stops[$stopId], $member));
+            }
+            $max = max($max, $nearest);
+        }
+
+        return $max;
+    }
+
+    /**
+     * @param array{mean: float, max: float, stopMax: float|null} $stats
+     */
+    private function acceptable(array $stats): bool
+    {
+        if ($stats['mean'] > self::MAX_MEAN_METERS || $stats['max'] > self::MAX_MAX_METERS) {
+            return false;
+        }
+
+        return $stats['stopMax'] === null || $stats['stopMax'] <= self::MAX_STOP_MEMBER_METERS;
     }
 
     /**

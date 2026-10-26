@@ -121,6 +121,22 @@ final class GtfsShapeCompletionServiceTest extends TestCase
         ]}
         JSON;
 
+    private const string GEOMETRY_STOP_MEMBERS = <<<'JSON'
+        {"version":0.6,"elements":[
+         {"type":"relation","id":100,"members":[
+           {"type":"way","role":"","geometry":[{"lat":48.5001,"lon":7.6999},{"lat":48.5001,"lon":7.7050}]},
+           {"type":"way","role":"","geometry":[{"lat":48.5001,"lon":7.7050},{"lat":48.5001,"lon":7.7201}]},
+           {"type":"node","role":"stop","lat":48.5000,"lon":7.7000},
+           {"type":"node","role":"stop","lat":48.5000,"lon":7.7150}
+         ]},
+         {"type":"relation","id":200,"members":[
+           {"type":"way","role":"","geometry":[
+             {"lat":48.5100,"lon":7.7000},{"lat":48.5100,"lon":7.7100},{"lat":48.5100,"lon":7.7200}
+           ]}
+         ]}
+        ]}
+        JSON;
+
     private const string GEOMETRY_B_ONLY = <<<'JSON'
         {"version":0.6,"elements":[
          {"type":"relation","id":200,"members":[
@@ -238,6 +254,46 @@ final class GtfsShapeCompletionServiceTest extends TestCase
         self::assertCount(2, $tripRows);
         self::assertSame('OSM_100', $tripRows[0]['shape_id']);
         self::assertSame('', $tripRows[1]['shape_id']);
+    }
+
+    #[Test]
+    public function itRejectsAShapeThatDoesNotReachEveryStop(): void
+    {
+        $path = $this->createZip($this->fixtureWithFarStop());
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY),
+            new MockResponse(self::GEOMETRY),
+        ]);
+
+        $result = $this->createService($client)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 1, 'routes' => 1, 'unmatched' => ['A']], $result);
+
+        $zip = $this->openZip($path);
+        $trips = $this->parseCsv((string) $zip->getFromName('trips.txt'));
+        $zip->close();
+
+        self::assertSame(['', 'OSM_200'], array_column($trips['rows'], 'shape_id'));
+    }
+
+    #[Test]
+    public function itRejectsARelationWhoseStopMembersDoNotServeThePattern(): void
+    {
+        $path = $this->createZip($this->fixtureWithTwoStops());
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY),
+            new MockResponse(self::GEOMETRY_STOP_MEMBERS),
+        ]);
+
+        $result = $this->createService($client)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 1, 'routes' => 1, 'unmatched' => ['A']], $result);
+
+        $zip = $this->openZip($path);
+        $trips = $this->parseCsv((string) $zip->getFromName('trips.txt'));
+        $zip->close();
+
+        self::assertSame(['', 'OSM_200'], array_column($trips['rows'], 'shape_id'));
     }
 
     #[Test]
@@ -514,6 +570,50 @@ final class GtfsShapeCompletionServiceTest extends TestCase
         $files['shapes.txt'] = "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
             . "SH1,48.5000,7.7000,1\n"
             . "SH1,48.5000,7.7200,2\n";
+
+        return $files;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function fixtureWithFarStop(): array
+    {
+        $files = $this->fixture();
+        $files['stops.txt'] = "stop_id,stop_name,stop_lat,stop_lon\n"
+            . "SA1,Alpha,48.5000,7.7000\n"
+            . "SA2,Far,48.5042,7.7100\n"
+            . "SB1,Delta,48.5100,7.7000\n"
+            . "SB2,Epsilon,48.5100,7.7100\n"
+            . "SB3,Zeta,48.5100,7.7200\n";
+        $files['stop_times.txt'] = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            . "TA1,08:00:00,08:00:00,SA1,1\n"
+            . "TA1,08:05:00,08:05:00,SA2,2\n"
+            . "TB1,09:00:00,09:00:00,SB1,1\n"
+            . "TB1,09:05:00,09:05:00,SB2,2\n"
+            . "TB1,09:10:00,09:10:00,SB3,3\n";
+
+        return $files;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function fixtureWithTwoStops(): array
+    {
+        $files = $this->fixture();
+        $files['stops.txt'] = "stop_id,stop_name,stop_lat,stop_lon\n"
+            . "SA1,Alpha,48.5000,7.7000\n"
+            . "SA2,Beta,48.5000,7.7100\n"
+            . "SB1,Delta,48.5100,7.7000\n"
+            . "SB2,Epsilon,48.5100,7.7100\n"
+            . "SB3,Zeta,48.5100,7.7200\n";
+        $files['stop_times.txt'] = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            . "TA1,08:00:00,08:00:00,SA1,1\n"
+            . "TA1,08:05:00,08:05:00,SA2,2\n"
+            . "TB1,09:00:00,09:00:00,SB1,1\n"
+            . "TB1,09:05:00,09:05:00,SB2,2\n"
+            . "TB1,09:10:00,09:10:00,SB3,3\n";
 
         return $files;
     }
