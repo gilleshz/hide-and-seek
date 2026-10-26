@@ -237,6 +237,7 @@ private data class SimOption(
     val onClick: () -> Unit,
     val enabled: Boolean = true,
     val isRepeat: Boolean = false,
+    val hintRes: Int? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -259,11 +260,20 @@ private fun OptionDropdown(label: String, options: List<SimOption>) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = {
-                        Text(
-                            text = stringResource(option.labelRes),
-                            color = if (option.isRepeat) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurface,
-                        )
+                        Column {
+                            Text(
+                                text = stringResource(option.labelRes),
+                                color = if (option.isRepeat) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurface,
+                            )
+                            option.hintRes?.let { hint ->
+                                Text(
+                                    text = stringResource(hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     },
                     onClick = {
                         option.onClick()
@@ -300,6 +310,7 @@ private fun measuringOptions(
                 onClick = { if (!disabled) actions.onSetFeatureType(ft.wireValue) },
                 enabled = !disabled,
                 isRepeat = repeat,
+                hintRes = ft.hintRes,
             ),
         )
     }
@@ -328,6 +339,7 @@ private fun matchingOptions(
                 selected = state.featureType == ft.wireValue,
                 onClick = { actions.onSetFeatureType(ft.wireValue) },
                 isRepeat = repeat,
+                hintRes = ft.hintRes,
             ),
         )
     }

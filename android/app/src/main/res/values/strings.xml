@@ -612,11 +612,17 @@
     <string name="feature_type_coastline">Coastline</string>
     <string name="feature_type_border_international">International border</string>
     <string name="feature_type_border_admin_1st">1st division border</string>
+    <string name="feature_type_border_admin_1st_hint">Edge of a state, region or province</string>
     <string name="feature_type_border_admin_2nd">2nd division border</string>
+    <string name="feature_type_border_admin_2nd_hint">Edge of a county, department or district</string>
     <string name="feature_type_admin_boundary_1st">1st admin division</string>
+    <string name="feature_type_admin_boundary_1st_hint">State, region or province</string>
     <string name="feature_type_admin_boundary_2nd">2nd admin division</string>
+    <string name="feature_type_admin_boundary_2nd_hint">County, department or district</string>
     <string name="feature_type_admin_boundary_3rd">3rd admin division</string>
+    <string name="feature_type_admin_boundary_3rd_hint">City, town or municipality</string>
     <string name="feature_type_admin_boundary_4th">4th admin division</string>
+    <string name="feature_type_admin_boundary_4th_hint">Borough, ward or parish</string>
     <string name="feature_type_hospital">Hospital</string>
     <string name="feature_type_library">Library</string>
     <string name="feature_type_museum">Museum</string>

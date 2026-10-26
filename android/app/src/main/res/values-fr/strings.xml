@@ -406,11 +406,17 @@
     <string name="feature_type_coastline">Littoral</string>
     <string name="feature_type_border_international">Frontière internationale</string>
     <string name="feature_type_border_admin_1st">Frontière de division de 1er niveau</string>
+    <string name="feature_type_border_admin_1st_hint">Limite d\'une région, d\'un État ou d\'une province</string>
     <string name="feature_type_border_admin_2nd">Frontière de division de 2e niveau</string>
+    <string name="feature_type_border_admin_2nd_hint">Limite d\'un département, d\'un comté ou d\'un district</string>
     <string name="feature_type_admin_boundary_1st">Division administrative de 1er niveau</string>
+    <string name="feature_type_admin_boundary_1st_hint">Région, État ou province</string>
     <string name="feature_type_admin_boundary_2nd">Division administrative de 2e niveau</string>
+    <string name="feature_type_admin_boundary_2nd_hint">Département, comté ou district</string>
     <string name="feature_type_admin_boundary_3rd">Division administrative de 3e niveau</string>
+    <string name="feature_type_admin_boundary_3rd_hint">Commune, ville ou municipalité</string>
     <string name="feature_type_admin_boundary_4th">Division administrative de 4e niveau</string>
+    <string name="feature_type_admin_boundary_4th_hint">Arrondissement ou quartier</string>
     <string name="feature_type_hospital">Hôpital</string>
     <string name="feature_type_library">Bibliothèque</string>
     <string name="feature_type_museum">Musée</string>

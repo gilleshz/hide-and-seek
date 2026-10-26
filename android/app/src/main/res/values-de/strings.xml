@@ -609,11 +609,17 @@
     <string name="feature_type_coastline">Küstenlinie</string>
     <string name="feature_type_border_international">Internationale Grenze</string>
     <string name="feature_type_border_admin_1st">Grenze der Verwaltungseinheit 1. Ordnung</string>
+    <string name="feature_type_border_admin_1st_hint">Grenze eines Bundeslands, Kantons oder einer Region</string>
     <string name="feature_type_border_admin_2nd">Grenze der Verwaltungseinheit 2. Ordnung</string>
+    <string name="feature_type_border_admin_2nd_hint">Grenze eines Landkreises oder Bezirks</string>
     <string name="feature_type_admin_boundary_1st">Verwaltungseinheit 1. Ordnung</string>
+    <string name="feature_type_admin_boundary_1st_hint">Bundesland, Kanton oder Region</string>
     <string name="feature_type_admin_boundary_2nd">Verwaltungseinheit 2. Ordnung</string>
+    <string name="feature_type_admin_boundary_2nd_hint">Landkreis oder Bezirk</string>
     <string name="feature_type_admin_boundary_3rd">Verwaltungseinheit 3. Ordnung</string>
+    <string name="feature_type_admin_boundary_3rd_hint">Gemeinde, Stadt oder Kommune</string>
     <string name="feature_type_admin_boundary_4th">Verwaltungseinheit 4. Ordnung</string>
+    <string name="feature_type_admin_boundary_4th_hint">Stadtbezirk, Stadtteil oder Viertel</string>
     <string name="feature_type_hospital">Krankenhaus</string>
     <string name="feature_type_library">Bibliothek</string>
     <string name="feature_type_museum">Museum</string>
