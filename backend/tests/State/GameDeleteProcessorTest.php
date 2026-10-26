@@ -31,6 +31,7 @@ use App\Service\GameTransitBuilder;
 use App\Service\GtfsService;
 use App\Service\GtfsShapeCompletionService;
 use App\Service\GtfsSubsetService;
+use App\Service\GtfsTripVariantFilter;
 use App\Service\HeavyWorkGuard;
 use App\Service\IdentityResolver;
 use App\Service\LeaveService;
@@ -220,6 +221,7 @@ final class GameDeleteProcessorTest extends TestCase
                 $this->createStub(GtfsSourceRepository::class),
                 $gtfsService,
                 new GtfsSubsetService($gtfsService, new Filesystem(), new NullLogger()),
+                new GtfsTripVariantFilter(new Filesystem()),
                 new TransitTilePipeline(
                     'http://mirror/api',
                     '/tmp/tiles',

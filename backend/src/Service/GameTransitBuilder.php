@@ -24,6 +24,7 @@ final readonly class GameTransitBuilder
         private GtfsSourceRepository $gtfsSources,
         private GtfsService $gtfsService,
         private GtfsSubsetService $gtfsSubsetService,
+        private GtfsTripVariantFilter $tripVariants,
         private TransitTilePipeline $transitTilePipeline,
         private TransitStationImporter $transitStationImporter,
         private EntityManagerInterface $entityManager,
@@ -112,19 +113,24 @@ final readonly class GameTransitBuilder
         }
 
         $pipelineSources = [];
-        foreach ($gtfsSourceSpecs as $spec) {
-            $path = $spec['path'];
-            if ($this->gtfsService->sourceMetadata($spec['source'])['requiresSubset']) {
-                $path = $this->gtfsSubsetService->build($spec['source'], $spec['routeIds']);
-            }
-            $pipelineSources[] = [
-                'path' => $path,
-                'uuid' => $spec['uuid'],
-                'selectedRefs' => $spec['selectedRefs'],
-            ];
-        }
-
+        $filteredPaths = [];
         try {
+            foreach ($gtfsSourceSpecs as $spec) {
+                $path = $spec['path'];
+                if ($this->gtfsService->sourceMetadata($spec['source'])['requiresSubset']) {
+                    $path = $this->gtfsSubsetService->build($spec['source'], $spec['routeIds']);
+                }
+                $filtered = $this->tripVariants->filter($path, $spec['routeIds']);
+                if ($filtered !== $path) {
+                    $filteredPaths[] = $filtered;
+                }
+                $pipelineSources[] = [
+                    'path' => $filtered,
+                    'uuid' => $spec['uuid'],
+                    'selectedRefs' => $spec['selectedRefs'],
+                ];
+            }
+
             $built = $this->transitTilePipeline->build(
                 $game->getUuid(),
                 $relationIds,
@@ -134,6 +140,10 @@ final readonly class GameTransitBuilder
             );
         } catch (\RuntimeException $e) {
             $this->failTileBuild($game, $e);
+        } finally {
+            foreach ($filteredPaths as $filteredPath) {
+                @unlink($filteredPath);
+            }
         }
 
         if ($built === 0) {
