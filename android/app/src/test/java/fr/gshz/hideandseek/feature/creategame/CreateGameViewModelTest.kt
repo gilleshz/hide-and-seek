@@ -356,6 +356,116 @@ class CreateGameViewModelTest {
     }
 
     @Test
+    fun `toggling an area keeps the selected transit lines`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+
+        viewModel.toggleArea(AreaInfo("456", "relation", "Nancy", 8))
+
+        assertEquals(setOf("1"), viewModel.uiState.value.selectedTransitLines)
+    }
+
+    @Test
+    fun `fitting the area adds the communes the lines serve`() = runTest(dispatcher) {
+        gameRepository.fitAreasResult = Result.success(
+            listOf(
+                AreaInfo("10", "relation", "Metz", 8),
+                AreaInfo("11", "relation", "Montigny-lès-Metz", 8),
+            ),
+        )
+        val gate = CompletableDeferred<Unit>()
+        gameRepository.fitAreasGate = gate
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+
+        viewModel.fitAreaFromLines()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isFittingArea)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isFittingArea)
+        assertEquals(listOf("10", "11"), viewModel.uiState.value.selectedAreas.map { it.osmId })
+        assertEquals(2, viewModel.uiState.value.fitAreaCount)
+        assertNull(viewModel.uiState.value.fitAreaError)
+        assertEquals(setOf("1"), gameRepository.fitAreasCalls.single().osmLineIds)
+    }
+
+    @Test
+    fun `a refit replaces only the areas the previous fit added`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+
+        gameRepository.fitAreasResult = Result.success(listOf(AreaInfo("10", "relation", "Metz", 8)))
+        viewModel.fitAreaFromLines()
+        advanceUntilIdle()
+        viewModel.toggleArea(AreaInfo("99", "relation", "Kehl", 8))
+
+        gameRepository.fitAreasResult = Result.success(listOf(AreaInfo("11", "relation", "Montigny", 8)))
+        viewModel.fitAreaFromLines()
+        advanceUntilIdle()
+
+        assertEquals(listOf("99", "11"), viewModel.uiState.value.selectedAreas.map { it.osmId })
+    }
+
+    @Test
+    fun `a fit failure maps the server error`() = runTest(dispatcher) {
+        gameRepository.fitAreasResult = Result.failure(
+            httpException(400, """{"errorKey":"area_fit.no_areas"}"""),
+        )
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+
+        viewModel.fitAreaFromLines()
+        advanceUntilIdle()
+
+        assertEquals(
+            UiText.fromResource(R.string.area_fit_no_areas),
+            viewModel.uiState.value.fitAreaError,
+        )
+        assertFalse(viewModel.uiState.value.isFittingArea)
+    }
+
+    @Test
+    fun `a too many areas error keeps the counts`() = runTest(dispatcher) {
+        gameRepository.fitAreasResult = Result.failure(
+            httpException(
+                400,
+                """{"errorKey":"area_fit.too_many_areas","errorArgs":{"count":"63","max":"50"}}""",
+            ),
+        )
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+
+        viewModel.fitAreaFromLines()
+        advanceUntilIdle()
+
+        assertEquals(
+            UiText.fromResource(R.string.area_fit_too_many_areas, 63, 50),
+            viewModel.uiState.value.fitAreaError,
+        )
+    }
+
+    @Test
+    fun `a fit without selected lines does nothing`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+
+        viewModel.fitAreaFromLines()
+        advanceUntilIdle()
+
+        assertTrue(gameRepository.fitAreasCalls.isEmpty())
+    }
+
+    @Test
     fun `a blank name blocks creation`() = runTest {
         val viewModel = createViewModel()
 

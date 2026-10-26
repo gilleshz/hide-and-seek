@@ -2,6 +2,8 @@ package fr.gshz.hideandseek.feature.creategame
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,29 +27,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.SectionHeader
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.repository.AreaInfo
+import java.text.NumberFormat
+import kotlin.math.roundToInt
 
 @Composable
-internal fun AreaSearchSection(uiState: CreateGameUiState, actions: CreateGameActions) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+internal fun AreaSearchSection(
+    uiState: CreateGameUiState,
+    actions: CreateGameActions,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
         SectionHeader(text = stringResource(R.string.area_search_game_boundary), icon = Icons.Filled.Search)
         AreaSearchInputRow(uiState, actions)
         if (uiState.selectedAreas.isNotEmpty()) {
-            Text(
-                stringResource(
-                    R.string.area_search_selected,
-                    uiState.selectedAreas.joinToString { it.displayName.take(30) },
-                ),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SelectedAreaChips(uiState.selectedAreas, actions.onToggleArea)
         }
         if (uiState.areaSearchResults.isNotEmpty()) {
             AreaSearchResultList(uiState.areaSearchResults, uiState.selectedAreas, actions.onToggleArea)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SelectedAreaChips(areas: List<AreaInfo>, onToggle: (AreaInfo) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Text(
+            pluralStringResource(R.plurals.area_search_selected_count, areas.size, areas.size),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            areas.forEach { area ->
+                FilterChip(
+                    selected = true,
+                    onClick = { onToggle(area) },
+                    label = { Text(area.displayName.substringBefore(',').trim()) },
+                )
+            }
         }
     }
 }
@@ -90,6 +120,7 @@ private fun AreaSearchResultList(
         results.forEach { area ->
             AreaChip(
                 label = area.displayName.take(80),
+                detail = areaDetail(area),
                 selected = selectedAreas.any { it.osmId == area.osmId },
                 onClick = { onToggle(area) },
             )
@@ -97,8 +128,31 @@ private fun AreaSearchResultList(
     }
 }
 
+/** Null when Nominatim returned neither a bounding box nor a population. */
 @Composable
-private fun AreaChip(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun areaDetail(area: AreaInfo): String? {
+    val width = area.widthKm
+    val height = area.heightKm
+    val size = if (width != null && height != null) {
+        stringResource(R.string.area_search_size_km, width.roundToInt(), height.roundToInt())
+    } else {
+        null
+    }
+    val population = area.population
+    val people = if (population != null) {
+        stringResource(
+            R.string.area_search_population,
+            NumberFormat.getIntegerInstance().format(population),
+        )
+    } else {
+        null
+    }
+
+    return listOfNotNull(size, people).joinToString(" · ").ifEmpty { null }
+}
+
+@Composable
+private fun AreaChip(label: String, detail: String?, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.small,
@@ -119,12 +173,20 @@ private fun AreaChip(label: String, selected: Boolean, onClick: () -> Unit) {
                 )
                 Spacer(Modifier.width(Spacing.sm))
             }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                )
+                if (detail != null) {
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }

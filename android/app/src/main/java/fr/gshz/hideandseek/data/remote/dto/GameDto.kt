@@ -66,6 +66,9 @@ data class AreaSearchResult(
     val osmType: String,
     val displayName: String,
     val adminLevel: Int? = null,
+    val population: Int? = null,
+    val widthKm: Double? = null,
+    val heightKm: Double? = null,
 )
 
 @Serializable

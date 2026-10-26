@@ -103,6 +103,64 @@ final readonly class GtfsSubsetService
     }
 
     /**
+     * Stop coordinates of a feed or of the route-filtered subset built for it.
+     *
+     * @return list<array{lat: float, lon: float}>
+     */
+    public function stopCoordinates(string $zipPath): array
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new FunctionalException(
+                message: 'Failed to open GTFS archive.',
+                errorKey: 'gtfs.archive_open_failed',
+            );
+        }
+
+        try {
+            $in = $zip->getStream('stops.txt');
+            if (!is_resource($in)) {
+                throw new FunctionalException(
+                    message: 'The GTFS source is missing stops.txt.',
+                    errorKey: 'gtfs.invalid_archive',
+                );
+            }
+
+            try {
+                $header = fgetcsv($in, null, ',', '"', '');
+                if ($header === false) {
+                    throw new FunctionalException(
+                        message: 'The GTFS source has an empty stops.txt.',
+                        errorKey: 'gtfs.invalid_archive',
+                    );
+                }
+                $map = array_flip(array_map(static fn (string|null $h): string => (string) $h, $header));
+                $latIndex = $map['stop_lat'] ?? null;
+                $lonIndex = $map['stop_lon'] ?? null;
+                if ($latIndex === null || $lonIndex === null) {
+                    return [];
+                }
+
+                $points = [];
+                while (($row = fgetcsv($in, null, ',', '"', '')) !== false) {
+                    $lat = $row[$latIndex] ?? '';
+                    $lon = $row[$lonIndex] ?? '';
+                    if (!is_numeric($lat) || !is_numeric($lon)) {
+                        continue;
+                    }
+                    $points[] = ['lat' => (float) $lat, 'lon' => (float) $lon];
+                }
+
+                return $points;
+            } finally {
+                fclose($in);
+            }
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
      * @param list<string> $routeIds
      */
     private function buildInto(string $sourcePath, array $routeIds, string $subsetPath): void

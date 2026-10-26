@@ -71,9 +71,24 @@
     <string name="transit_source_chip_osm">OSM</string>
     <string name="create_game_loading">Spiel wird erstellt und Kartendaten werden geladen, bei großen Feeds kann dies einige Minuten dauern</string>
     <string name="area_search_game_boundary">Spielfeldgrenze</string>
-    <string name="area_search_selected">Ausgewählt: <xliff:g>%1$s</xliff:g></string>
+    <plurals name="area_search_selected_count">
+        <item quantity="one"><xliff:g>%d</xliff:g> Gebiet ausgewählt</item>
+        <item quantity="other"><xliff:g>%d</xliff:g> Gebiete ausgewählt</item>
+    </plurals>
     <string name="area_search_hint">Stadt oder Region suchen</string>
     <string name="area_search_button">Suchen</string>
+    <string name="area_search_size_km">≈ <xliff:g>%1$d</xliff:g> × <xliff:g>%2$d</xliff:g> km</string>
+    <string name="area_search_population"><xliff:g>%1$s</xliff:g> Einwohner</string>
+    <string name="area_fit_action">Spielfläche aus diesen Linien festlegen</string>
+    <string name="area_fit_loading">Gebiete entlang dieser Linien werden gesucht...</string>
+    <string name="area_fit_done">Spielfläche aktualisiert: <xliff:g>%1$d</xliff:g> Gebiete</string>
+    <string name="area_fit_review">Prüfen</string>
+    <string name="area_fit_network_error">Gebiete konnten nicht ermittelt werden: Verbindung prüfen und erneut versuchen.</string>
+    <string name="area_fit_no_lines">Wählen Sie zuerst mindestens eine Linie.</string>
+    <string name="area_fit_no_geometry">Die ausgewählten Linien haben keine nutzbare Geometrie.</string>
+    <string name="area_fit_no_areas">Keine Gebiete entlang dieser Linien gefunden.</string>
+    <string name="area_fit_too_large">Diese Linien umfassen ein zu großes Gebiet, um daraus eine Spielfläche abzuleiten.</string>
+    <string name="area_fit_too_many_areas">Diese Linien bedienen <xliff:g>%1$d</xliff:g> Gebiete, mehr als das Limit von <xliff:g>%2$d</xliff:g> Gebieten. Wählen Sie weniger Linien.</string>
 
     <string name="join_game_title">Spiel beitreten</string>
     <string name="join_game_key_label">Spielschlüssel</string>

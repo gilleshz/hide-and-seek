@@ -26,7 +26,15 @@ data class GameBoundary(
 
 data class AreaRef(val osmType: String, val osmId: Int)
 
-data class AreaInfo(val osmId: String, val osmType: String, val displayName: String, val adminLevel: Int?)
+data class AreaInfo(
+    val osmId: String,
+    val osmType: String,
+    val displayName: String,
+    val adminLevel: Int?,
+    val population: Int? = null,
+    val widthKm: Double? = null,
+    val heightKm: Double? = null,
+)
 
 data class GtfsLineSelection(
     val sourceUuid: String,
@@ -50,6 +58,7 @@ interface GameRepository {
     suspend fun discoverTransitLines(areas: List<AreaInfo>, routeTypes: List<String>? = null): List<TransitLine>
     suspend fun boundaryPreview(areas: List<AreaInfo>): String
     suspend fun transitLinePreview(osmIds: Set<String>): String
+    suspend fun fitAreasFromLines(osmLineIds: Set<String>, gtfsLines: List<GtfsLineSelection>): List<AreaInfo>
     suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,

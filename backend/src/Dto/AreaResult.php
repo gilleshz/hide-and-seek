@@ -11,6 +11,9 @@ final class AreaResult
         public readonly int $osmId,
         public readonly string $displayName,
         public readonly ?int $adminLevel,
+        public readonly ?int $population = null,
+        public readonly ?float $widthKm = null,
+        public readonly ?float $heightKm = null,
     ) {
     }
 }

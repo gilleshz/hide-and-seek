@@ -6,6 +6,9 @@ import fr.gshz.hideandseek.core.model.NotConnectedException
 import fr.gshz.hideandseek.data.mapper.toDomain
 import fr.gshz.hideandseek.data.remote.HideAndSeekApi
 import fr.gshz.hideandseek.data.remote.dto.AreaRef
+import fr.gshz.hideandseek.data.remote.dto.AreaFitGtfsLine
+import fr.gshz.hideandseek.data.remote.dto.AreaFitRequest
+import fr.gshz.hideandseek.data.remote.dto.AreaSearchResult
 import fr.gshz.hideandseek.data.remote.dto.BoundaryPreviewRequest
 import fr.gshz.hideandseek.data.remote.dto.GameConfigRequest
 import fr.gshz.hideandseek.data.remote.dto.GameCreateRequest
@@ -160,14 +163,17 @@ class GameRepositoryImpl @Inject constructor(
     }
 
     override suspend fun searchAreas(query: String): List<AreaInfo> =
-        api.searchAreas(url = urlFor("/api/areas?q=$query")).map { dto ->
-            AreaInfo(
-                osmId = dto.osmId,
-                osmType = dto.osmType,
-                displayName = dto.displayName,
-                adminLevel = dto.adminLevel,
-            )
-        }
+        api.searchAreas(url = urlFor("/api/areas?q=$query")).map { it.toAreaInfo() }
+
+    private fun AreaSearchResult.toAreaInfo(): AreaInfo = AreaInfo(
+        osmId = osmId,
+        osmType = osmType,
+        displayName = displayName,
+        adminLevel = adminLevel,
+        population = population,
+        widthKm = widthKm,
+        heightKm = heightKm,
+    )
 
     override suspend fun searchTransitCatalog(
         bbox: BoundingBox,
@@ -215,6 +221,17 @@ class GameRepositoryImpl @Inject constructor(
             url = urlFor("/api/transit-line-preview"),
             body = TransitLinePreviewRequest(osmIds = osmIds.toList()),
         ).geoJson
+
+    override suspend fun fitAreasFromLines(
+        osmLineIds: Set<String>,
+        gtfsLines: List<GtfsLineSelection>,
+    ): List<AreaInfo> = longTimeoutApi.fitAreas(
+        url = urlFor("/api/area-fit"),
+        body = AreaFitRequest(
+            osmLineIds = osmLineIds.toList(),
+            gtfsLines = gtfsLines.map { AreaFitGtfsLine(gtfsSourceUuid = it.sourceUuid, routeId = it.route.routeId) },
+        ),
+    ).areas.map { it.toAreaInfo() }
 
     override suspend fun getGame(gameUuid: String): GameSummary =
         api.getGame(url = urlFor("/api/games/$gameUuid")).toDomain()

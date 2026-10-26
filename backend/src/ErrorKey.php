@@ -22,6 +22,11 @@ final class ErrorKey
     public const string CHAT_IMAGE_TOO_LARGE = 'chat_image.too_large';
     public const string HEAVY_WORK_BUSY = 'heavy_work.busy';
     public const string TOO_MANY_AREAS = 'game.too_many_areas';
+    public const string AREA_FIT_NO_LINES = 'area_fit.no_lines';
+    public const string AREA_FIT_NO_GEOMETRY = 'area_fit.no_geometry';
+    public const string AREA_FIT_NO_AREAS = 'area_fit.no_areas';
+    public const string AREA_FIT_TOO_MANY_AREAS = 'area_fit.too_many_areas';
+    public const string AREA_FIT_TOO_LARGE = 'area_fit.too_large';
     public const string GTFS_SHAPES_MISSING = 'gtfs.shapes_missing';
     public const string GTFS_SOURCE_TOO_LARGE = 'gtfs.source_too_large';
     public const string GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE = 'gtfs.source_uncompressed_too_large';

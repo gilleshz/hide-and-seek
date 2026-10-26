@@ -1,5 +1,6 @@
 package fr.gshz.hideandseek.feature.creategame
 
+import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.TransitLine
@@ -47,6 +48,13 @@ class CreateGameUiStateTest {
         transitLines = listOf(metro, tram),
         gtfsSources = listOf(source),
     )
+
+    @Test
+    fun `the fit action is shown for Small and Medium and hidden for Large`() {
+        assertTrue(CreateGameUiState(size = GameSize.Small).showFitArea)
+        assertTrue(CreateGameUiState(size = GameSize.Medium).showFitArea)
+        assertFalse(CreateGameUiState(size = GameSize.Large).showFitArea)
+    }
 
     @Test
     fun `the query filters osm groups and gtfs routes by name and ref`() {

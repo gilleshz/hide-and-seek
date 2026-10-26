@@ -26,4 +26,7 @@ final class AreaSearchResource
     public string $osmType;
     public string $displayName;
     public ?int $adminLevel = null;
+    public ?int $population = null;
+    public ?float $widthKm = null;
+    public ?float $heightKm = null;
 }

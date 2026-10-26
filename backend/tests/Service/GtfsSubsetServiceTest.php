@@ -90,6 +90,21 @@ final class GtfsSubsetServiceTest extends TestCase
     }
 
     #[Test]
+    public function itReadsStopCoordinatesFromTheSubset(): void
+    {
+        $files = $this->feedFiles();
+        $files['stops.txt'] = "stop_id,stop_name,parent_station,stop_lat,stop_lon\n"
+            . "P1,Parent,,46.50,6.60\nS1,Stop1,P1,46.51,6.61\nS2,Stop2,,46.52,6.62\nS3,Stop3,,46.53,6.63";
+        $subsetPath = $this->subsets->build($this->source($files), ['R1']);
+
+        self::assertSame([
+            ['lat' => 46.5, 'lon' => 6.6],
+            ['lat' => 46.51, 'lon' => 6.61],
+            ['lat' => 46.52, 'lon' => 6.62],
+        ], $this->subsets->stopCoordinates($subsetPath));
+    }
+
+    #[Test]
     public function itFollowsAMultiLevelParentStationClosure(): void
     {
         $files = $this->feedFiles();

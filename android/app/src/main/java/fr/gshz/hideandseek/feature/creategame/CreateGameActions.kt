@@ -23,6 +23,7 @@ data class CreateGameActions(
     val onShowDiscoveryModeDialog: () -> Unit = {},
     val onDismissDiscoveryModeDialog: () -> Unit = {},
     val onDiscoverOsmTransit: () -> Unit = {},
+    val onFitAreaFromLines: () -> Unit = {},
     val onRetryTransitPreview: () -> Unit = {},
     val onShowGtfsDialog: () -> Unit = {},
     val onDismissGtfsDialog: () -> Unit = {},

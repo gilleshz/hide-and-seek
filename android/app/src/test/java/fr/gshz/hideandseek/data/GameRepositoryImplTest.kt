@@ -5,6 +5,9 @@ import fr.gshz.hideandseek.core.device.DeviceIdentity
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.data.remote.HideAndSeekApi
 import fr.gshz.hideandseek.domain.model.BoundingBox
+import fr.gshz.hideandseek.domain.model.GtfsRoute
+import fr.gshz.hideandseek.domain.repository.AreaInfo
+import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -76,6 +79,72 @@ class GameRepositoryImplTest {
         assertTrue(exception is HttpException)
         assertEquals(401, (exception as HttpException).code())
     }
+    @Test
+    fun `searchAreas maps the size and population metadata`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                [{"osmId":"450381","osmType":"relation","displayName":"Metz",
+                  "adminLevel":8,"population":120874,"widthKm":8.8,"heightKm":9.8}]
+                """.trimIndent(),
+            ),
+        )
+
+        val area = repository.searchAreas("Metz").single()
+
+        assertEquals(8, area.adminLevel)
+        assertEquals(120874, area.population)
+        assertEquals(8.8, area.widthKm)
+        assertEquals(9.8, area.heightKm)
+    }
+
+    @Test
+    fun `searchAreas leaves absent metadata null`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """[{"osmId":"1","osmType":"relation","displayName":"Testville"}]""",
+            ),
+        )
+
+        val area = repository.searchAreas("Testville").single()
+
+        assertNull(area.population)
+        assertNull(area.widthKm)
+        assertNull(area.heightKm)
+    }
+
+    @Test
+    fun `fitAreasFromLines posts the line selection and maps the areas`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"areas":[{"osmType":"relation","osmId":"450381","displayName":"Metz","adminLevel":8}]}""",
+            ),
+        )
+        val route = GtfsRoute(
+            sourceUuid = "src-1",
+            sourceName = "Le Met",
+            routeId = "route-MA",
+            shortName = "MA",
+            longName = "Metz A",
+            routeType = 0,
+            color = "#FF0000",
+            textColor = "#FFFFFF",
+        )
+
+        val areas = repository.fitAreasFromLines(
+            osmLineIds = setOf("123"),
+            gtfsLines = listOf(GtfsLineSelection("src-1", route)),
+        )
+
+        val request = server.takeRequest()
+        assertEquals("/api/area-fit", request.path)
+        assertEquals(
+            """{"osmLineIds":["123"],"gtfsLines":[{"gtfsSourceUuid":"src-1","routeId":"route-MA"}]}""",
+            request.body.readUtf8(),
+        )
+        assertEquals(listOf(AreaInfo("450381", "relation", "Metz", adminLevel = 8)), areas)
+    }
+
     @Test
     fun `joinGame sends the player name and device key`() = runTest {
         val joinBody = """

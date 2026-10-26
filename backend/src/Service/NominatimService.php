@@ -38,7 +38,8 @@ final readonly class NominatimService
             return [];
         }
 
-        return $this->cache->get('nominatim_search_' . md5($normalized), function (ItemInterface $item) use ($query): array {
+        // Cached values are serialized AreaResult objects: bump the prefix whenever their shape changes.
+        return $this->cache->get('nominatim_search_v2_' . md5($normalized), function (ItemInterface $item) use ($query): array {
             $item->expiresAfter(86400);
 
             $response = $this->httpClient->request('GET', $this->baseUrl . '/search', [
@@ -46,6 +47,7 @@ final readonly class NominatimService
                     'q' => $query,
                     'format' => 'jsonv2',
                     'addressdetails' => '1',
+                    'extratags' => '1',
                     'limit' => '10',
                     'polygon_geojson' => '0',
                 ],
@@ -72,21 +74,23 @@ final readonly class NominatimService
                     continue;
                 }
                 $address = isset($r['address']) && is_array($r['address']) ? $r['address'] : [];
-                $adminLevel = null;
-                if (isset($address['admin_level']) && is_numeric($address['admin_level'])) {
-                    $adminLevel = (int) $address['admin_level'];
-                }
+                $extratags = isset($r['extratags']) && is_array($r['extratags']) ? $r['extratags'] : [];
+                $adminLevel = self::adminLevel($address, $extratags);
                 $osmId = isset($r['osm_id']) && is_numeric($r['osm_id']) ? (int) $r['osm_id'] : 0;
                 $displayName = isset($r['display_name']) && is_string($r['display_name']) ? $r['display_name'] : '';
+                [$widthKm, $heightKm] = self::bboxSizes($r['boundingbox'] ?? null);
                 $areas[] = new AreaResult(
                     osmType: $osmType,
                     osmId: $osmId,
                     displayName: $displayName,
                     adminLevel: $adminLevel,
+                    population: self::population($extratags),
+                    widthKm: $widthKm,
+                    heightKm: $heightKm,
                 );
             }
 
-            return $areas;
+            return self::groupAndOrder($areas);
         });
     }
 
@@ -145,6 +149,7 @@ final readonly class NominatimService
             'query' => [
                 'osm_ids' => $ids,
                 'format' => 'json',
+                'extratags' => '1',
                 'polygon_geojson' => '1',
                 'polygon_threshold' => '0.0001',
             ],
@@ -165,8 +170,8 @@ final readonly class NominatimService
                 continue;
             }
             $address = isset($r['address']) && is_array($r['address']) ? $r['address'] : [];
-            $adminLevel = isset($address['admin_level']) && is_numeric($address['admin_level'])
-                ? (int) $address['admin_level'] : null;
+            $extratags = isset($r['extratags']) && is_array($r['extratags']) ? $r['extratags'] : [];
+            $adminLevel = self::adminLevel($address, $extratags);
             $osmType = isset($r['osm_type']) && is_string($r['osm_type']) ? $r['osm_type'] : 'relation';
             $osmId = isset($r['osm_id']) && is_numeric($r['osm_id']) ? (int) $r['osm_id'] : 0;
             $name = isset($r['display_name']) && is_string($r['display_name'])
@@ -182,6 +187,107 @@ final readonly class NominatimService
         }
 
         return $geometries;
+    }
+
+    /**
+     * @param array<mixed> $address
+     * @param array<mixed> $extratags
+     */
+    private static function adminLevel(array $address, array $extratags): ?int
+    {
+        foreach ([$extratags['admin_level'] ?? null, $address['admin_level'] ?? null] as $value) {
+            if (is_numeric($value)) {
+                return (int) $value;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<mixed> $extratags */
+    private static function population(array $extratags): ?int
+    {
+        $raw = $extratags['population'] ?? null;
+        if (!is_string($raw) && !is_int($raw)) {
+            return null;
+        }
+        $digits = preg_replace('/\D+/', '', (string) $raw);
+
+        return $digits === null || $digits === '' ? null : (int) $digits;
+    }
+
+    /** @return array{0: ?float, 1: ?float} width then height in km */
+    private static function bboxSizes(mixed $bbox): array
+    {
+        $values = [];
+        if (is_array($bbox)) {
+            foreach ($bbox as $value) {
+                if (!is_numeric($value)) {
+                    return [null, null];
+                }
+                $values[] = (float) $value;
+            }
+        }
+
+        if (
+            !isset($values[0], $values[1], $values[2], $values[3])
+            || count($values) !== 4
+            || $values[0] > $values[1]
+            || $values[2] > $values[3]
+        ) {
+            return [null, null];
+        }
+
+        return [
+            round(($values[3] - $values[2]) * 111.32 * cos(deg2rad(($values[0] + $values[1]) / 2)), 1),
+            round(($values[1] - $values[0]) * 111.32, 1),
+        ];
+    }
+
+    /**
+     * Same-named places in the same country are ranked as one block at the best member's position,
+     * smallest first, so a commune and its wider area stay adjacent instead of being split by
+     * unrelated same-name results.
+     *
+     * @param list<AreaResult> $areas
+     * @return list<AreaResult>
+     */
+    private static function groupAndOrder(array $areas): array
+    {
+        $groups = [];
+        $order = [];
+        foreach ($areas as $index => $area) {
+            $key = self::groupKey($area->displayName);
+            $order[$key] ??= $index;
+            $groups[$key][] = $area;
+        }
+
+        uksort($groups, static fn (int|string $a, int|string $b): int => $order[(string) $a] <=> $order[(string) $b]);
+
+        $ordered = [];
+        foreach ($groups as $group) {
+            usort($group, static function (AreaResult $a, AreaResult $b): int {
+                $areaA = $a->widthKm !== null && $a->heightKm !== null ? $a->widthKm * $a->heightKm : null;
+                $areaB = $b->widthKm !== null && $b->heightKm !== null ? $b->widthKm * $b->heightKm : null;
+                if ($areaA === null || $areaB === null) {
+                    return ($areaA === null) <=> ($areaB === null);
+                }
+
+                return $areaA <=> $areaB;
+            });
+            foreach ($group as $area) {
+                $ordered[] = $area;
+            }
+        }
+
+        return $ordered;
+    }
+
+    private static function groupKey(string $displayName): string
+    {
+        $parts = array_map(static fn (string $part): string => mb_strtolower(trim($part)), explode(',', $displayName));
+
+        return $parts[0] . '|' . (end($parts) ?: '');
     }
 
     private function decode(ResponseInterface $response): mixed

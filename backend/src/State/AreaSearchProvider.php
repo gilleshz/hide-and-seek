@@ -37,6 +37,9 @@ final readonly class AreaSearchProvider implements ProviderInterface
             $resource->osmType = $area->osmType;
             $resource->displayName = $area->displayName;
             $resource->adminLevel = $area->adminLevel;
+            $resource->population = $area->population;
+            $resource->widthKm = $area->widthKm;
+            $resource->heightKm = $area->heightKm;
             $result[] = $resource;
         }
 

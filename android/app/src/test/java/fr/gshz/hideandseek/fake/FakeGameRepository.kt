@@ -119,6 +119,24 @@ class FakeGameRepository : GameRepository {
         return transitLinePreviewResult.getOrThrow()
     }
 
+    data class FitAreasCall(
+        val osmLineIds: Set<String>,
+        val gtfsLines: List<GtfsLineSelection>,
+    )
+
+    var fitAreasResult: Result<List<AreaInfo>> = Result.success(emptyList())
+    val fitAreasCalls = mutableListOf<FitAreasCall>()
+    var fitAreasGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun fitAreasFromLines(
+        osmLineIds: Set<String>,
+        gtfsLines: List<GtfsLineSelection>,
+    ): List<AreaInfo> {
+        fitAreasCalls += FitAreasCall(osmLineIds, gtfsLines)
+        fitAreasGate?.await()
+        return fitAreasResult.getOrThrow()
+    }
+
     override suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,

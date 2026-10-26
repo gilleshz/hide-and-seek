@@ -71,9 +71,24 @@
     <string name="transit_source_chip_osm">OSM</string>
     <string name="create_game_loading">Creating game and loading map data, this can take a few minutes for large feeds</string>
     <string name="area_search_game_boundary">Game boundary</string>
-    <string name="area_search_selected">Selected: <xliff:g>%1$s</xliff:g></string>
+    <plurals name="area_search_selected_count">
+        <item quantity="one"><xliff:g>%d</xliff:g> area selected</item>
+        <item quantity="other"><xliff:g>%d</xliff:g> areas selected</item>
+    </plurals>
     <string name="area_search_hint">Search city or region</string>
     <string name="area_search_button">Search</string>
+    <string name="area_search_size_km">≈ <xliff:g>%1$d</xliff:g> × <xliff:g>%2$d</xliff:g> km</string>
+    <string name="area_search_population"><xliff:g>%1$s</xliff:g> inhabitants</string>
+    <string name="area_fit_action">Set the play area from these lines</string>
+    <string name="area_fit_loading">Finding the areas these lines serve...</string>
+    <string name="area_fit_done">Play area updated: <xliff:g>%1$d</xliff:g> areas</string>
+    <string name="area_fit_review">Review</string>
+    <string name="area_fit_network_error">Could not find the areas: check your connection and try again.</string>
+    <string name="area_fit_no_lines">Select at least one line first.</string>
+    <string name="area_fit_no_geometry">The selected lines have no usable geometry.</string>
+    <string name="area_fit_no_areas">No areas found around these lines.</string>
+    <string name="area_fit_too_large">These lines cover too large an area to fit a play area.</string>
+    <string name="area_fit_too_many_areas">These lines serve <xliff:g>%1$d</xliff:g> areas, over the <xliff:g>%2$d</xliff:g> area limit. Select fewer lines.</string>
 
     <string name="join_game_title">Join a game</string>
     <string name="join_game_key_label">Game key</string>

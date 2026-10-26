@@ -79,6 +79,12 @@ class CreateGameViewModel @Inject constructor(
      */
     private val previewedLineFeatures = mutableMapOf<String, String>()
 
+    /** What the last area fit added, so a re-fit replaces only that and keeps manual areas. */
+    private var autoFittedAreaKeys: Set<String> = emptySet()
+
+    /** The first fit replaces the discovery seed area; later fits keep areas added by hand after it. */
+    private var hasFittedArea = false
+
     init {
         observeSelectedAreas()
         observeSelectedTransitLines()
@@ -311,14 +317,74 @@ class CreateGameViewModel @Inject constructor(
             state.copy(
                 selectedAreas = current.toList(),
                 boundaryGeoJson = null,
-                transitLines = emptyList(),
-                selectedTransitLines = emptySet(),
-                hasDiscoveredTransit = false,
                 discoveryModeSelection = DEFAULT_DISCOVERY_MODES,
                 discoveryError = null,
             )
         }
     }
+
+    fun fitAreaFromLines() {
+        val state = _uiState.value
+        if (state.isFittingArea) return
+        val osmLineIds = state.expandedSelectedLineIds
+        val gtfsLines = resolveGtfsSelections(state).orEmpty()
+        if (osmLineIds.isEmpty() && gtfsLines.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isFittingArea = true, fitAreaError = null) }
+            try {
+                applyFittedAreas(gameRepository.fitAreasFromLines(osmLineIds, gtfsLines))
+            } catch (e: IOException) {
+                Log.w(TAG, "Area fit failed", e)
+                failFitArea(UiText.fromResource(R.string.area_fit_network_error))
+            } catch (e: HttpException) {
+                Log.w(TAG, "Area fit failed", e)
+                failFitArea(fitAreaError(e))
+            }
+        }
+    }
+
+    private fun applyFittedAreas(areas: List<AreaInfo>) {
+        val keys = areas.mapTo(HashSet()) { areaKey(it) }
+        _uiState.update { state ->
+            val manual = if (hasFittedArea) {
+                state.selectedAreas.filterNot { areaKey(it) in autoFittedAreaKeys }
+            } else {
+                emptyList()
+            }
+            state.copy(
+                selectedAreas = (manual + areas).distinctBy { areaKey(it) },
+                boundaryGeoJson = null,
+                isFittingArea = false,
+                fitAreaError = null,
+                fitAreaCount = areas.size,
+            )
+        }
+        autoFittedAreaKeys = keys
+        hasFittedArea = true
+    }
+
+    private fun failFitArea(message: UiText) {
+        _uiState.update { it.copy(isFittingArea = false, fitAreaError = message, fitAreaCount = null) }
+    }
+
+    private fun fitAreaError(e: HttpException): UiText {
+        val args = e.serverErrorArgs()
+        return when (e.serverErrorKey()) {
+            ERROR_KEY_AREA_FIT_NO_LINES -> UiText.fromResource(R.string.area_fit_no_lines)
+            ERROR_KEY_AREA_FIT_NO_GEOMETRY -> UiText.fromResource(R.string.area_fit_no_geometry)
+            ERROR_KEY_AREA_FIT_NO_AREAS -> UiText.fromResource(R.string.area_fit_no_areas)
+            ERROR_KEY_AREA_FIT_TOO_LARGE -> UiText.fromResource(R.string.area_fit_too_large)
+            ERROR_KEY_AREA_FIT_TOO_MANY_AREAS -> UiText.fromResource(
+                R.string.area_fit_too_many_areas,
+                args?.get("count")?.toIntOrNull() ?: 0,
+                args?.get("max")?.toIntOrNull() ?: 0,
+            )
+            else -> UiText.fromDynamic(e.serverDetail() ?: e.message())
+        }
+    }
+
+    private fun areaKey(area: AreaInfo): String = "${area.osmType}:${area.osmId}"
 
     fun toggleTransitLineGroup(group: TransitLineGroup) {
         _uiState.update { state ->
@@ -850,3 +916,8 @@ private const val ERROR_KEY_GTFS_SELECTION_EMPTY = "gtfs.selection_empty"
 private const val ERROR_KEY_GTFS_SUBSET_TOO_LARGE = "gtfs.subset_too_large"
 private const val ERROR_KEY_GTFS_SOURCE_TOO_LARGE = "gtfs.source_too_large"
 private const val ERROR_KEY_GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE = "gtfs.source_uncompressed_too_large"
+private const val ERROR_KEY_AREA_FIT_NO_LINES = "area_fit.no_lines"
+private const val ERROR_KEY_AREA_FIT_NO_GEOMETRY = "area_fit.no_geometry"
+private const val ERROR_KEY_AREA_FIT_NO_AREAS = "area_fit.no_areas"
+private const val ERROR_KEY_AREA_FIT_TOO_LARGE = "area_fit.too_large"
+private const val ERROR_KEY_AREA_FIT_TOO_MANY_AREAS = "area_fit.too_many_areas"

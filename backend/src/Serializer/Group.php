@@ -37,6 +37,8 @@ final class Group
     public const string TRANSIT_CATALOG_READ = 'transit-catalog:read';
     public const string BOUNDARY_PREVIEW_WRITE = 'boundary-preview:write';
     public const string BOUNDARY_PREVIEW_READ = 'boundary-preview:read';
+    public const string AREA_FIT_READ = 'area-fit:read';
+    public const string AREA_FIT_WRITE = 'area-fit:write';
     public const string LEAVE_READ = 'leave:read';
     public const string LEAVE_WRITE = 'leave:write';
     public const string GAME_DELETE_WRITE = 'game:delete:write';
