@@ -33,16 +33,16 @@ class MapAvatarTest {
     }
 
     @Test
-    fun `avatar pins use one image id per player and size`() {
+    fun `avatar pins use one image id per player`() {
         val self = marker("self-player", isSelf = true, avatarUrl = "https://maps.test/api/avatars/self-ref")
         val other = marker("other-player", isSelf = false, avatarUrl = "https://maps.test/api/avatars/other-ref")
 
         assertEquals(
-            avatarSelfImageId("self-player", "https://maps.test/api/avatars/self-ref"),
+            avatarImageId("self-player", "https://maps.test/api/avatars/self-ref"),
             pinImageId(self, "https://maps.test/api/avatars/self-ref"),
         )
         assertEquals(
-            avatarOtherImageId("other-player", "https://maps.test/api/avatars/other-ref"),
+            avatarImageId("other-player", "https://maps.test/api/avatars/other-ref"),
             pinImageId(other, "https://maps.test/api/avatars/other-ref"),
         )
         assertEquals("marker-self", pinImageId(self, null))

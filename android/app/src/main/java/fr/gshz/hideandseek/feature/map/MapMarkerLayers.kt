@@ -66,8 +66,8 @@ internal class MarkerPins private constructor(
         fun create(context: Context): MarkerPins {
             val metrics = context.resources.displayMetrics
             return MarkerPins(
-                self = pinBitmap(SELF_MARKER_RADIUS, SELF_MARKER_COLOR, metrics.density, metrics.densityDpi),
-                other = pinBitmap(CIRCLE_RADIUS, OTHER_MARKER_COLOR, metrics.density, metrics.densityDpi),
+                self = pinBitmap(MARKER_RADIUS, SELF_MARKER_COLOR, metrics.density, metrics.densityDpi),
+                other = pinBitmap(MARKER_RADIUS, OTHER_MARKER_COLOR, metrics.density, metrics.densityDpi),
                 density = metrics.density,
                 densityDpi = metrics.densityDpi,
             )
@@ -77,11 +77,8 @@ internal class MarkerPins private constructor(
 
 internal data class AvatarBitmap(val url: String, val bitmap: Bitmap)
 
-internal fun avatarSelfImageId(playerUuid: String, url: String): String =
-    "$AVATAR_SELF_PREFIX$playerUuid-${avatarImageKey(url)}"
-
-internal fun avatarOtherImageId(playerUuid: String, url: String): String =
-    "$AVATAR_OTHER_PREFIX$playerUuid-${avatarImageKey(url)}"
+internal fun avatarImageId(playerUuid: String, url: String): String =
+    "$AVATAR_PREFIX$playerUuid-${avatarImageKey(url)}"
 
 private fun avatarImageKey(url: String): String =
     url.substringAfterLast('/').ifEmpty { url.hashCode().toString() }
@@ -155,25 +152,16 @@ internal fun Style.updateAvatarImages(
 ): Set<String> {
     val stale = mutableSetOf<String>()
     (registered.keys - avatars.keys).forEach { playerUuid ->
-        val oldUrl = registered.getValue(playerUuid)
-        stale += avatarSelfImageId(playerUuid, oldUrl)
-        stale += avatarOtherImageId(playerUuid, oldUrl)
+        stale += avatarImageId(playerUuid, registered.getValue(playerUuid))
         registered.remove(playerUuid)
     }
     avatars.forEach { (playerUuid, avatar) ->
         val oldUrl = registered[playerUuid]
         if (oldUrl == avatar.url) return@forEach
-        if (oldUrl != null) {
-            stale += avatarSelfImageId(playerUuid, oldUrl)
-            stale += avatarOtherImageId(playerUuid, oldUrl)
-        }
+        if (oldUrl != null) stale += avatarImageId(playerUuid, oldUrl)
         addImage(
-            avatarSelfImageId(playerUuid, avatar.url),
-            avatarPinBitmap(avatar.bitmap, SELF_MARKER_RADIUS, density, densityDpi),
-        )
-        addImage(
-            avatarOtherImageId(playerUuid, avatar.url),
-            avatarPinBitmap(avatar.bitmap, CIRCLE_RADIUS, density, densityDpi),
+            avatarImageId(playerUuid, avatar.url),
+            avatarPinBitmap(avatar.bitmap, MARKER_RADIUS, density, densityDpi),
         )
         registered[playerUuid] = avatar.url
     }
@@ -384,8 +372,7 @@ private fun toFeatureCollectionJson(
 }
 
 internal fun pinImageId(marker: PlayerMarker, avatarUrl: String?): String = when {
-    avatarUrl != null && marker.isSelf -> avatarSelfImageId(marker.playerUuid, avatarUrl)
-    avatarUrl != null -> avatarOtherImageId(marker.playerUuid, avatarUrl)
+    avatarUrl != null -> avatarImageId(marker.playerUuid, avatarUrl)
     marker.isSelf -> SELF_PIN_IMAGE_ID
     else -> OTHERS_PIN_IMAGE_ID
 }
@@ -445,8 +432,7 @@ private const val PROPERTY_DISPLAY_NAME = "displayName"
 private const val PROPERTY_INITIALS = "initials"
 private const val PROPERTY_PIN_IMAGE = "pinImage"
 private const val PROPERTY_PIN_OFFSET = "pinOffset"
-private const val AVATAR_SELF_PREFIX = "avatar-self-"
-private const val AVATAR_OTHER_PREFIX = "avatar-other-"
+private const val AVATAR_PREFIX = "avatar-"
 private const val PROPERTY_INITIALS_OFFSET = "initialsOffset"
 private const val PROPERTY_LABEL_OFFSET = "labelOffset"
 private const val BOUNDARY_FILL_COLOR = "#3B82F6"
@@ -463,8 +449,7 @@ private const val SEEKER_MARKER_FILL_OPACITY = 0.08f
 private const val SEEKER_MARKER_LINE_WIDTH = 2.5f
 private val SEEKER_MARKER_LINE_DASHES = arrayOf(2f, 2f)
 private const val CIRCLE_STROKE_COLOR = "#FFFFFF"
-private const val CIRCLE_RADIUS = 8f
-private const val SELF_MARKER_RADIUS = 14f
+private const val MARKER_RADIUS = 14f
 private const val CIRCLE_STROKE_WIDTH = 2f
 private const val LABEL_OFFSET_Y = 1.5f
 private const val LABEL_TEXT_SIZE = 12f

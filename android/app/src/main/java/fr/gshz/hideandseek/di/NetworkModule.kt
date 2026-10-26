@@ -14,9 +14,13 @@ import fr.gshz.hideandseek.data.remote.SubscriberTokenInterceptor
 import java.io.File
 import java.util.concurrent.TimeUnit
 import coil3.ImageLoader
+import coil3.intercept.Interceptor
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.ErrorResult
+import coil3.request.ImageResult
 import javax.inject.Named
 import javax.inject.Singleton
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import okhttp3.Cache
 import okhttp3.MediaType.Companion.toMediaType
@@ -137,6 +141,30 @@ object NetworkModule {
         @Named("image") client: OkHttpClient,
     ): ImageLoader =
         ImageLoader.Builder(context)
-            .components { add(OkHttpNetworkFetcherFactory(callFactory = { client })) }
+            .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = { client }))
+                add(RetryImageInterceptor())
+            }
             .build()
+}
+
+/**
+ * Coil never retries a failed request, so one transient miss (the API-key cache still warming up
+ * after a cold start, a network blip) left that avatar or chat image blank until its URL changed.
+ */
+private class RetryImageInterceptor : Interceptor {
+    override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        var result = chain.proceed()
+        repeat(MAX_RETRIES) {
+            if (result !is ErrorResult) return result
+            delay(RETRY_DELAY_MS)
+            result = chain.proceed()
+        }
+        return result
+    }
+
+    private companion object {
+        const val MAX_RETRIES = 2
+        const val RETRY_DELAY_MS = 250L
+    }
 }

@@ -110,7 +110,10 @@ private fun TimetableHeader(
     onToggleFullDay: () -> Unit,
     onClose: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier.padding(bottom = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = state.stationName.ifBlank { stringResource(R.string.timetable_title) },

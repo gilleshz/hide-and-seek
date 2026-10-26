@@ -44,6 +44,8 @@ class HideAndSeekApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        // Building the image client now starts its API-key collector before the first image request.
+        imageLoader.get()
         // HttpRequestImpl's static init needs MapLibre registered first; the swap precedes the first tile request.
         MapLibre.getInstance(this)
         HttpRequestImpl.setOkHttpClient(MapLibreHttpClient.build())
