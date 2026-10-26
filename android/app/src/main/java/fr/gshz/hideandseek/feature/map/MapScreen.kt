@@ -746,25 +746,23 @@ private fun BoxScope.MapOverlays(
         modifier = Modifier.align(Alignment.TopStart).padding(Spacing.sm),
     )
     val outstanding = uiState.outstandingQuestion
-    if (outstanding != null && uiState.simulation == null && uiState.side == Side.Seeker) {
-        PendingQuestionChip(
-            category = outstanding.category,
-            onClick = { onEnterSimulation(outstanding.category) },
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = Spacing.sm),
-        )
-    }
-    if (uiState.showHiderQuestionChip) {
-        HiderQuestionChip(
-            onClick = { navigation.onOpenChatClick(uiState.gameUuid) },
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = Spacing.sm),
-        )
-    }
-    uiState.focusedTransitRef?.let { ref ->
-        FocusedLineChip(
-            ref = ref,
-            onClick = { onTransitLineTapped(ref) },
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp),
-        )
+    Column(
+        modifier = Modifier.align(Alignment.TopCenter).padding(top = Spacing.sm),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        if (outstanding != null && uiState.simulation == null && uiState.side == Side.Seeker) {
+            PendingQuestionChip(
+                category = outstanding.category,
+                onClick = { onEnterSimulation(outstanding.category) },
+            )
+        }
+        if (uiState.showHiderQuestionChip) {
+            HiderQuestionChip(onClick = { navigation.onOpenChatClick(uiState.gameUuid) })
+        }
+        uiState.focusedTransitRef?.let { ref ->
+            FocusedLineChip(ref = ref, onClick = { onTransitLineTapped(ref) })
+        }
     }
     // A frozen seeker must not travel or ask, and the app cannot stop them walking: say so.
     if (uiState.showSeekersFrozenBanner) {

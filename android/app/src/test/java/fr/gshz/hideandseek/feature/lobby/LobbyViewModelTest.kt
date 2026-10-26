@@ -306,6 +306,22 @@ class LobbyViewModelTest {
     }
 
     @Test
+    fun `a seeded side resolved by the location service reaches the picker`() = runTest {
+        sessionRepository.seed(PlayerSession("game-1", "round-2", "player-1", "Alice", "token", side = null))
+        gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-2"))
+        gameRepository.listPlayersResult = Result.success(listOf(Player("player-1", "Alice", side = Side.Hider)))
+
+        val viewModel = createViewModel()
+        assertNull(viewModel.uiState.value.mySide)
+
+        // The service rekeys the session first, then writes the seeded side it resolved afterwards.
+        sessionRepository.updateSide(Side.Hider, "fresh-token", listOf("topic"))
+
+        assertEquals(Side.Hider, viewModel.uiState.value.mySide)
+    }
+
+    @Test
     fun `lobby load keeps the persisted round and side when they match the server`() = runTest {
         sessionRepository.seed(PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "hider"))
 

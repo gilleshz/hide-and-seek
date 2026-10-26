@@ -88,6 +88,12 @@ class LobbyViewModel @Inject constructor(
                 applyRoster(event.players)
             }
         }
+        // The location service resolves the seeded side outside the lobby; the picker must follow it.
+        viewModelScope.launch {
+            sessionRepository.observeSession().collect { session ->
+                _uiState.update { it.copy(mySide = session?.side?.let(Side::fromWireValue)) }
+            }
+        }
         // An SSE gap can swallow a roster or timer event outright, so a fresh stream re-reads both.
         viewModelScope.launch {
             gameEventRepository.reconnectedEvents.collect { resync() }
