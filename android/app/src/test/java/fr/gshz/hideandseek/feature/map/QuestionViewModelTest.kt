@@ -13,6 +13,7 @@ import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.ChatEvent
 import fr.gshz.hideandseek.domain.repository.PossibleAreaData
 import fr.gshz.hideandseek.domain.repository.PossibleAreaEvent
+import fr.gshz.hideandseek.domain.repository.QuestionPreviewResult
 import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -111,6 +112,95 @@ class QuestionViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `picking a matching answer requests the preview for the chosen feature`() = runTest(testDispatcher) {
+        seedSeeker()
+        coEvery { fixture.questionPreviewRepository.preview(any()) } returns QuestionPreviewResult(
+            constraintGeoJson = "constraint",
+            currentAreaKm2 = 100.0,
+            projectedAreaKm2 = 20.0,
+            currentPossibleAreaGeoJson = "current",
+            projectedPossibleAreaGeoJson = "projected",
+            excludedPossibleAreaGeoJson = "excluded",
+        )
+        val viewModel = fixture.createQuestionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            viewModel.enterSimulation(QuestionCategory.Matching, emptyList())
+            while (state.simulation == null) state = awaitItem()
+            viewModel.updateSimulation(refreshGeometry = false) {
+                it.copy(
+                    mode = QuestionSheetMode.Preview,
+                    seeker = ZonePin(52.52, 13.405),
+                    featureType = FeatureType.AdminBoundary3rd.wireValue,
+                    chosenFeatureId = "feature-1",
+                )
+            }
+            viewModel.updateSimulation { it.copy(answer = SimAnswer.Same) }
+            advanceTimeBy(300)
+
+            coVerify {
+                fixture.questionPreviewRepository.preview(
+                    match {
+                        it.featureType == FeatureType.AdminBoundary3rd.wireValue &&
+                            it.hypotheticalFeatureId == "feature-1" &&
+                            it.hypotheticalAnswer == "same"
+                    },
+                )
+            }
+            while (state.simulation?.previewGeoJson != "excluded") state = awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a matching preview with a pin but no tapped feature asks about the nearest one`() =
+        runTest(testDispatcher) {
+            seedSeeker()
+            coEvery { fixture.questionPreviewRepository.preview(any()) } returns QuestionPreviewResult(
+                constraintGeoJson = "constraint",
+                currentAreaKm2 = 100.0,
+                projectedAreaKm2 = 20.0,
+                currentPossibleAreaGeoJson = "current",
+                projectedPossibleAreaGeoJson = "projected",
+                excludedPossibleAreaGeoJson = "excluded",
+            )
+            val viewModel = fixture.createQuestionViewModel()
+
+            viewModel.uiState.test {
+                var state = awaitItem()
+                viewModel.enterSimulation(QuestionCategory.Matching, emptyList())
+                while (state.simulation == null) state = awaitItem()
+
+                viewModel.updateSimulation(refreshGeometry = false) {
+                    it.copy(
+                        mode = QuestionSheetMode.Preview,
+                        seeker = ZonePin(52.52, 13.405),
+                        featureType = FeatureType.AdminBoundary3rd.wireValue,
+                        candidateFeatures = listOf(
+                            FeatureSummary("feature-far", "Far", 52.52, 13.30),
+                            FeatureSummary("feature-near", "Near", 52.52, 13.40),
+                        ),
+                    )
+                }
+                viewModel.updateSimulation { it.copy(answer = SimAnswer.Same) }
+                advanceTimeBy(300)
+
+                coVerify {
+                    fixture.questionPreviewRepository.preview(
+                        match {
+                            it.seekerLat == 52.52 &&
+                                it.hypotheticalFeatureId == "feature-near" &&
+                                it.hypotheticalAnswer == "same"
+                        },
+                    )
+                }
+                while (state.simulation?.previewGeoJson != "excluded") state = awaitItem()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     @Test
     fun `asking a radar question from the sheet submits the GPS location`() = runTest(testDispatcher) {

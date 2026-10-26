@@ -359,8 +359,7 @@ private fun RadarPresetRows(
     val instruction = if (state.mode == QuestionSheetMode.Ask) stringResource(R.string.sim_using_gps)
         else if (state.seeker == null) stringResource(R.string.sim_place_start)
         else stringResource(R.string.sim_pick_radius)
-    Text(instruction, style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(instruction, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     val presets = QuestionPresets.radarPresets(edition)
     val displaySelectedRadius = if (state.isCustomRadius) CUSTOM_RADAR_SENTINEL.toInt() else state.radiusMeters
     presets.chunked(PRESETS_PER_ROW).forEach { chunk ->
@@ -401,6 +400,7 @@ private fun RadarPresetRows(
             option2 = R.string.sim_outside to SimAnswer.Outside,
             selected = state.answer,
             onSelect = actions.onSetAnswer,
+            enabled = state.seeker != null,
         )
     }
 }
@@ -443,6 +443,7 @@ private fun ThermometerPresetRow(
                 option2 = R.string.sim_colder to SimAnswer.Colder,
                 selected = state.answer,
                 onSelect = actions.onSetAnswer,
+                enabled = state.seeker != null,
             )
         }
     }
@@ -500,13 +501,14 @@ private fun SimAnswerToggle(
     option2: Pair<Int, SimAnswer>,
     selected: SimAnswer?,
     onSelect: (SimAnswer) -> Unit,
+    enabled: Boolean,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        SimAnswerButton(option1, selected == option1.second, onSelect, Modifier.weight(1f))
-        SimAnswerButton(option2, selected == option2.second, onSelect, Modifier.weight(1f))
+        SimAnswerButton(option1, selected == option1.second, onSelect, enabled, Modifier.weight(1f))
+        SimAnswerButton(option2, selected == option2.second, onSelect, enabled, Modifier.weight(1f))
     }
 }
 
@@ -515,14 +517,15 @@ private fun SimAnswerButton(
     option: Pair<Int, SimAnswer>,
     selected: Boolean,
     onSelect: (SimAnswer) -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(option.first)
     val onClick = { onSelect(option.second) }
     if (selected) {
-        Button(onClick = onClick, modifier = modifier) { Text(label) }
+        Button(onClick = onClick, enabled = enabled, modifier = modifier) { Text(label) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier) { Text(label) }
+        OutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier) { Text(label) }
     }
 }
 
@@ -590,6 +593,7 @@ private fun MeasuringContent(
             option2 = R.string.sim_further to SimAnswer.Further,
             selected = state.answer,
             onSelect = actions.onSetAnswer,
+            enabled = state.seeker != null,
         )
     }
 }
@@ -624,6 +628,7 @@ private fun MatchingContent(
             option2 = R.string.sim_different to SimAnswer.Different,
             selected = state.answer,
             onSelect = actions.onSetAnswer,
+            enabled = state.seeker != null,
         )
     }
 }
@@ -707,6 +712,7 @@ private fun TentaclesContent(
             option2 = R.string.sim_none to SimAnswer.None,
             selected = state.answer,
             onSelect = actions.onSetAnswer,
+            enabled = state.seeker != null,
         )
     }
 }

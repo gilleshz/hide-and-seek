@@ -462,9 +462,7 @@ class QuestionViewModel @Inject constructor(
 
     private suspend fun refreshPreviewReadout() {
         val session = sessionEvents.sessionRepository.currentSession() ?: return
-        val snapshot = simulationState.value?.takeIf {
-            it.seeker != null && it.answer != null
-        } ?: return
+        val snapshot = simulationState.value?.takeIf { it.seeker != null && it.answer != null } ?: return
         try {
             val seeker = checkNotNull(snapshot.seeker)
             val answer = checkNotNull(snapshot.answer)
@@ -479,7 +477,7 @@ class QuestionViewModel @Inject constructor(
                     endLng = snapshot.end?.longitude,
                     radiusMeters = snapshot.radiusMeters,
                     featureType = snapshot.featureType,
-                    hypotheticalFeatureId = snapshot.chosenFeatureId,
+                    hypotheticalFeatureId = snapshot.chosenFeatureId ?: nearestFeatureUuid(snapshot, seeker),
                     withinMeters = snapshot.withinMeters,
                     hypotheticalAnswer = answer.wireValue,
                 ),
@@ -850,6 +848,12 @@ private fun parseCustomRadius(text: String, edition: Edition): Int? {
         ?.roundToInt()
     return meters
 }
+
+/** A matching or tentacles preview asks about the feature nearest the anchor when none was tapped. */
+private fun nearestFeatureUuid(state: SimulationState, anchor: ZonePin): String? =
+    state.candidateFeatures.minByOrNull {
+        haversineMeters(anchor.latitude, anchor.longitude, it.latitude, it.longitude)
+    }?.uuid
 
 private fun buildSimGeoJson(state: SimulationState, seeker: ZonePin): String? = when (state.category) {
     QuestionCategory.Radar -> state.radiusMeters?.let {
