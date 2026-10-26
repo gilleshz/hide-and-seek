@@ -14,6 +14,8 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class GameAreaRepository extends ServiceEntityRepository
 {
+    private const float BOUNDARY_SIMPLIFY_DEGREES = 0.0001;
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, GameArea::class);
@@ -53,23 +55,8 @@ class GameAreaRepository extends ServiceEntityRepository
     /** @param list<string> $geoJsonStrings */
     public function unionGeoJsonStrings(array $geoJsonStrings): string
     {
-        if ($geoJsonStrings === []) {
-            return '{"type":"FeatureCollection","features":[]}';
-        }
-
-        $conn = $this->getEntityManager()->getConnection();
-        $placeholders = [];
-        $params = [];
-        foreach ($geoJsonStrings as $i => $geoJson) {
-            $key = 'gj' . $i;
-            $placeholders[] = 'ST_GeomFromGeoJSON(:' . $key . ')::geometry';
-            $params[$key] = $geoJson;
-        }
-
-        $sql = 'SELECT ST_AsGeoJSON(ST_Union(ARRAY[' . implode(', ', $placeholders) . ']))';
-        $merged = $conn->fetchOne($sql, $params);
-
-        if ($merged === false || !is_string($merged)) {
+        $merged = $this->unionGeoJson($geoJsonStrings);
+        if ($merged === null) {
             return '{"type":"FeatureCollection","features":[]}';
         }
 
@@ -90,6 +77,12 @@ class GameAreaRepository extends ServiceEntityRepository
     /** @param list<string> $geoJsonStrings */
     public function unionGeoJsonToGeometryString(array $geoJsonStrings): ?string
     {
+        return $this->unionGeoJson($geoJsonStrings);
+    }
+
+    /** @param list<string> $geoJsonStrings */
+    private function unionGeoJson(array $geoJsonStrings): ?string
+    {
         if ($geoJsonStrings === []) {
             return null;
         }
@@ -103,7 +96,8 @@ class GameAreaRepository extends ServiceEntityRepository
             $params[$key] = $geoJson;
         }
 
-        $sql = 'SELECT ST_AsGeoJSON(ST_Union(ARRAY[' . implode(', ', $placeholders) . ']))';
+        $sql = 'SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(ST_Union(ARRAY['
+            . implode(', ', $placeholders) . ']), ' . self::BOUNDARY_SIMPLIFY_DEGREES . '))';
         $merged = $conn->fetchOne($sql, $params);
 
         return $merged === false || !is_string($merged) ? null : $merged;

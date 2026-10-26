@@ -125,9 +125,9 @@ final class GameBoundaryFromAreasTest extends KernelTestCase
 
         $decoded = json_decode($boundary, true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($decoded);
-        self::assertIsString($decoded['type'] ?? null);
+        self::assertSame('Polygon', $decoded['type'] ?? null);
         self::assertIsArray($decoded['coordinates'] ?? null);
-        self::assertNotEmpty($decoded['coordinates']);
+        self::assertCount(1, $decoded['coordinates']);
     }
 
     #[Test]

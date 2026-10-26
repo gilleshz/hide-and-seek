@@ -300,7 +300,7 @@ private fun simulationActionsFor(
     selectedTransitLines: List<TransitLine>,
     onLineFocused: (String) -> Unit = {},
 ) = SimulationActions(
-    onSetSeekerPin = { lat, lng -> viewModel.updateSimulation { it.copy(seeker = ZonePin(lat, lng)) } },
+    onSetSeekerPin = { lat, lng -> viewModel.updateSimulation { it.withSeekerPin(lat, lng) } },
     onSetEndPin = { lat, lng -> viewModel.updateSimulation { it.copy(end = ZonePin(lat, lng)) } },
     onSetRadius = { radiusMeters ->
         val isCustom = radiusMeters == CUSTOM_RADAR_SENTINEL.toInt()
@@ -358,6 +358,12 @@ internal fun SimulationState.selectFeatureType(featureType: String?) = copy(
     stationNameLengthSelected = false,
     seaLevelSelected = false,
     selectedTransitLine = null,
+)
+
+// Moving the pin re-anchors the matching/tentacles hypothesis to the candidate nearest the new pin.
+internal fun SimulationState.withSeekerPin(latitude: Double, longitude: Double) = copy(
+    seeker = ZonePin(latitude, longitude),
+    chosenFeatureId = null,
 )
 
 private fun SimulationState.selectTransitLineOption() = copy(

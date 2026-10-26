@@ -160,6 +160,7 @@ final class NominatimServiceTest extends TestCase
         $query = $options['query'] ?? null;
         self::assertIsArray($query);
         self::assertSame('1', $query['extratags'] ?? null);
+        self::assertArrayNotHasKey('polygon_threshold', $query);
         self::assertCount(1, $geometries);
         $geometry = $geometries[0];
         self::assertSame('relation', $geometry['osmType']);

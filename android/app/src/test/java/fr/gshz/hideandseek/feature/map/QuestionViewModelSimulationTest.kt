@@ -78,6 +78,25 @@ class QuestionViewModelSimulationTest {
     }
 
     @Test
+    fun `moving the seeker pin re-anchors the matching feature to the nearest candidate`() {
+        val state = SimulationState(
+            category = QuestionCategory.Matching,
+            mode = QuestionSheetMode.Preview,
+            featureType = FeatureType.AdminBoundary3rd.wireValue,
+            candidateFeatures = listOf(
+                FeatureSummary("west", "West", 48.60, 6.10),
+                FeatureSummary("east", "East", 48.60, 6.20),
+            ),
+            chosenFeatureId = "west",
+        )
+
+        val next = state.withSeekerPin(48.60, 6.20)
+
+        assertEquals(48.60, next.seeker?.latitude)
+        assertNull(next.chosenFeatureId)
+    }
+
+    @Test
     fun `the thermometer two-step flow starts a real ask and completes with the arrival GPS fix`() =
         runTest(testDispatcher) {
             seedSeeker()

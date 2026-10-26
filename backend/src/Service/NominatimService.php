@@ -145,13 +145,13 @@ final readonly class NominatimService
             default => 'N' . $r['osmId'],
         }, $refs));
 
+        // Simplifying each polygon here misaligns shared borders, so the union leaves sliver holes.
         $response = $this->httpClient->request('GET', $this->baseUrl . '/lookup', [
             'query' => [
                 'osm_ids' => $ids,
                 'format' => 'json',
                 'extratags' => '1',
                 'polygon_geojson' => '1',
-                'polygon_threshold' => '0.0001',
             ],
             'headers' => ['User-Agent' => $this->userAgent],
             'timeout' => 15,
