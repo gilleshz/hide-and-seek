@@ -97,6 +97,27 @@ Public so any host can pull the image.
 - Android: JDK 17+, `./gradlew assembleDebug`. CI runs the unit tests and
   detekt on every tag.
 
+## Credits
+
+Built with open source software and open data. The transit overlay uses
+[LOOM](https://github.com/ad-freiburg/loom) (GPL-3.0) for line bundling and
+vector tile rendering, its companion tools
+[osm2gtfs](https://github.com/gilleshz/osm2gtfs) and
+[gtfsmerge](https://github.com/gilleshz/gtfsmerge) for feed preparation, and the
+[Mobility Database](https://mobilitydatabase.org/) catalog. Map data comes from
+[OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
+through the [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API)
+and [Nominatim](https://nominatim.org/), and is drawn with
+[MapLibre](https://maplibre.org/).
+
+The server runs on [Symfony](https://symfony.com/),
+[API Platform](https://api-platform.com/), [FrankenPHP](https://frankenphp.dev/),
+[Mercure](https://mercure.rocks/), [PostgreSQL](https://www.postgresql.org/) and
+[PostGIS](https://postgis.net/). The app is built with
+[Kotlin](https://kotlinlang.org/) and
+[Jetpack Compose](https://developer.android.com/jetpack/compose). Each project
+keeps its own license; this project's license is in [LICENSE](LICENSE).
+
 ## Legal
 
 This is an unofficial, fan-made companion tool. It is not affiliated with,
