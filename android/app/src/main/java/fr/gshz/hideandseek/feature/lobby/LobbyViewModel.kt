@@ -212,6 +212,13 @@ class LobbyViewModel @Inject constructor(
         try {
             // Self-heal needs the live roundUuid: bypass the cache here and warm it for Map/Chat.
             val game = knownGame ?: gameStateCache.refreshGameSummary(gameUuid)
+            game.joinCode?.takeIf { it.isNotBlank() }?.let { code ->
+                try {
+                    connectionStore.saveLastJoinGame(code, game.uuid)
+                } catch (e: IOException) {
+                    Log.w(TAG, "Last join game save failed", e)
+                }
+            }
             val roster = gameStateCache.refreshRoster(gameUuid)
             val session = reconcileSession(game.roundUuid, roster)
             val roundStatus = session?.let { roundRepository.getRound(it.roundUuid).status }
@@ -448,6 +455,11 @@ class LobbyViewModel @Inject constructor(
                 gameRepository.deleteGame(gameUuid, session.playerUuid)
                 gameStateCache.invalidateGame()
                 gameStateCache.invalidateRoster()
+                try {
+                    connectionStore.clearLastJoinGame()
+                } catch (e: IOException) {
+                    Log.w(TAG, "Last join game clear failed", e)
+                }
                 sessionRepository.clear()
                 _uiState.update { it.copy(isDeleting = false, navigatedHome = true) }
             } catch (e: IOException) {

@@ -11,6 +11,7 @@ import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.model.withoutLocationTopics
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
+import fr.gshz.hideandseek.core.util.ERROR_KEY_GAME_NOT_FOUND
 import fr.gshz.hideandseek.core.util.serverDetail
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
@@ -57,6 +58,7 @@ class JoinGameViewModel @Inject constructor(
                 _uiState.update { it.copy(needsDisplayName = true) }
             }
         }
+        viewModelScope.launch { loadLastGameSuggestion() }
     }
 
     fun onGameKeyChange(value: String) {
@@ -148,7 +150,51 @@ class JoinGameViewModel @Inject constructor(
         } catch (e: HttpException) {
             Log.w(TAG, "Failed to join game", e)
             failJoin(e)
+            dropStaleSuggestion(e, gameKey)
         }
+    }
+
+    private suspend fun loadLastGameSuggestion() {
+        val suggestion = connectionStore.currentLastJoinGame() ?: return
+        if (gameExists(suggestion.gameUuid)) {
+            _uiState.update { it.copy(lastGameCode = suggestion.joinCode) }
+        } else {
+            try {
+                connectionStore.clearLastJoinGame()
+            } catch (readError: IOException) {
+                Log.w(TAG, "Failed to clear the stale join game", readError)
+            }
+        }
+    }
+
+    private suspend fun gameExists(gameUuid: String): Boolean = try {
+        gameRepository.getGame(gameUuid)
+        true
+    } catch (e: IOException) {
+        Log.w(TAG, "Last game check failed, keeping the suggestion", e)
+        true
+    } catch (e: HttpException) {
+        val gone = e.code() == HTTP_NOT_FOUND
+        if (!gone) {
+            Log.w(TAG, "Last game check failed, keeping the suggestion", e)
+        }
+        !gone
+    }
+
+    private suspend fun dropStaleSuggestion(e: HttpException, attemptedCode: String) {
+        val suggested = _uiState.value.lastGameCode
+        if (suggested == null ||
+            e.serverErrorKey() != ERROR_KEY_GAME_NOT_FOUND ||
+            !attemptedCode.equals(suggested, ignoreCase = true)
+        ) {
+            return
+        }
+        try {
+            connectionStore.clearLastJoinGame()
+        } catch (readError: IOException) {
+            Log.w(TAG, "Failed to clear the stale join game", readError)
+        }
+        _uiState.update { it.copy(lastGameCode = null) }
     }
 
     private fun failJoin(e: HttpException) {
@@ -166,5 +212,6 @@ class JoinGameViewModel @Inject constructor(
     private companion object {
         const val TAG = "JoinGameViewModel"
         const val NAME_MAX_LENGTH = 80
+        const val HTTP_NOT_FOUND = 404
     }
 }

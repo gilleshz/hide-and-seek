@@ -89,6 +89,7 @@
     <string name="join_game_title">Rejoindre une partie</string>
     <string name="join_game_key_label">Clé du jeu</string>
     <string name="join_game_button">Rejoindre</string>
+    <string name="join_game_last_code">Dernière partie (%1$s)</string>
 
     <string name="lobby_title">Salon</string>
     <string name="lobby_game_code_label">Code du jeu</string>
@@ -251,6 +252,9 @@
     <string name="location_notification_channel_name">Partage de position</string>
     <string name="location_notification_title">Partage de votre position</string>
     <string name="location_notification_searching_fix">Recherche du signal GPS</string>
+    <string name="location_notification_leave_hint">Quittez la partie pour arrêter le partage.</string>
+    <string name="location_notification_title_paused">Partage de position en pause</string>
+    <string name="location_notification_paused_hint">Manche terminée. Quittez la partie pour fermer cette notification.</string>
 
     <string name="endgame_notification_channel_name">Alertes de fin de partie</string>
     <string name="endgame_notification_title">Quelqu\'un vous cherche à proximité !</string>

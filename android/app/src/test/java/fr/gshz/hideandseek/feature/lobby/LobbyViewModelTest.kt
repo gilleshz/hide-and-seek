@@ -57,6 +57,7 @@ class LobbyViewModelTest {
     private val roundRepository = FakeRoundRepository()
     private val connectionStore = mockk<ConnectionStore> {
         coEvery { current() } returns ConnectionConfig("https://api.test/", "key")
+        coEvery { saveLastJoinGame(any(), any()) } returns Unit
     }
     private val clientConfigRepository =
         mockk<fr.gshz.hideandseek.domain.repository.ClientConfigRepository>(relaxed = true)
@@ -88,6 +89,17 @@ class LobbyViewModelTest {
         gameEventRepository,
         SavedStateHandle(mapOf(HideAndSeekDestinations.LOBBY_ARG to gameUuid)),
     )
+
+    @Test
+    fun `load saves the join code for the rejoin suggestion`() = runTest {
+        gameRepository.getGameResult = Result.success(
+            GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-1", joinCode = "CXUW37"),
+        )
+
+        createViewModel()
+
+        coVerify { connectionStore.saveLastJoinGame("CXUW37", "game-1") }
+    }
 
     @Test
     fun `loads game info and roster on init`() = runTest {

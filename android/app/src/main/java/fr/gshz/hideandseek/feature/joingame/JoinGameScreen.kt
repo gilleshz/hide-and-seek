@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -88,6 +89,15 @@ internal fun JoinGameContent(
             onScanClick = onScanClick,
             onJoin = onJoinClick,
         )
+
+        if (uiState.gameKey.isBlank()) {
+            uiState.lastGameCode?.let { code ->
+                AssistChip(
+                    onClick = { onGameKeyChange(code) },
+                    label = { Text(stringResource(R.string.join_game_last_code, code)) },
+                )
+            }
+        }
 
         if (uiState.needsDisplayName) {
             DisplayNameField(
@@ -206,7 +216,11 @@ private fun JoinGameButton(isLoading: Boolean, onClick: () -> Unit, modifier: Mo
 private fun JoinGameContentPreview() {
     AppTheme {
         JoinGameContent(
-            uiState = JoinGameUiState(gameKey = "1234", needsDisplayName = true, displayName = "Alice"),
+            uiState = JoinGameUiState(
+                needsDisplayName = true,
+                displayName = "Alice",
+                lastGameCode = "CXUW37",
+            ),
             onGameKeyChange = {},
             onDisplayNameChange = {},
             onJoinClick = {},

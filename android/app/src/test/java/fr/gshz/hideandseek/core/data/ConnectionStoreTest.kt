@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.fake.FakeCredentialCipher
@@ -132,6 +133,68 @@ class ConnectionStoreTest {
 
         assertNull(store.currentPlayerName())
         assertNull(store.playerName.first())
+    }
+
+    @Test
+    fun `the last join game round-trips`() = runTest {
+        store.saveLastJoinGame("CXUW37", "game-1")
+
+        assertEquals(LastJoinGame("CXUW37", "game-1"), store.currentLastJoinGame())
+        assertEquals(LastJoinGame("CXUW37", "game-1"), store.lastJoinGame.first())
+    }
+
+    @Test
+    fun `a last join game older than seven days is not offered`() = runTest {
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("last_join_code")] = "CXUW37"
+            prefs[stringPreferencesKey("last_join_game_uuid")] = "game-1"
+            prefs[longPreferencesKey("last_join_code_at")] = 0L
+        }
+
+        assertNull(store.currentLastJoinGame())
+        assertNull(store.lastJoinGame.first())
+    }
+
+    @Test
+    fun `clear wipes the last join game too`() = runTest {
+        store.saveLastJoinGame("CXUW37", "game-1")
+
+        store.clear()
+
+        assertNull(store.currentLastJoinGame())
+    }
+
+    @Test
+    fun `clearing the last join game keeps the connection and player name`() = runTest {
+        store.save(ConnectionConfig("https://api.example.com", "secret"))
+        store.savePlayerName("Alice")
+        store.saveLastJoinGame("CXUW37", "game-1")
+
+        store.clearLastJoinGame()
+
+        assertNull(store.currentLastJoinGame())
+        assertEquals("Alice", store.currentPlayerName())
+        assertEquals("https://api.example.com", store.current()?.apiUrl)
+    }
+
+    @Test
+    fun `saving the same server keeps the last join game`() = runTest {
+        store.save(ConnectionConfig("https://api.example.com", "secret"))
+        store.saveLastJoinGame("CXUW37", "game-1")
+
+        store.save(ConnectionConfig("https://api.example.com/", "new-secret"))
+
+        assertEquals(LastJoinGame("CXUW37", "game-1"), store.currentLastJoinGame())
+    }
+
+    @Test
+    fun `saving a different server drops the last join game`() = runTest {
+        store.save(ConnectionConfig("https://api.example.com", "secret"))
+        store.saveLastJoinGame("CXUW37", "game-1")
+
+        store.save(ConnectionConfig("https://other.example.com", "secret"))
+
+        assertNull(store.currentLastJoinGame())
     }
 
     @Test

@@ -2,6 +2,7 @@ package fr.gshz.hideandseek.feature.joingame
 
 import androidx.lifecycle.SavedStateHandle
 import fr.gshz.hideandseek.core.data.ConnectionStore
+import fr.gshz.hideandseek.core.data.LastJoinGame
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.domain.model.JoinResult
@@ -52,6 +53,37 @@ class JoinGameViewModelTest {
 
     private fun createViewModel(handle: SavedStateHandle) =
         JoinGameViewModel(gameRepository, sessionRepository, connectionStore, avatarRepository, handle)
+
+    @Test
+    fun `init exposes the recent join game once the server confirms it exists`() = runTest {
+        coEvery { connectionStore.currentLastJoinGame() } returns LastJoinGame("CXUW37", "game-1")
+
+        viewModel = createViewModel(SavedStateHandle())
+
+        assertEquals("CXUW37", viewModel.uiState.value.lastGameCode)
+    }
+
+    @Test
+    fun `a deleted last game is dropped before the suggestion shows`() = runTest {
+        coEvery { connectionStore.currentLastJoinGame() } returns LastJoinGame("CXUW37", "game-1")
+        gameRepository.getGameResult = Result.failure(httpException(404))
+
+        viewModel = createViewModel(SavedStateHandle())
+
+        assertNull(viewModel.uiState.value.lastGameCode)
+        coVerify { connectionStore.clearLastJoinGame() }
+    }
+
+    @Test
+    fun `an unreachable last game check keeps the suggestion`() = runTest {
+        coEvery { connectionStore.currentLastJoinGame() } returns LastJoinGame("CXUW37", "game-1")
+        gameRepository.getGameResult = Result.failure(IOException("offline"))
+
+        viewModel = createViewModel(SavedStateHandle())
+
+        assertEquals("CXUW37", viewModel.uiState.value.lastGameCode)
+        coVerify(exactly = 0) { connectionStore.clearLastJoinGame() }
+    }
 
     @Test
     fun `join succeeds and saves the round from the join response directly`() = runTest {
@@ -195,6 +227,37 @@ class JoinGameViewModelTest {
 
         assertEquals(ErrorType.NotFound, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.needsDisplayName)
+    }
+
+    @Test
+    fun `a missing suggested game drops the suggestion`() = runTest {
+        coEvery { connectionStore.currentLastJoinGame() } returns LastJoinGame("CXUW37", "game-1")
+        viewModel = createViewModel(SavedStateHandle())
+        gameRepository.joinGameResult = Result.failure(
+            httpException(404, """{"errorKey":"game.not_found"}"""),
+        )
+
+        viewModel.onGameKeyChange("cxuw37")
+        viewModel.join()
+
+        assertEquals("game.not_found", viewModel.uiState.value.errorKey)
+        assertNull(viewModel.uiState.value.lastGameCode)
+        coVerify { connectionStore.clearLastJoinGame() }
+    }
+
+    @Test
+    fun `a missing different game keeps the suggestion`() = runTest {
+        coEvery { connectionStore.currentLastJoinGame() } returns LastJoinGame("CXUW37", "game-1")
+        viewModel = createViewModel(SavedStateHandle())
+        gameRepository.joinGameResult = Result.failure(
+            httpException(404, """{"errorKey":"game.not_found"}"""),
+        )
+
+        viewModel.onGameKeyChange("OTHER1")
+        viewModel.join()
+
+        assertEquals("CXUW37", viewModel.uiState.value.lastGameCode)
+        coVerify(exactly = 0) { connectionStore.clearLastJoinGame() }
     }
 
     @Test

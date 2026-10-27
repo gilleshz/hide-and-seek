@@ -13,4 +13,6 @@ data class JoinGameUiState(
     /** The connection has no player identity yet: the join asks for a display name before creating it. */
     val needsDisplayName: Boolean = false,
     val displayName: String = "",
+    /** The last game from this connection, suggested only while it exists and is less than 7 days old. */
+    val lastGameCode: String? = null,
 )

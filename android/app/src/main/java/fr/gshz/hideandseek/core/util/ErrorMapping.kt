@@ -31,6 +31,8 @@ private val SESSION_EXPIRED_CODE_RANGE = 401..403
 // A kick must not be silently undone by the stored credential; only token expiry auto-rejoins.
 const val ERROR_KEY_PLAYER_LEFT = "identity.player_left"
 
+const val ERROR_KEY_GAME_NOT_FOUND = "game.not_found"
+
 // The backend emits RFC 7807 problems; the human-readable reason is "detail" ("hydra:description" under Hydra).
 private val PROBLEM_DETAIL_KEYS = listOf("detail", "hydra:description", "description")
 

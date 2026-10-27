@@ -2,7 +2,6 @@ package fr.gshz.hideandseek.core.location
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Notification
 import android.os.Build
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -159,12 +158,7 @@ class LocationTrackingService : Service() {
             return START_NOT_STICKY
         }
 
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            buildNotification(searching = false),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
-        )
+        refreshNotification(searching = false)
         startEventCollectors()
         serviceScope.launch { armGpsForPersistedRound() }
         return START_STICKY
@@ -206,6 +200,7 @@ class LocationTrackingService : Service() {
                 startLocationUpdates(LocationCadence.selectInterval(currentSide, currentPhase, endgameProximity))
             }
         }
+        refreshNotification()
     }
 
     @SuppressLint("MissingPermission")
@@ -306,12 +301,7 @@ class LocationTrackingService : Service() {
                     SystemClock.elapsedRealtime() - lastFixAt > currentIntervalMs + SEARCHING_FIX_MARGIN_MS
                 if (nowSearching != searching) {
                     searching = nowSearching
-                    ServiceCompat.startForeground(
-                        this@LocationTrackingService,
-                        NOTIFICATION_ID,
-                        buildNotification(searching),
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
-                    )
+                    refreshNotification()
                 }
             }
         }
@@ -360,6 +350,7 @@ class LocationTrackingService : Service() {
             gpsAllowed = true
             startLocationUpdates(LocationCadence.selectInterval(currentSide, newPhase, endgameProximity))
         }
+        refreshNotification()
     }
 
     private suspend fun rekeySession(roundUuid: String) {
@@ -539,14 +530,25 @@ class LocationTrackingService : Service() {
         super.onDestroy()
     }
 
-    private fun buildNotification(searching: Boolean): Notification =
-        NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.location_notification_title))
-            .setContentText(if (searching) getString(R.string.location_notification_searching_fix) else null)
+    private fun refreshNotification(
+        searching: Boolean = locationListener != null &&
+            SystemClock.elapsedRealtime() - lastFixAt > currentIntervalMs + SEARCHING_FIX_MARGIN_MS,
+    ) {
+        val content = locationNotificationContent(currentPhase, searching)
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(content.titleRes))
+            .setContentText(getString(content.textRes))
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .setContentIntent(openAppPendingIntent())
             .build()
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
+        )
+    }
 
     private fun openAppPendingIntent(): PendingIntent {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {

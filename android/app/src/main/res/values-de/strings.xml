@@ -89,6 +89,7 @@
     <string name="join_game_title">Spiel beitreten</string>
     <string name="join_game_key_label">Spielschlüssel</string>
     <string name="join_game_button">Beitreten</string>
+    <string name="join_game_last_code">Letztes Spiel (%1$s)</string>
 
     <string name="lobby_title">Lobby</string>
     <string name="lobby_game_code_label">Spielcode</string>
@@ -251,6 +252,9 @@
     <string name="location_notification_channel_name">Standortfreigabe</string>
     <string name="location_notification_title">Dein Standort wird geteilt</string>
     <string name="location_notification_searching_fix">GPS-Signal wird gesucht</string>
+    <string name="location_notification_leave_hint">Verlasse das Spiel, um die Freigabe zu beenden.</string>
+    <string name="location_notification_title_paused">Standortfreigabe pausiert</string>
+    <string name="location_notification_paused_hint">Runde beendet. Verlasse das Spiel, um diese Benachrichtigung zu schließen.</string>
 
     <string name="endgame_notification_channel_name">Endspiel-Alarme</string>
     <string name="endgame_notification_title">Suchende Person in der Nähe!</string>

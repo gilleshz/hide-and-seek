@@ -89,6 +89,7 @@
     <string name="join_game_title">Join a game</string>
     <string name="join_game_key_label">Game key</string>
     <string name="join_game_button">Join</string>
+    <string name="join_game_last_code">Last game (%1$s)</string>
 
     <string name="lobby_title">Lobby</string>
     <string name="lobby_game_code_label">Game code</string>
@@ -251,6 +252,9 @@
     <string name="location_notification_channel_name">Location sharing</string>
     <string name="location_notification_title">Sharing your location</string>
     <string name="location_notification_searching_fix">Searching for GPS fix</string>
+    <string name="location_notification_leave_hint">Leave the game to stop sharing.</string>
+    <string name="location_notification_title_paused">Location sharing paused</string>
+    <string name="location_notification_paused_hint">Round over. Leave the game to close this notification.</string>
 
     <string name="endgame_notification_channel_name">Endgame alerts</string>
     <string name="endgame_notification_title">Seeker nearby!</string>
