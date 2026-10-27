@@ -209,7 +209,9 @@
     <string name="question_powerup_button">Powerup-Optionen</string>
     <string name="question_veto_button">Veto</string>
     <string name="question_randomize_button">Zufällig</string>
-    <string name="powerup_dialog_title">Powerup spielen</string>
+    <string name="question_actions_title">Diese Frage</string>
+    <string name="question_bonus_group_title">Bonus</string>
+    <string name="question_answer_group_title">Antwort</string>
     <string name="powerup_dialog_hint">Fotografiere die Karte, die du spielst.</string>
     <string name="powerup_dialog_dismiss">Abbrechen</string>
     <string name="question_thermometer_awaiting_arrival">Unterwegs… tippe auf Bestätigen, wenn du angekommen bist</string>
@@ -285,6 +287,7 @@
     <string name="chat_image_uploading">Wird hochgeladen...</string>
     <string name="chat_empty">Noch keine Nachrichten. Sag Hallo!</string>
     <string name="chat_answer_window">Antwortfenster: <xliff:g>%1$s</xliff:g></string>
+    <string name="chat_thermometer_waiting">Thermometer läuft: du kannst antworten, sobald du die Strecke zurückgelegt hast.</string>
     <string name="chat_transit_line">Linie: <xliff:g>%1$s</xliff:g></string>
     <string name="chat_seeker_distance"><xliff:g>%1$s</xliff:g> ist <xliff:g>%2$s</xliff:g> von dir entfernt</string>
     <string name="chat_cards_line">Ziehe <xliff:g>%1$d</xliff:g> Karten, behalte <xliff:g>%2$d</xliff:g>.</string>

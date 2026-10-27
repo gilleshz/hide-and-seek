@@ -209,7 +209,9 @@
     <string name="question_powerup_button">Powerup options</string>
     <string name="question_veto_button">Veto</string>
     <string name="question_randomize_button">Randomize</string>
-    <string name="powerup_dialog_title">Play a powerup</string>
+    <string name="question_actions_title">This question</string>
+    <string name="question_bonus_group_title">Bonus</string>
+    <string name="question_answer_group_title">Answer</string>
     <string name="powerup_dialog_hint">Photograph the card you are playing.</string>
     <string name="powerup_dialog_dismiss">Cancel</string>
     <string name="question_thermometer_awaiting_arrival">Traveling… tap Confirm when you\'ve arrived</string>
@@ -288,6 +290,7 @@
     <string name="chat_image_uploading">Uploading...</string>
     <string name="chat_empty">No messages yet. Say hello!</string>
     <string name="chat_answer_window">Answer window: <xliff:g>%1$s</xliff:g></string>
+    <string name="chat_thermometer_waiting">Thermometer in progress: you can answer once the trip is complete.</string>
     <string name="chat_transit_line">Line: <xliff:g>%1$s</xliff:g></string>
     <string name="chat_seeker_distance"><xliff:g>%1$s</xliff:g> is <xliff:g>%2$s</xliff:g> away from you</string>
     <string name="chat_cards_line">Draw <xliff:g>%1$d</xliff:g> cards, keep <xliff:g>%2$d</xliff:g>.</string>

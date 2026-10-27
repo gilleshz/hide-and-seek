@@ -35,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -118,7 +117,6 @@ internal fun MessageBubble(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
-    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
     onCountdownExpired: () -> Unit,
     onImageClick: (String) -> Unit,
@@ -128,7 +126,7 @@ internal fun MessageBubble(
 ) {
     when {
         message.isQuestion -> QuestionBubble(
-            message, uiState, onRevealClick, onAnswerPhotoClick, onCannotAnswerClick,
+            message, uiState, onRevealClick, onAnswerPhotoClick,
             onPowerupClick, onCountdownExpired, onReplySwipe, onLongPress,
         )
         message.isQuestionInfo -> QuestionInfoBubble(message, uiState, onPowerupClick, onLongPress)
@@ -189,7 +187,6 @@ private fun QuestionBubble(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
-    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
     onCountdownExpired: () -> Unit,
     onReplySwipe: (() -> Unit)? = null,
@@ -207,9 +204,7 @@ private fun QuestionBubble(
         message.resolvedBody()?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
         QuestionSubtexts(message, uiState, pending, onCountdownExpired)
         if (uiState.isHider && pending) {
-            HiderQuestionActions(
-                message, uiState, onRevealClick, onAnswerPhotoClick, onCannotAnswerClick, onPowerupClick,
-            )
+            HiderQuestionActions(message, uiState, onRevealClick, onAnswerPhotoClick, onPowerupClick)
         }
         MessageFooter(message, uiState)
     }
@@ -221,34 +216,21 @@ private fun HiderQuestionActions(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
-    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
 ) {
     val question = uiState.joinedQuestion(message)
     val isPhotoQuestion = question?.category == QuestionCategory.Photos
+    val onActionClick = if (isPhotoQuestion) onAnswerPhotoClick else onRevealClick
+    val actionLabel = if (isPhotoQuestion) R.string.question_photo_answer_button else R.string.question_reveal_button
     Row(
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         modifier = Modifier.padding(top = Spacing.xs),
     ) {
-        when {
-            isPhotoQuestion -> {
-                Button(
-                    onClick = { message.questionUuid?.let(onAnswerPhotoClick) },
-                    enabled = !uiState.isRevealing,
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.question_photo_answer_button)) }
-                OutlinedButton(
-                    onClick = { message.questionUuid?.let(onCannotAnswerClick) },
-                    enabled = !uiState.isRevealing,
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.question_cannot_answer_button)) }
-            }
-            else -> Button(
-                onClick = { message.questionUuid?.let(onRevealClick) },
-                enabled = !uiState.isRevealing,
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.question_reveal_button)) }
-        }
+        Button(
+            onClick = { message.questionUuid?.let(onActionClick) },
+            enabled = !uiState.isRevealing,
+            modifier = Modifier.weight(1f),
+        ) { Text(stringResource(actionLabel)) }
         if (!uiState.isPlayingPowerup) {
             IconButton(onClick = { message.questionUuid?.let(onPowerupClick) }) {
                 Icon(
@@ -278,9 +260,15 @@ private fun QuestionInfoBubble(
         }
         if (uiState.isHider && !uiState.isPlayingPowerup && uiState.isPendingTravelingThermometer(message)) {
             Row(
-                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs),
             ) {
+                Text(
+                    text = stringResource(R.string.chat_thermometer_waiting),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
                 IconButton(onClick = { message.questionUuid?.let(onPowerupClick) }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,

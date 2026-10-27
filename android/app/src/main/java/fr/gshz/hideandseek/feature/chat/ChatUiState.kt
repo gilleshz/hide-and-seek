@@ -80,6 +80,10 @@ data class ChatUiState(
                 q.status == QuestionStatus.Open
         } ?: false
 
+    /** The decline escape exists only for photo questions, mirroring the server rule. */
+    fun isPhotoQuestion(questionUuid: String): Boolean =
+        questionsByUuid[questionUuid]?.category == QuestionCategory.Photos
+
     /** Non-null only for the photo questions a hider can answer by drawing on the map. */
     fun traceableTargetOf(questionUuid: String): PhotoTarget? =
         questionsByUuid[questionUuid]?.photoTarget?.takeIf { it.isTraceable }

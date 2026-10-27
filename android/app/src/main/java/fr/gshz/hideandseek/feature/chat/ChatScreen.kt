@@ -44,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -227,7 +228,7 @@ internal fun ChatContent(
 ) {
     var composeText by remember { mutableStateOf("") }
     var fullscreenImageUrl by remember { mutableStateOf<String?>(null) }
-    var powerupTargetUuid by remember { mutableStateOf<String?>(null) }
+    var questionActionsTargetUuid by remember { mutableStateOf<String?>(null) }
     var pendingPhotoAnswerUuid by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingPowerup by remember { mutableStateOf<PendingPowerup?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
@@ -287,8 +288,7 @@ internal fun ChatContent(
                 pendingPhotoAnswerUuid = questionUuid
                 showImageSourceDialog = true
             },
-            onCannotAnswerClick = onCannotAnswer,
-            onPowerupClick = { powerupTargetUuid = it },
+            onPowerupClick = { questionActionsTargetUuid = it },
             onCountdownExpired = onCountdownExpired,
             onImageClick = { fullscreenImageUrl = it },
             onReplySwipe = onSetReplyTarget,
@@ -308,21 +308,23 @@ internal fun ChatContent(
             onDelete = onDeleteMessage,
         )
     }
-    powerupTargetUuid?.let { questionUuid ->
-        PowerupDialog(
+    questionActionsTargetUuid?.let { questionUuid ->
+        QuestionActionsDialog(
             questionUuid = questionUuid,
             showVeto = !uiState.isTravelingThermometer(questionUuid),
+            showCannotAnswer = uiState.isPhotoQuestion(questionUuid),
             onVetoClick = {
                 pendingPowerup = PendingPowerup(Powerup.Veto, it)
-                powerupTargetUuid = null
+                questionActionsTargetUuid = null
                 showImageSourceDialog = true
             },
             onRandomizeClick = {
                 pendingPowerup = PendingPowerup(Powerup.Randomize, it)
-                powerupTargetUuid = null
+                questionActionsTargetUuid = null
                 showImageSourceDialog = true
             },
-            onDismiss = { powerupTargetUuid = null },
+            onCannotAnswerClick = { onCannotAnswer(it) },
+            onDismiss = { questionActionsTargetUuid = null },
         )
     }
     if (showImageSourceDialog) {
@@ -394,19 +396,23 @@ private fun dispatchSend(
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
-private fun PowerupDialog(
+private fun QuestionActionsDialog(
     questionUuid: String,
     showVeto: Boolean,
+    showCannotAnswer: Boolean,
     onVetoClick: (String) -> Unit,
     onRandomizeClick: (String) -> Unit,
+    onCannotAnswerClick: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.powerup_dialog_title)) },
+        title = { Text(stringResource(R.string.question_actions_title)) },
         text = {
             Column {
+                Text(stringResource(R.string.question_bonus_group_title), style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = stringResource(R.string.powerup_dialog_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -414,19 +420,29 @@ private fun PowerupDialog(
                 )
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 if (showVeto) {
-                    Button(
-                        onClick = { onVetoClick(questionUuid) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                    Button(onClick = { onVetoClick(questionUuid) }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.question_veto_button))
                     }
                     Spacer(modifier = Modifier.height(Spacing.sm))
                 }
-                Button(
-                    onClick = { onRandomizeClick(questionUuid) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                Button(onClick = { onRandomizeClick(questionUuid) }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.question_randomize_button))
+                }
+                if (showCannotAnswer) {
+                    Spacer(modifier = Modifier.height(Spacing.md))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(Spacing.md))
+                    Text(
+                        text = stringResource(R.string.question_answer_group_title),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+                    OutlinedButton(
+                        onClick = { onCannotAnswerClick(questionUuid) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.question_cannot_answer_button))
+                    }
                 }
             }
         },
@@ -502,7 +518,6 @@ private fun ChatMessageList(
     uiState: ChatUiState,
     onRevealClick: (String) -> Unit,
     onAnswerPhotoClick: (String) -> Unit,
-    onCannotAnswerClick: (String) -> Unit,
     onPowerupClick: (String) -> Unit,
     onCountdownExpired: () -> Unit,
     onImageClick: (String) -> Unit,
@@ -539,7 +554,6 @@ private fun ChatMessageList(
                         uiState = uiState,
                         onRevealClick = onRevealClick,
                         onAnswerPhotoClick = onAnswerPhotoClick,
-                        onCannotAnswerClick = onCannotAnswerClick,
                         onPowerupClick = onPowerupClick,
                         onCountdownExpired = onCountdownExpired,
                         onImageClick = onImageClick,

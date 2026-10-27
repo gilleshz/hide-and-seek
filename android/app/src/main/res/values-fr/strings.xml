@@ -209,7 +209,9 @@
     <string name="question_powerup_button">Options de bonus</string>
     <string name="question_veto_button">Veto</string>
     <string name="question_randomize_button">Aléatoire</string>
-    <string name="powerup_dialog_title">Jouer un bonus</string>
+    <string name="question_actions_title">Cette question</string>
+    <string name="question_bonus_group_title">Bonus</string>
+    <string name="question_answer_group_title">Réponse</string>
     <string name="powerup_dialog_hint">Photographiez la carte que vous jouez.</string>
     <string name="powerup_dialog_dismiss">Annuler</string>
     <string name="question_thermometer_awaiting_arrival">En déplacement… touchez Confirmer une fois sur place</string>
@@ -285,6 +287,7 @@
     <string name="chat_image_uploading">Envoi en cours...</string>
     <string name="chat_empty">Aucun message pour le moment. Dites bonjour !</string>
     <string name="chat_answer_window">Fenêtre de réponse : <xliff:g>%1$s</xliff:g></string>
+    <string name="chat_thermometer_waiting">Thermomètre en cours : vous pourrez répondre une fois le trajet terminé.</string>
     <string name="chat_transit_line">Ligne : <xliff:g>%1$s</xliff:g></string>
     <string name="chat_seeker_distance"><xliff:g>%1$s</xliff:g> est à <xliff:g>%2$s</xliff:g> de vous</string>
     <string name="chat_cards_line">Piochez <xliff:g>%1$d</xliff:g> cartes, gardez-en <xliff:g>%2$d</xliff:g>.</string>
