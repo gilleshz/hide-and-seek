@@ -250,7 +250,6 @@
     <string name="location_notification_channel_name">Partage de position</string>
     <string name="location_notification_title">Partage de votre position</string>
     <string name="location_notification_searching_fix">Recherche du signal GPS</string>
-    <string name="location_notification_stop">Arrêter</string>
 
     <string name="endgame_notification_channel_name">Alertes de fin de partie</string>
     <string name="endgame_notification_title">Quelqu\'un vous cherche à proximité !</string>

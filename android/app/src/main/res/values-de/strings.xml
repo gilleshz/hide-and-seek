@@ -250,7 +250,6 @@
     <string name="location_notification_channel_name">Standortfreigabe</string>
     <string name="location_notification_title">Dein Standort wird geteilt</string>
     <string name="location_notification_searching_fix">GPS-Signal wird gesucht</string>
-    <string name="location_notification_stop">Stopp</string>
 
     <string name="endgame_notification_channel_name">Endspiel-Alarme</string>
     <string name="endgame_notification_title">Suchende Person in der Nähe!</string>

@@ -250,7 +250,6 @@
     <string name="location_notification_channel_name">Location sharing</string>
     <string name="location_notification_title">Sharing your location</string>
     <string name="location_notification_searching_fix">Searching for GPS fix</string>
-    <string name="location_notification_stop">Stop</string>
 
     <string name="endgame_notification_channel_name">Endgame alerts</string>
     <string name="endgame_notification_title">Seeker nearby!</string>

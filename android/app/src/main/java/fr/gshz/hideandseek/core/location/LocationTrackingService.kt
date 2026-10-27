@@ -539,24 +539,14 @@ class LocationTrackingService : Service() {
         super.onDestroy()
     }
 
-    private fun buildNotification(searching: Boolean): Notification {
-        val stopIntent = Intent(this, LocationTrackingService::class.java).setAction(ACTION_STOP)
-        val stopPendingIntent = PendingIntent.getService(
-            this,
-            0,
-            stopIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildNotification(searching: Boolean): Notification =
+        NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.location_notification_title))
             .setContentText(if (searching) getString(R.string.location_notification_searching_fix) else null)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .setContentIntent(openAppPendingIntent())
-            .addAction(0, getString(R.string.location_notification_stop), stopPendingIntent)
             .build()
-    }
 
     private fun openAppPendingIntent(): PendingIntent {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
