@@ -209,9 +209,10 @@
     <string name="question_powerup_button">Powerup-Optionen</string>
     <string name="question_veto_button">Veto</string>
     <string name="question_randomize_button">Zufällig</string>
-    <string name="question_actions_title">Diese Frage</string>
+    <string name="question_actions_title">Aktionen</string>
     <string name="question_bonus_group_title">Bonus</string>
     <string name="question_answer_group_title">Antwort</string>
+    <string name="question_cannot_answer_hint">Wenn du das gefragte Foto nicht aufnehmen kannst, nutze diese Antwort.</string>
     <string name="powerup_dialog_hint">Fotografiere die Karte, die du spielst.</string>
     <string name="powerup_dialog_dismiss">Abbrechen</string>
     <string name="question_thermometer_awaiting_arrival">Unterwegs… tippe auf Bestätigen, wenn du angekommen bist</string>

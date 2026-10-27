@@ -39,7 +39,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -83,6 +82,7 @@ import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.i18n.resolveError
 import fr.gshz.hideandseek.core.ui.theme.AppTheme
 import fr.gshz.hideandseek.core.ui.ImageSourceDialog
+import fr.gshz.hideandseek.core.ui.SectionHeader
 import fr.gshz.hideandseek.core.ui.rememberCameraCapture
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.AskedQuestion
@@ -323,7 +323,10 @@ internal fun ChatContent(
                 questionActionsTargetUuid = null
                 showImageSourceDialog = true
             },
-            onCannotAnswerClick = { onCannotAnswer(it) },
+            onCannotAnswerClick = {
+                questionActionsTargetUuid = null
+                onCannotAnswer(it)
+            },
             onDismiss = { questionActionsTargetUuid = null },
         )
     }
@@ -411,32 +414,28 @@ private fun QuestionActionsDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.question_actions_title)) },
         text = {
-            Column {
-                Text(stringResource(R.string.question_bonus_group_title), style = MaterialTheme.typography.titleSmall)
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                SectionHeader(text = stringResource(R.string.question_bonus_group_title))
                 Text(
                     text = stringResource(R.string.powerup_dialog_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(modifier = Modifier.height(Spacing.sm))
                 if (showVeto) {
                     Button(onClick = { onVetoClick(questionUuid) }, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.question_veto_button))
                     }
-                    Spacer(modifier = Modifier.height(Spacing.sm))
                 }
                 Button(onClick = { onRandomizeClick(questionUuid) }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.question_randomize_button))
                 }
                 if (showCannotAnswer) {
-                    Spacer(modifier = Modifier.height(Spacing.md))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Spacing.md))
+                    SectionHeader(text = stringResource(R.string.question_answer_group_title))
                     Text(
-                        text = stringResource(R.string.question_answer_group_title),
-                        style = MaterialTheme.typography.titleSmall,
+                        text = stringResource(R.string.question_cannot_answer_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(Spacing.sm))
                     OutlinedButton(
                         onClick = { onCannotAnswerClick(questionUuid) },
                         modifier = Modifier.fillMaxWidth(),

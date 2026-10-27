@@ -209,9 +209,10 @@
     <string name="question_powerup_button">Powerup options</string>
     <string name="question_veto_button">Veto</string>
     <string name="question_randomize_button">Randomize</string>
-    <string name="question_actions_title">This question</string>
+    <string name="question_actions_title">Actions</string>
     <string name="question_bonus_group_title">Bonus</string>
     <string name="question_answer_group_title">Answer</string>
+    <string name="question_cannot_answer_hint">If you cannot take the requested photo, use this answer.</string>
     <string name="powerup_dialog_hint">Photograph the card you are playing.</string>
     <string name="powerup_dialog_dismiss">Cancel</string>
     <string name="question_thermometer_awaiting_arrival">Traveling… tap Confirm when you\'ve arrived</string>
