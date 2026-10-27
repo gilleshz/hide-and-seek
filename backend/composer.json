@@ -89,7 +89,7 @@
         "phpstan/phpstan-doctrine": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
         "phpstan/phpstan-symfony": "^2.0",
-        "phpunit/phpunit": "^13.2",
+        "phpunit/phpunit": "^13.4.5",
         "slevomat/coding-standard": "^8.31",
         "squizlabs/php_codesniffer": "^4.0",
         "symfony/browser-kit": "8.1.*",
