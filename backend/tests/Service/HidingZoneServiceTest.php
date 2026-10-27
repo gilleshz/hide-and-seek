@@ -205,6 +205,35 @@ final class HidingZoneServiceTest extends TestCase
     }
 
     #[Test]
+    public function itRejectsAZoneOutsideTheBoundary(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $game->setBoundaryGeoJson('{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}');
+        $round = new Round($game);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $membership = new RoundMembership($round, $player, Side::Hider);
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findOneByUuid')->willReturn($round);
+        $players = $this->createStub(PlayerRepository::class);
+        $players->method('findOneByUuid')->willReturn($player);
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);
+        $zones = $this->createMock(HidingZoneRepository::class);
+        $zones->method('findOneByRound')->willReturn(null);
+        $zones->method('zoneFitsInsideBoundary')->willReturn(false);
+        $zones->expects(self::never())->method('save');
+
+        try {
+            $this->service($rounds, $players, $memberships, $zones)
+                ->setZone($round->getUuid(), $player->getUuid(), new ZonePlacement(new Point(13.405, 52.52), null));
+            self::fail('Expected the zone to be rejected.');
+        } catch (FunctionalException $exception) {
+            self::assertSame('hiding_zone.outside_boundary', $exception->getErrorKey());
+        }
+    }
+
+    #[Test]
     public function itRejectsASeekerSettingTheZone(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);

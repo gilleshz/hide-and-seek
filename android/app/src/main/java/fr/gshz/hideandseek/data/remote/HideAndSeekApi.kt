@@ -8,8 +8,6 @@ import fr.gshz.hideandseek.data.remote.dto.ChatMessageReadDto
 import fr.gshz.hideandseek.data.remote.dto.ChatReadCursorDto
 import fr.gshz.hideandseek.data.remote.dto.CompleteThermometerRequest
 import fr.gshz.hideandseek.data.remote.dto.FeatureDto
-import fr.gshz.hideandseek.data.remote.dto.AreaFitRequest
-import fr.gshz.hideandseek.data.remote.dto.AreaFitResponse
 import fr.gshz.hideandseek.data.remote.dto.AreaSearchResult
 import fr.gshz.hideandseek.data.remote.dto.BoundaryPreviewRequest
 import fr.gshz.hideandseek.data.remote.dto.BoundaryPreviewResponse
@@ -310,9 +308,6 @@ interface HideAndSeekApi {
         @Url url: String,
         @Body body: TransitLinePreviewRequest,
     ): TransitLinePreviewResponse
-
-    @POST
-    suspend fun fitAreas(@Url url: String, @Body body: AreaFitRequest): AreaFitResponse
 
     @POST
     suspend fun leaveGame(@Url url: String, @Body body: LeaveRequest): LeaveResponseDto

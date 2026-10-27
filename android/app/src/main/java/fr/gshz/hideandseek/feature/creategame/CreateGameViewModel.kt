@@ -79,14 +79,8 @@ class CreateGameViewModel @Inject constructor(
      */
     private val previewedLineFeatures = mutableMapOf<String, String>()
 
-    /** What the last area fit added, so a re-fit replaces only that and keeps manual areas. */
-    private var autoFittedAreaKeys: Set<String> = emptySet()
-
-    /** The first fit replaces the discovery seed area; later fits keep areas added by hand after it. */
-    private var hasFittedArea = false
-
     init {
-        observeSelectedAreas()
+        observeBoundaryInput()
         observeSelectedTransitLines()
         observeRealtimeProbe()
         observeCatalogBoundary()
@@ -96,12 +90,18 @@ class CreateGameViewModel @Inject constructor(
      * Both previews follow the selection rather than a button, so they are debounced: a burst of
      * ticks costs one request, and collectLatest cancels a fetch the next tick already invalidated.
      */
-    private fun observeSelectedAreas() {
+    private fun observeBoundaryInput() {
         viewModelScope.launch {
-            _uiState.map { it.selectedAreas }
+            _uiState.map { boundaryInputOf(it) }
                 .distinctUntilChanged()
                 .debounce(PREVIEW_DEBOUNCE_MS)
-                .collectLatest { loadBoundaryPreview(it) }
+                .collectLatest { input ->
+                    if (input.useLineBoundary && !input.hasLines) {
+                        _uiState.update { it.copy(useLineBoundary = false) }
+                        return@collectLatest
+                    }
+                    loadBoundaryPreview(input)
+                }
         }
     }
 
@@ -172,7 +172,13 @@ class CreateGameViewModel @Inject constructor(
     }
 
     fun onSizeChange(value: GameSize) {
-        _uiState.update { it.copy(size = value, compactMap = it.compactMap && value == GameSize.Small) }
+        _uiState.update {
+            it.copy(
+                size = value,
+                compactMap = it.compactMap && value == GameSize.Small,
+                useLineBoundary = it.useLineBoundary && value != GameSize.Large,
+            )
+        }
     }
 
     fun onEditionChange(value: Edition) {
@@ -225,7 +231,7 @@ class CreateGameViewModel @Inject constructor(
                 state.size,
                 state.edition,
                 rulesVariant = rulesVariant,
-                areas = state.selectedAreas.ifEmpty { null },
+                areas = if (state.useLineBoundary) emptyList() else state.selectedAreas.ifEmpty { null },
                 selectedTransitLines = selectedLines,
                 selectedGtfsLines = selectedGtfs,
             )
@@ -316,6 +322,7 @@ class CreateGameViewModel @Inject constructor(
             }
             state.copy(
                 selectedAreas = current.toList(),
+                useLineBoundary = false,
                 boundaryGeoJson = null,
                 discoveryModeSelection = DEFAULT_DISCOVERY_MODES,
                 discoveryError = null,
@@ -323,68 +330,83 @@ class CreateGameViewModel @Inject constructor(
         }
     }
 
-    fun fitAreaFromLines() {
-        val state = _uiState.value
-        if (state.isFittingArea) return
-        val osmLineIds = state.expandedSelectedLineIds
-        val gtfsLines = resolveGtfsSelections(state).orEmpty()
-        if (osmLineIds.isEmpty() && gtfsLines.isEmpty()) return
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isFittingArea = true, fitAreaError = null) }
-            try {
-                applyFittedAreas(gameRepository.fitAreasFromLines(osmLineIds, gtfsLines))
-            } catch (e: IOException) {
-                Log.w(TAG, "Area fit failed", e)
-                failFitArea(UiText.fromResource(R.string.area_fit_network_error))
-            } catch (e: HttpException) {
-                Log.w(TAG, "Area fit failed", e)
-                failFitArea(fitAreaError(e))
-            }
-        }
-    }
-
-    private fun applyFittedAreas(areas: List<AreaInfo>) {
-        val keys = areas.mapTo(HashSet()) { areaKey(it) }
+    fun useLinesAsBoundary() {
         _uiState.update { state ->
-            val manual = if (hasFittedArea) {
-                state.selectedAreas.filterNot { areaKey(it) in autoFittedAreaKeys }
-            } else {
-                emptyList()
+            if (!state.hasSelectedLines) return@update state
+            state.copy(useLineBoundary = true, boundaryGeoJson = null, boundaryError = null)
+        }
+    }
+
+    fun clearLineBoundary() {
+        _uiState.update {
+            it.copy(useLineBoundary = false, boundaryGeoJson = null, boundaryError = null)
+        }
+    }
+
+    private fun boundaryInputOf(state: CreateGameUiState): BoundaryInput = BoundaryInput(
+        useLineBoundary = state.useLineBoundary,
+        areas = state.selectedAreas,
+        osmLineIds = state.expandedSelectedLineIds,
+        gtfsLines = resolveGtfsSelections(state).orEmpty(),
+        size = state.size,
+        edition = state.edition,
+    )
+
+    private suspend fun loadBoundaryPreview(input: BoundaryInput) {
+        if (!input.useLineBoundary && input.areas.isEmpty()) {
+            _uiState.update {
+                it.copy(boundaryGeoJson = null, isLoadingBoundary = false, boundaryError = null)
             }
-            state.copy(
-                selectedAreas = (manual + areas).distinctBy { areaKey(it) },
-                boundaryGeoJson = null,
-                isFittingArea = false,
-                fitAreaError = null,
-                fitAreaCount = areas.size,
-            )
+            return
         }
-        autoFittedAreaKeys = keys
-        hasFittedArea = true
-    }
 
-    private fun failFitArea(message: UiText) {
-        _uiState.update { it.copy(isFittingArea = false, fitAreaError = message, fitAreaCount = null) }
-    }
-
-    private fun fitAreaError(e: HttpException): UiText {
-        val args = e.serverErrorArgs()
-        return when (e.serverErrorKey()) {
-            ERROR_KEY_AREA_FIT_NO_LINES -> UiText.fromResource(R.string.area_fit_no_lines)
-            ERROR_KEY_AREA_FIT_NO_GEOMETRY -> UiText.fromResource(R.string.area_fit_no_geometry)
-            ERROR_KEY_AREA_FIT_NO_AREAS -> UiText.fromResource(R.string.area_fit_no_areas)
-            ERROR_KEY_AREA_FIT_TOO_LARGE -> UiText.fromResource(R.string.area_fit_too_large)
-            ERROR_KEY_AREA_FIT_TOO_MANY_AREAS -> UiText.fromResource(
-                R.string.area_fit_too_many_areas,
-                args?.get("count")?.toIntOrNull() ?: 0,
-                args?.get("max")?.toIntOrNull() ?: 0,
-            )
-            else -> UiText.fromDynamic(e.serverDetail() ?: e.message())
+        _uiState.update {
+            it.copy(isLoadingBoundary = true, boundaryError = null)
+        }
+        try {
+            val geoJson = if (input.useLineBoundary) {
+                gameRepository.boundaryPreviewFromLines(
+                    osmLineIds = input.osmLineIds,
+                    gtfsLines = input.gtfsLines,
+                    size = input.size,
+                    edition = input.edition,
+                )
+            } else {
+                gameRepository.boundaryPreview(input.areas)
+            }
+            if (boundaryInputOf(_uiState.value) == input) {
+                _uiState.update {
+                    it.copy(boundaryGeoJson = geoJson, isLoadingBoundary = false, boundaryError = null)
+                }
+            }
+        } catch (e: IOException) {
+            Log.w(TAG, "Boundary preview failed", e)
+            failBoundaryPreview(input, UiText.fromResource(R.string.area_fit_network_error))
+        } catch (e: HttpException) {
+            Log.w(TAG, "Boundary preview failed", e)
+            failBoundaryPreview(input, boundaryPreviewError(e))
         }
     }
 
-    private fun areaKey(area: AreaInfo): String = "${area.osmType}:${area.osmId}"
+    private suspend fun failBoundaryPreview(input: BoundaryInput, message: UiText) {
+        currentCoroutineContext().ensureActive()
+        if (boundaryInputOf(_uiState.value) == input) {
+            _uiState.update {
+                it.copy(
+                    boundaryGeoJson = null,
+                    isLoadingBoundary = false,
+                    boundaryError = message,
+                )
+            }
+        }
+    }
+
+    private fun boundaryPreviewError(e: HttpException): UiText = when (e.serverErrorKey()) {
+        ERROR_KEY_AREA_FIT_NO_LINES -> UiText.fromResource(R.string.area_fit_no_lines)
+        ERROR_KEY_AREA_FIT_NO_GEOMETRY -> UiText.fromResource(R.string.area_fit_no_geometry)
+        ERROR_KEY_AREA_FIT_TOO_LARGE -> UiText.fromResource(R.string.area_fit_too_large)
+        else -> UiText.fromDynamic(e.serverDetail() ?: e.message())
+    }
 
     fun toggleTransitLineGroup(group: TransitLineGroup) {
         _uiState.update { state ->
@@ -802,32 +824,6 @@ class CreateGameViewModel @Inject constructor(
             .ifEmpty { null }
     }
 
-    private suspend fun loadBoundaryPreview(areas: List<AreaInfo>) {
-        if (areas.isEmpty()) {
-            _uiState.update { it.copy(boundaryGeoJson = null) }
-            return
-        }
-
-        try {
-            val geoJson = gameRepository.boundaryPreview(areas)
-            if (_uiState.value.selectedAreas == areas) {
-                _uiState.update { it.copy(boundaryGeoJson = geoJson) }
-            }
-        } catch (e: IOException) {
-            Log.w(TAG, "Boundary preview failed", e)
-            clearBoundaryPreview()
-        } catch (e: HttpException) {
-            Log.w(TAG, "Boundary preview failed", e)
-            clearBoundaryPreview()
-        }
-    }
-
-    /** A cancelled request is a superseded selection, not a failure: leave the drawn boundary alone. */
-    private suspend fun clearBoundaryPreview() {
-        currentCoroutineContext().ensureActive()
-        _uiState.update { it.copy(boundaryGeoJson = null) }
-    }
-
     fun discoverOsmTransit() {
         val areas = _uiState.value.selectedAreas
         if (areas.isEmpty()) return
@@ -885,6 +881,17 @@ class CreateGameViewModel @Inject constructor(
             )
         }
 
+    private data class BoundaryInput(
+        val useLineBoundary: Boolean,
+        val areas: List<AreaInfo>,
+        val osmLineIds: Set<String>,
+        val gtfsLines: List<GtfsLineSelection>,
+        val size: GameSize,
+        val edition: Edition,
+    ) {
+        val hasLines: Boolean get() = osmLineIds.isNotEmpty() || gtfsLines.isNotEmpty()
+    }
+
     private companion object {
         const val TAG = "CreateGameViewModel"
         const val GTFS_FEED_NAME_MAX_LENGTH = 50
@@ -918,6 +925,4 @@ private const val ERROR_KEY_GTFS_SOURCE_TOO_LARGE = "gtfs.source_too_large"
 private const val ERROR_KEY_GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE = "gtfs.source_uncompressed_too_large"
 private const val ERROR_KEY_AREA_FIT_NO_LINES = "area_fit.no_lines"
 private const val ERROR_KEY_AREA_FIT_NO_GEOMETRY = "area_fit.no_geometry"
-private const val ERROR_KEY_AREA_FIT_NO_AREAS = "area_fit.no_areas"
 private const val ERROR_KEY_AREA_FIT_TOO_LARGE = "area_fit.too_large"
-private const val ERROR_KEY_AREA_FIT_TOO_MANY_AREAS = "area_fit.too_many_areas"

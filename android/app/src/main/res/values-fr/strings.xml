@@ -79,16 +79,14 @@
     <string name="area_search_button">Rechercher</string>
     <string name="area_search_size_km">≈ <xliff:g>%1$d</xliff:g> × <xliff:g>%2$d</xliff:g> km</string>
     <string name="area_search_population"><xliff:g>%1$s</xliff:g> habitants</string>
-    <string name="area_fit_action">Définir la zone de jeu à partir de ces lignes</string>
-    <string name="area_fit_loading">Recherche des zones desservies...</string>
-    <string name="area_fit_done">Zone de jeu mise à jour : <xliff:g>%1$d</xliff:g> zones</string>
-    <string name="area_fit_review">Vérifier</string>
-    <string name="area_fit_network_error">Impossible de trouver les zones : vérifiez votre connexion et réessayez.</string>
+    <string name="area_fit_action">Utiliser les lignes sélectionnées comme zone de jeu</string>
+    <string name="area_fit_active">Zone de jeu : les lignes sélectionnées</string>
+    <string name="area_fit_clear">Utiliser des zones recherchées</string>
+    <string name="area_fit_loading">Calcul de la zone de jeu...</string>
+    <string name="area_fit_network_error">Impossible de dessiner la zone de jeu : vérifiez votre connexion et réessayez.</string>
     <string name="area_fit_no_lines">Sélectionnez d\'abord au moins une ligne.</string>
     <string name="area_fit_no_geometry">Les lignes sélectionnées n\'ont pas de géométrie exploitable.</string>
-    <string name="area_fit_no_areas">Aucune zone trouvée autour de ces lignes.</string>
     <string name="area_fit_too_large">Ces lignes couvrent une zone trop vaste pour en déduire une zone de jeu.</string>
-    <string name="area_fit_too_many_areas">Ces lignes desservent <xliff:g>%1$d</xliff:g> zones, au-delà de la limite de <xliff:g>%2$d</xliff:g> zones. Sélectionnez moins de lignes.</string>
 
     <string name="join_game_title">Rejoindre une partie</string>
     <string name="join_game_key_label">Clé du jeu</string>

@@ -68,6 +68,10 @@ class FakeGameRepository : GameRepository {
         private set
     var lastCreateRulesVariant: RulesVariant? = null
         private set
+    var lastCreateAreas: List<AreaInfo>? = null
+        private set
+    var lastCreateTransitLines: List<TransitLine>? = null
+        private set
 
     @Suppress("LongParameterList")
     override suspend fun createGame(
@@ -82,6 +86,8 @@ class FakeGameRepository : GameRepository {
     ): GameSummary {
         lastCreateSize = size
         lastCreateRulesVariant = rulesVariant
+        lastCreateAreas = areas
+        lastCreateTransitLines = selectedTransitLines
         return createGameResult.getOrThrow()
     }
 
@@ -103,9 +109,11 @@ class FakeGameRepository : GameRepository {
 
     var boundaryPreviewCalls = 0
     var boundaryPreviewGate: CompletableDeferred<Unit>? = null
+    val boundaryPreviewAreas = mutableListOf<List<AreaInfo>>()
 
     override suspend fun boundaryPreview(areas: List<AreaInfo>): String {
         boundaryPreviewCalls++
+        boundaryPreviewAreas += areas
         boundaryPreviewGate?.await()
         return boundaryPreviewResult.getOrThrow()
     }
@@ -119,22 +127,26 @@ class FakeGameRepository : GameRepository {
         return transitLinePreviewResult.getOrThrow()
     }
 
-    data class FitAreasCall(
+    data class LineBoundaryPreviewCall(
         val osmLineIds: Set<String>,
         val gtfsLines: List<GtfsLineSelection>,
+        val size: GameSize,
+        val edition: Edition,
     )
 
-    var fitAreasResult: Result<List<AreaInfo>> = Result.success(emptyList())
-    val fitAreasCalls = mutableListOf<FitAreasCall>()
-    var fitAreasGate: CompletableDeferred<Unit>? = null
+    var lineBoundaryPreviewResult: Result<String> = boundaryPreviewResult
+    val lineBoundaryPreviewCalls = mutableListOf<LineBoundaryPreviewCall>()
+    var lineBoundaryPreviewGate: CompletableDeferred<Unit>? = null
 
-    override suspend fun fitAreasFromLines(
+    override suspend fun boundaryPreviewFromLines(
         osmLineIds: Set<String>,
         gtfsLines: List<GtfsLineSelection>,
-    ): List<AreaInfo> {
-        fitAreasCalls += FitAreasCall(osmLineIds, gtfsLines)
-        fitAreasGate?.await()
-        return fitAreasResult.getOrThrow()
+        size: GameSize,
+        edition: Edition,
+    ): String {
+        lineBoundaryPreviewCalls += LineBoundaryPreviewCall(osmLineIds, gtfsLines, size, edition)
+        lineBoundaryPreviewGate?.await()
+        return lineBoundaryPreviewResult.getOrThrow()
     }
 
     override suspend fun uploadGtfsFromUrl(

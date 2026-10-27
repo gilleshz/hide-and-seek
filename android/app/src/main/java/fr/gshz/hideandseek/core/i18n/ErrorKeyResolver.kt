@@ -38,6 +38,7 @@ private val ERROR_KEY_MAP: Map<String, Int> = mapOf(
     "zone.too_small" to R.string.error_zone_too_small,
     "zone.too_large" to R.string.error_zone_too_large,
     "zone.outside_boundary" to R.string.error_zone_outside_boundary,
+    "hiding_zone.outside_boundary" to R.string.error_zone_outside_boundary,
     "zone.already_set" to R.string.error_zone_already_set,
     "hiding_zone.card_required" to R.string.error_zone_card_required,
     "zone_card.not_seeking" to R.string.error_zone_card_not_seeking,

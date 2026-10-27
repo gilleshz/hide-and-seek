@@ -12,6 +12,7 @@ use App\Enum\GameSize;
 use App\Exception\EntityNotFoundException;
 use App\Exception\FunctionalException;
 use App\Exception\IdentityRequiredException;
+use App\Repository\BoundaryGeometryRepository;
 use App\Repository\ChatMessageRepository;
 use App\Repository\GameAreaRepository;
 use App\Repository\GameGtfsLineRepository;
@@ -24,6 +25,7 @@ use App\Repository\PlayerRepository;
 use App\Repository\RoundMembershipRepository;
 use App\Repository\RoundRepository;
 use App\Service\AdminLevelResolver;
+use App\Service\BoundaryService;
 use App\Service\ChatService;
 use App\Service\GameCleanupService;
 use App\Service\GameService;
@@ -36,12 +38,14 @@ use App\Service\HeavyWorkGuard;
 use App\Service\IdentityResolver;
 use App\Service\LeaveService;
 use App\Service\MercureJwtService;
+use App\Service\NetworkBoundaryService;
 use App\Service\NominatimService;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\OverpassHttpClient;
 use App\Service\RosterNotifier;
 use App\Service\RosterService;
+use App\Service\TransitService;
 use App\Service\TransitStationImporter;
 use App\Service\TransitTilePipeline;
 use App\Service\TransitTileService;
@@ -205,13 +209,30 @@ final class GameDeleteProcessorTest extends TestCase
             '/tmp/chat-images',
             '/tmp/tiles',
         );
+        $nominatim = new NominatimService(
+            new MockHttpClient(),
+            $this->createStub(CacheInterface::class),
+            'test-agent',
+            'https://nominatim.test',
+        );
         $gameService = new GameService(
             $games,
             $this->createStub(RoundRepository::class),
             $this->createStub(GameAreaRepository::class),
             $players,
-            new NominatimService(new MockHttpClient(), $this->createStub(CacheInterface::class), 'test-agent', 'https://nominatim.test'),
-            new AdminLevelResolver(new NominatimService(new MockHttpClient(), $this->createStub(CacheInterface::class), 'test-agent', 'https://nominatim.test')),
+            $nominatim,
+            new AdminLevelResolver($nominatim),
+            new NetworkBoundaryService(
+                new TransitService(
+                    new OverpassHttpClient(new MockHttpClient(), 'https://test.example/api/', false),
+                    32_000_000,
+                    new BoundaryService($nominatim, $this->createStub(GameAreaRepository::class)),
+                ),
+                $this->createStub(GtfsSourceRepository::class),
+                new GtfsSubsetService($gtfsService, new Filesystem(), new NullLogger()),
+                new BoundaryGeometryRepository($entityManager),
+                2.0,
+            ),
             $entityManager,
             2.0,
             new HeavyWorkGuard($this->createStub(HeavyWorkLockRepository::class)),

@@ -31,6 +31,7 @@ final readonly class GameService
         private PlayerRepository $players,
         private NominatimService $nominatim,
         private AdminLevelResolver $adminLevelResolver,
+        private NetworkBoundaryService $networkBoundary,
         private EntityManagerInterface $entityManager,
         #[Autowire('%app.max_boundary_span_deg%')]
         private float $maxBoundarySpanDeg,
@@ -48,12 +49,19 @@ final readonly class GameService
             $game->setJoinCode($this->generateJoinCode());
             $this->games->save($game);
 
+            $osmIds = $this->selectedOsmRelationIds($input->selectedTransitLines);
+            $hasSelectedLines = $input->selectedTransitLines !== [] || $input->selectedGtfsLines !== [];
+            $hasUsableLines = $osmIds !== [] || $input->selectedGtfsLines !== [];
             if ($input->areas !== []) {
                 $this->buildBoundary($game, $input->areas);
+            } elseif ($hasSelectedLines && $hasUsableLines) {
+                $this->buildNetworkBoundary($game, $input, $osmIds);
+            }
+
+            if ($game->getBoundaryGeoJson() !== null) {
                 $game->setAdminLevels($this->adminLevelResolver->resolve($game));
             }
 
-            $hasSelectedLines = $input->selectedTransitLines !== [] || $input->selectedGtfsLines !== [];
             if ($game->getBoundarySwLat() !== null && $hasSelectedLines) {
                 $this->transitBuilder->buildForGame($game, $input->selectedTransitLines, $input->selectedGtfsLines);
             }
@@ -215,10 +223,54 @@ final readonly class GameService
         $this->games->updateBoundaryFromGeoJson($game, $boundaryGeoJson ?? '');
         $this->entityManager->refresh($game);
 
+        $this->assertBoundarySpan($game);
+    }
+
+    /** @param list<string> $osmIds */
+    private function buildNetworkBoundary(Game $game, GameInput $input, array $osmIds): void
+    {
+        $boundaryGeoJson = $this->networkBoundary->buildGeometry(
+            $osmIds,
+            $input->selectedGtfsLines,
+            $input->size,
+            $input->edition,
+        );
+
+        $game->setBoundaryGeoJson($boundaryGeoJson);
+        $this->games->save($game, flush: true);
+        $this->games->updateBoundaryFromGeoJson($game, $boundaryGeoJson);
+        $this->entityManager->refresh($game);
+
+        $this->assertBoundarySpan($game);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $lines
+     * @return list<string>
+     */
+    private function selectedOsmRelationIds(array $lines): array
+    {
+        $ids = [];
+        foreach ($lines as $line) {
+            $type = $line['osmType'] ?? 'relation';
+            $id = $line['osmId'] ?? null;
+            if ($type !== 'relation') {
+                continue;
+            }
+            if ((is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id > 0) {
+                $ids[] = (string) $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private function assertBoundarySpan(Game $game): void
+    {
         $span = $this->games->getBoundarySpan($game);
         if ($span !== null && ($span[0] > $this->maxBoundarySpanDeg || $span[1] > $this->maxBoundarySpanDeg)) {
             throw new FunctionalException(
-                message: sprintf('Boundary is too large (%.1f° x %.1f°). Choose a smaller set of areas.', $span[0], $span[1]),
+                message: sprintf('Boundary is too large (%.1f° x %.1f°). Choose a smaller set of areas or lines.', $span[0], $span[1]),
                 errorKey: 'game.boundary_too_large',
             );
         }

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\ZonePlacement;
+use App\Entity\Game;
 use App\Entity\HidingZone;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Enum\Side;
 use App\Enum\ZoneCard;
+use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
 use App\Exception\FunctionalException;
 use App\Repository\HidingZoneRepository;
@@ -56,6 +58,7 @@ final readonly class HidingZoneService
 
                 $existing = $this->zones->findOneByRound($round);
                 $this->assertFreeToPlace($round, $existing);
+                $this->assertZoneFitsBoundary($round->getGame(), $placement->point, $resolvedRadius);
                 if ($existing === null) {
                     $zone = new HidingZone($round, $placement->point, $resolvedRadius);
                     $zone->setStationName($placement->stationName);
@@ -166,6 +169,20 @@ final readonly class HidingZoneService
             throw new FunctionalException(
                 message: 'Once the seekers are hunting, the hiding zone only changes by playing a card.',
                 errorKey: 'hiding_zone.card_required',
+            );
+        }
+    }
+
+    private function assertZoneFitsBoundary(Game $game, Point $point, float $radiusMeters): void
+    {
+        if ($game->getBoundaryGeoJson() === null) {
+            return;
+        }
+
+        if (!$this->zones->zoneFitsInsideBoundary($game, $point, $radiusMeters)) {
+            throw new FunctionalException(
+                message: 'The hiding zone must fit inside the game boundary.',
+                errorKey: ErrorKey::HIDING_ZONE_OUTSIDE_BOUNDARY,
             );
         }
     }

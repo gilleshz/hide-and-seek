@@ -161,6 +161,81 @@ final readonly class GtfsSubsetService
     }
 
     /**
+     * Shape polylines of a feed or of the route-filtered subset built for it.
+     *
+     * @return list<list<array{lat: float, lon: float}>>
+     */
+    public function shapeCoordinates(string $zipPath): array
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new FunctionalException(
+                message: 'Failed to open GTFS archive.',
+                errorKey: 'gtfs.archive_open_failed',
+            );
+        }
+
+        try {
+            $shapes = [];
+            if ($zip->locateName('shapes.txt') !== false) {
+                $in = $zip->getStream('shapes.txt');
+                if (is_resource($in)) {
+                    try {
+                        $shapes = $this->readShapeRows($in);
+                    } finally {
+                        fclose($in);
+                    }
+                }
+            }
+
+            return $shapes;
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * @param resource $in
+     * @return list<list<array{lat: float, lon: float}>>
+     */
+    private function readShapeRows($in): array
+    {
+        $header = fgetcsv($in, null, ',', '"', '');
+        if ($header === false) {
+            return [];
+        }
+        $map = array_flip(array_map(static fn (string|null $h): string => (string) $h, $header));
+        $idIndex = $map['shape_id'] ?? null;
+        $latIndex = $map['shape_pt_lat'] ?? null;
+        $lonIndex = $map['shape_pt_lon'] ?? null;
+        $seqIndex = $map['shape_pt_sequence'] ?? null;
+        if ($idIndex === null || $latIndex === null || $lonIndex === null || $seqIndex === null) {
+            return [];
+        }
+
+        /** @var array<string, array<int, array{lat: float, lon: float}>> $byShape */
+        $byShape = [];
+        while (($row = fgetcsv($in, null, ',', '"', '')) !== false) {
+            $id = $row[$idIndex] ?? '';
+            $lat = $row[$latIndex] ?? '';
+            $lon = $row[$lonIndex] ?? '';
+            $sequence = $row[$seqIndex] ?? '';
+            if ($id === '' || !is_numeric($lat) || !is_numeric($lon) || !is_numeric($sequence)) {
+                continue;
+            }
+            $byShape[$id][(int) $sequence] = ['lat' => (float) $lat, 'lon' => (float) $lon];
+        }
+
+        $shapes = [];
+        foreach ($byShape as $points) {
+            ksort($points);
+            $shapes[] = array_values($points);
+        }
+
+        return $shapes;
+    }
+
+    /**
      * @param list<string> $routeIds
      */
     private function buildInto(string $sourcePath, array $routeIds, string $subsetPath): void

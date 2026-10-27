@@ -57,8 +57,13 @@ interface GameRepository {
     suspend fun searchTransitCatalog(bbox: BoundingBox, query: String): List<TransitCatalogSuggestion>
     suspend fun discoverTransitLines(areas: List<AreaInfo>, routeTypes: List<String>? = null): List<TransitLine>
     suspend fun boundaryPreview(areas: List<AreaInfo>): String
+    suspend fun boundaryPreviewFromLines(
+        osmLineIds: Set<String>,
+        gtfsLines: List<GtfsLineSelection>,
+        size: GameSize,
+        edition: Edition,
+    ): String
     suspend fun transitLinePreview(osmIds: Set<String>): String
-    suspend fun fitAreasFromLines(osmLineIds: Set<String>, gtfsLines: List<GtfsLineSelection>): List<AreaInfo>
     suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,

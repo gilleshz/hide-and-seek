@@ -100,9 +100,10 @@ data class CreateGameUiState(
     val areaSearchResults: List<AreaInfo> = emptyList(),
     val selectedAreas: List<AreaInfo> = emptyList(),
     val boundaryGeoJson: String? = null,
-    val isFittingArea: Boolean = false,
-    val fitAreaError: UiText? = null,
-    val fitAreaCount: Int? = null,
+    /** True when the play area is drawn from the selected lines instead of the searched areas. */
+    val useLineBoundary: Boolean = false,
+    val isLoadingBoundary: Boolean = false,
+    val boundaryError: UiText? = null,
     val isDiscoveringTransit: Boolean = false,
     val hasDiscoveredTransit: Boolean = false,
     val transitLines: List<TransitLine> = emptyList(),
@@ -132,6 +133,9 @@ data class CreateGameUiState(
 ) {
 
     val showFitArea: Boolean get() = size != GameSize.Large
+
+    val hasSelectedLines: Boolean
+        get() = expandedSelectedLineIds.isNotEmpty() || selectedGtfsRouteKeys.isNotEmpty()
 
     /** GTFS routes that are not already covered by OSM transit lines (dedup by ref). */
     val uniqueGtfsRoutes: List<Pair<GtfsSourceState, GtfsRoute>>

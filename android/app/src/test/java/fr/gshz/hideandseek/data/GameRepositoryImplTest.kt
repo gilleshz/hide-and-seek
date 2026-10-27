@@ -5,6 +5,8 @@ import fr.gshz.hideandseek.core.device.DeviceIdentity
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.data.remote.HideAndSeekApi
 import fr.gshz.hideandseek.domain.model.BoundingBox
+import fr.gshz.hideandseek.domain.model.Edition
+import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
@@ -114,10 +116,10 @@ class GameRepositoryImplTest {
     }
 
     @Test
-    fun `fitAreasFromLines posts the line selection and maps the areas`() = runTest {
+    fun `boundaryPreviewFromLines posts the line selection, size and edition`() = runTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """{"areas":[{"osmType":"relation","osmId":"450381","displayName":"Metz","adminLevel":8}]}""",
+                """{"geoJson":"{\"type\":\"Polygon\",\"coordinates\":[]}"}""",
             ),
         )
         val route = GtfsRoute(
@@ -131,18 +133,21 @@ class GameRepositoryImplTest {
             textColor = "#FFFFFF",
         )
 
-        val areas = repository.fitAreasFromLines(
+        val geoJson = repository.boundaryPreviewFromLines(
             osmLineIds = setOf("123"),
             gtfsLines = listOf(GtfsLineSelection("src-1", route)),
+            size = GameSize.Medium,
+            edition = Edition.Metric,
         )
 
         val request = server.takeRequest()
-        assertEquals("/api/area-fit", request.path)
+        assertEquals("/api/boundary-preview", request.path)
         assertEquals(
-            """{"osmLineIds":["123"],"gtfsLines":[{"gtfsSourceUuid":"src-1","routeId":"route-MA"}]}""",
+            """{"osmLineIds":["123"],"gtfsLines":[{"gtfsSourceUuid":"src-1","routeId":"route-MA"}],""" +
+                """"size":"M","edition":"metric"}""",
             request.body.readUtf8(),
         )
-        assertEquals(listOf(AreaInfo("450381", "relation", "Metz", adminLevel = 8)), areas)
+        assertEquals("""{"type":"Polygon","coordinates":[]}""", geoJson)
     }
 
     @Test

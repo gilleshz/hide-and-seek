@@ -5,6 +5,7 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.domain.model.BoundingBox
+import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
@@ -367,102 +368,144 @@ class CreateGameViewModelTest {
     }
 
     @Test
-    fun `fitting the area adds the communes the lines serve`() = runTest(dispatcher) {
-        gameRepository.fitAreasResult = Result.success(
-            listOf(
-                AreaInfo("10", "relation", "Metz", 8),
-                AreaInfo("11", "relation", "Montigny-lès-Metz", 8),
+    fun `using the selected lines previews the line boundary`() = runTest(dispatcher) {
+        gameRepository.lineBoundaryPreviewResult = Result.success(catalogBoundary)
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+
+        viewModel.useLinesAsBoundary()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.useLineBoundary)
+        assertEquals(catalogBoundary, viewModel.uiState.value.boundaryGeoJson)
+        assertFalse(viewModel.uiState.value.isLoadingBoundary)
+        assertNull(viewModel.uiState.value.boundaryError)
+        assertEquals(
+            FakeGameRepository.LineBoundaryPreviewCall(
+                osmLineIds = setOf("1"),
+                gtfsLines = emptyList(),
+                size = GameSize.Medium,
+                edition = Edition.Metric,
             ),
+            gameRepository.lineBoundaryPreviewCalls.single(),
         )
-        val gate = CompletableDeferred<Unit>()
-        gameRepository.fitAreasGate = gate
-        val viewModel = selectableViewModel("1" to "A")
-        advanceUntilIdle()
-        viewModel.toggleTransitLineGroup(group("A", "1"))
-        advanceUntilIdle()
-
-        viewModel.fitAreaFromLines()
-        runCurrent()
-        assertTrue(viewModel.uiState.value.isFittingArea)
-
-        gate.complete(Unit)
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiState.value.isFittingArea)
-        assertEquals(listOf("10", "11"), viewModel.uiState.value.selectedAreas.map { it.osmId })
-        assertEquals(2, viewModel.uiState.value.fitAreaCount)
-        assertNull(viewModel.uiState.value.fitAreaError)
-        assertEquals(setOf("1"), gameRepository.fitAreasCalls.single().osmLineIds)
     }
 
     @Test
-    fun `a refit replaces only the areas the previous fit added`() = runTest(dispatcher) {
+    fun `the line boundary cannot be used without selected lines`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.useLinesAsBoundary()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.useLineBoundary)
+        assertTrue(gameRepository.lineBoundaryPreviewCalls.isEmpty())
+    }
+
+    @Test
+    fun `clearing the line boundary returns to the selected areas`() = runTest(dispatcher) {
         val viewModel = selectableViewModel("1" to "A")
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
-
-        gameRepository.fitAreasResult = Result.success(listOf(AreaInfo("10", "relation", "Metz", 8)))
-        viewModel.fitAreaFromLines()
-        advanceUntilIdle()
-        viewModel.toggleArea(AreaInfo("99", "relation", "Kehl", 8))
-
-        gameRepository.fitAreasResult = Result.success(listOf(AreaInfo("11", "relation", "Montigny", 8)))
-        viewModel.fitAreaFromLines()
+        viewModel.useLinesAsBoundary()
         advanceUntilIdle()
 
-        assertEquals(listOf("99", "11"), viewModel.uiState.value.selectedAreas.map { it.osmId })
+        viewModel.clearLineBoundary()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.useLineBoundary)
+        assertEquals(listOf("123"), gameRepository.boundaryPreviewAreas.last().map { it.osmId })
+        assertEquals(1, gameRepository.lineBoundaryPreviewCalls.size)
     }
 
     @Test
-    fun `a fit failure maps the server error`() = runTest(dispatcher) {
-        gameRepository.fitAreasResult = Result.failure(
-            httpException(400, """{"errorKey":"area_fit.no_areas"}"""),
+    fun `choosing an area switches back to the area boundary`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+        viewModel.useLinesAsBoundary()
+        advanceUntilIdle()
+
+        viewModel.toggleArea(AreaInfo("456", "relation", "Nancy", 8))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.useLineBoundary)
+        assertEquals(1, gameRepository.lineBoundaryPreviewCalls.size)
+        assertEquals(
+            listOf("123", "456"),
+            gameRepository.boundaryPreviewAreas.last().map { it.osmId },
+        )
+    }
+
+    @Test
+    fun `clearing the selected lines clears the line boundary`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+        viewModel.useLinesAsBoundary()
+        advanceUntilIdle()
+
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.useLineBoundary)
+    }
+
+    @Test
+    fun `switching to a large game clears the line boundary`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+        viewModel.useLinesAsBoundary()
+        advanceUntilIdle()
+
+        viewModel.onSizeChange(GameSize.Large)
+
+        assertFalse(viewModel.uiState.value.useLineBoundary)
+    }
+
+    @Test
+    fun `a line boundary failure maps the server error`() = runTest(dispatcher) {
+        gameRepository.lineBoundaryPreviewResult = Result.failure(
+            httpException(400, """{"errorKey":"area_fit.no_geometry"}"""),
         )
         val viewModel = selectableViewModel("1" to "A")
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
 
-        viewModel.fitAreaFromLines()
+        viewModel.useLinesAsBoundary()
         advanceUntilIdle()
 
         assertEquals(
-            UiText.fromResource(R.string.area_fit_no_areas),
-            viewModel.uiState.value.fitAreaError,
+            UiText.fromResource(R.string.area_fit_no_geometry),
+            viewModel.uiState.value.boundaryError,
         )
-        assertFalse(viewModel.uiState.value.isFittingArea)
+        assertFalse(viewModel.uiState.value.isLoadingBoundary)
+        assertNull(viewModel.uiState.value.boundaryGeoJson)
     }
 
     @Test
-    fun `a too many areas error keeps the counts`() = runTest(dispatcher) {
-        gameRepository.fitAreasResult = Result.failure(
-            httpException(
-                400,
-                """{"errorKey":"area_fit.too_many_areas","errorArgs":{"count":"63","max":"50"}}""",
-            ),
-        )
+    fun `creating in line mode sends no areas`() = runTest(dispatcher) {
         val viewModel = selectableViewModel("1" to "A")
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+        viewModel.useLinesAsBoundary()
+        advanceUntilIdle()
+        viewModel.onNameChange("Berlin")
 
-        viewModel.fitAreaFromLines()
+        viewModel.createGame()
         advanceUntilIdle()
 
-        assertEquals(
-            UiText.fromResource(R.string.area_fit_too_many_areas, 63, 50),
-            viewModel.uiState.value.fitAreaError,
-        )
-    }
-
-    @Test
-    fun `a fit without selected lines does nothing`() = runTest(dispatcher) {
-        val viewModel = selectableViewModel("1" to "A")
-        advanceUntilIdle()
-
-        viewModel.fitAreaFromLines()
-        advanceUntilIdle()
-
-        assertTrue(gameRepository.fitAreasCalls.isEmpty())
+        assertEquals(emptyList<AreaInfo>(), gameRepository.lastCreateAreas)
+        assertEquals(listOf("1"), gameRepository.lastCreateTransitLines?.map { it.osmId })
     }
 
     @Test

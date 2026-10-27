@@ -105,6 +105,22 @@ final class GtfsSubsetServiceTest extends TestCase
     }
 
     #[Test]
+    public function itReadsShapeCoordinatesInSequenceOrder(): void
+    {
+        $files = $this->feedFiles();
+        $files['shapes.txt'] = "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
+            . "SH1,46.51,6.61,2\nSH1,46.50,6.60,1\nSH2,46.60,6.70,1";
+        $subsetPath = $this->subsets->build($this->source($files), ['R1']);
+
+        self::assertSame([
+            [
+                ['lat' => 46.5, 'lon' => 6.6],
+                ['lat' => 46.51, 'lon' => 6.61],
+            ],
+        ], $this->subsets->shapeCoordinates($subsetPath));
+    }
+
+    #[Test]
     public function itFollowsAMultiLevelParentStationClosure(): void
     {
         $files = $this->feedFiles();

@@ -141,21 +141,6 @@ readonly class OverpassService
     ) {
     }
 
-    /**
-     * Admin relations of one level intersecting the bbox, with their member geometry.
-     *
-     * @return list<mixed>
-     */
-    public function fetchAdminRelations(int $level, string $bbox): array
-    {
-        $json = $this->overpassHttpClient->fetch($this->buildAdminQuery($level, $bbox), 180, self::MAX_RESPONSE_BYTES);
-        /** @var mixed $data */
-        $data = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
-        $elements = is_array($data) ? ($data['elements'] ?? null) : null;
-
-        return is_array($elements) ? array_values($elements) : [];
-    }
-
     public function ingestFeatures(Game $game): int
     {
         $swLat = $game->getBoundarySwLat();

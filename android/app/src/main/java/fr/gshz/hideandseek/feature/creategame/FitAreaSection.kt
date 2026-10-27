@@ -28,49 +28,67 @@ import fr.gshz.hideandseek.core.ui.theme.Spacing
 internal fun FitAreaSection(
     uiState: CreateGameUiState,
     actions: CreateGameActions,
-    onReviewAreas: () -> Unit,
 ) {
     if (!uiState.showFitArea) return
-    val hasLines = uiState.expandedSelectedLineIds.isNotEmpty() || uiState.selectedGtfsRouteKeys.isNotEmpty()
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        OutlinedButton(
-            onClick = actions.onFitAreaFromLines,
-            enabled = hasLines && !uiState.isFittingArea && !uiState.isLoading,
-            contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
-            modifier = Modifier.align(Alignment.Start),
-        ) {
-            if (uiState.isFittingArea) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(Spacing.sm))
-                Text(stringResource(R.string.area_fit_loading))
-            } else {
-                Icon(
-                    Icons.Filled.Place,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(Spacing.xs))
-                Text(stringResource(R.string.area_fit_action))
-            }
+        if (uiState.useLineBoundary) {
+            LineBoundaryStatus(uiState, actions.onClearLineBoundary)
+        } else {
+            UseLineBoundaryButton(uiState, actions.onUseLinesAsBoundary)
         }
-        uiState.fitAreaError?.let { error ->
+    }
+}
+
+@Composable
+private fun LineBoundaryStatus(uiState: CreateGameUiState, onClear: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Filled.Place,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(Spacing.xs))
+        Text(
+            text = stringResource(R.string.area_fit_active),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onClear) {
+            Text(stringResource(R.string.area_fit_clear))
+        }
+    }
+    if (uiState.isLoadingBoundary) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(Spacing.sm))
             Text(
-                text = error.resolve(),
+                text = stringResource(R.string.area_fit_loading),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
             )
         }
-        uiState.fitAreaCount?.let { count ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.area_fit_done, count),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onReviewAreas) {
-                    Text(stringResource(R.string.area_fit_review))
-                }
-            }
-        }
+    }
+    uiState.boundaryError?.let { error ->
+        Text(
+            text = error.resolve(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun UseLineBoundaryButton(uiState: CreateGameUiState, onUse: () -> Unit) {
+    OutlinedButton(
+        onClick = onUse,
+        enabled = uiState.hasSelectedLines && !uiState.isLoading,
+        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+    ) {
+        Icon(
+            Icons.Filled.Place,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(Spacing.xs))
+        Text(stringResource(R.string.area_fit_action))
     }
 }

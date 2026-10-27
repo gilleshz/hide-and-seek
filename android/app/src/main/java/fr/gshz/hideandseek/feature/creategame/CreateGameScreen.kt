@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,7 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -108,7 +105,8 @@ fun CreateGameScreen(
             onShowDiscoveryModeDialog = viewModel::showDiscoveryModeDialog,
             onDismissDiscoveryModeDialog = viewModel::dismissDiscoveryModeDialog,
             onDiscoverOsmTransit = viewModel::discoverOsmTransit,
-            onFitAreaFromLines = viewModel::fitAreaFromLines,
+            onUseLinesAsBoundary = viewModel::useLinesAsBoundary,
+            onClearLineBoundary = viewModel::clearLineBoundary,
             onRetryTransitPreview = viewModel::retryTransitPreview,
             onShowGtfsDialog = viewModel::showGtfsDialog,
             onDismissGtfsDialog = viewModel::dismissGtfsDialog,
@@ -200,8 +198,6 @@ private fun CreateGameBody(
     uiState: CreateGameUiState,
     actions: CreateGameActions,
 ) {
-    val areaRequester = remember { BringIntoViewRequester() }
-    val coroutineScope = rememberCoroutineScope()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -219,17 +215,9 @@ private fun CreateGameBody(
         TransitPreviewSection(uiState, actions)
         GameConfigSection(uiState, actions)
         CustomRulesSection(uiState, actions)
-        AreaSearchSection(
-            uiState = uiState,
-            actions = actions,
-            modifier = Modifier.bringIntoViewRequester(areaRequester),
-        )
+        AreaSearchSection(uiState = uiState, actions = actions)
         TransitLineSection(uiState, actions)
-        FitAreaSection(
-            uiState = uiState,
-            actions = actions,
-            onReviewAreas = { coroutineScope.launch { areaRequester.bringIntoView() } },
-        )
+        FitAreaSection(uiState = uiState, actions = actions)
         ErrorText(
             uiState.error,
             detail = uiState.errorDetail,

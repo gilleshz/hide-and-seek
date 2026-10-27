@@ -79,16 +79,14 @@
     <string name="area_search_button">Search</string>
     <string name="area_search_size_km">≈ <xliff:g>%1$d</xliff:g> × <xliff:g>%2$d</xliff:g> km</string>
     <string name="area_search_population"><xliff:g>%1$s</xliff:g> inhabitants</string>
-    <string name="area_fit_action">Set the play area from these lines</string>
-    <string name="area_fit_loading">Finding the areas these lines serve...</string>
-    <string name="area_fit_done">Play area updated: <xliff:g>%1$d</xliff:g> areas</string>
-    <string name="area_fit_review">Review</string>
-    <string name="area_fit_network_error">Could not find the areas: check your connection and try again.</string>
+    <string name="area_fit_action">Use the selected lines as the play area</string>
+    <string name="area_fit_active">Play area: the selected lines</string>
+    <string name="area_fit_clear">Use searched areas instead</string>
+    <string name="area_fit_loading">Drawing the play area...</string>
+    <string name="area_fit_network_error">Could not draw the play area: check your connection and try again.</string>
     <string name="area_fit_no_lines">Select at least one line first.</string>
     <string name="area_fit_no_geometry">The selected lines have no usable geometry.</string>
-    <string name="area_fit_no_areas">No areas found around these lines.</string>
     <string name="area_fit_too_large">These lines cover too large an area to fit a play area.</string>
-    <string name="area_fit_too_many_areas">These lines serve <xliff:g>%1$d</xliff:g> areas, over the <xliff:g>%2$d</xliff:g> area limit. Select fewer lines.</string>
 
     <string name="join_game_title">Join a game</string>
     <string name="join_game_key_label">Game key</string>
