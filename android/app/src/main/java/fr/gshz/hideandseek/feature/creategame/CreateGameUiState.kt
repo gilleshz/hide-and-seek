@@ -101,7 +101,7 @@ data class CreateGameUiState(
     val selectedAreas: List<AreaInfo> = emptyList(),
     val boundaryGeoJson: String? = null,
     /** True when the play area is drawn from the selected lines instead of the searched areas. */
-    val useLineBoundary: Boolean = false,
+    val useLineBoundary: Boolean = true,
     val isLoadingBoundary: Boolean = false,
     val boundaryError: UiText? = null,
     val isDiscoveringTransit: Boolean = false,

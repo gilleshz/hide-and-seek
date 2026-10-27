@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -375,9 +376,6 @@ class CreateGameViewModelTest {
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
 
-        viewModel.useLinesAsBoundary()
-        advanceUntilIdle()
-
         assertTrue(viewModel.uiState.value.useLineBoundary)
         assertEquals(catalogBoundary, viewModel.uiState.value.boundaryGeoJson)
         assertFalse(viewModel.uiState.value.isLoadingBoundary)
@@ -394,14 +392,27 @@ class CreateGameViewModelTest {
     }
 
     @Test
-    fun `the line boundary cannot be used without selected lines`() = runTest(dispatcher) {
+    fun `the line boundary is enabled by default and waits for a line`() = runTest(dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.useLinesAsBoundary()
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.useLineBoundary)
+        assertTrue(viewModel.uiState.value.useLineBoundary)
         assertTrue(gameRepository.lineBoundaryPreviewCalls.isEmpty())
+        assertNull(viewModel.uiState.value.boundaryGeoJson)
+    }
+
+    @Test
+    fun `the line boundary waits for the debounce before previewing`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceTimeBy(1_500)
+        assertTrue(gameRepository.lineBoundaryPreviewCalls.isEmpty())
+
+        advanceUntilIdle()
+        assertEquals(1, gameRepository.lineBoundaryPreviewCalls.size)
     }
 
     @Test
@@ -410,10 +421,8 @@ class CreateGameViewModelTest {
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
-        viewModel.useLinesAsBoundary()
-        advanceUntilIdle()
 
-        viewModel.clearLineBoundary()
+        viewModel.onLineBoundaryChange(false)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.useLineBoundary)
@@ -422,38 +431,32 @@ class CreateGameViewModelTest {
     }
 
     @Test
-    fun `choosing an area switches back to the area boundary`() = runTest(dispatcher) {
+    fun `choosing an area keeps the line boundary`() = runTest(dispatcher) {
         val viewModel = selectableViewModel("1" to "A")
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
-        viewModel.useLinesAsBoundary()
-        advanceUntilIdle()
+        val previews = gameRepository.lineBoundaryPreviewCalls.size
 
         viewModel.toggleArea(AreaInfo("456", "relation", "Nancy", 8))
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.useLineBoundary)
-        assertEquals(1, gameRepository.lineBoundaryPreviewCalls.size)
-        assertEquals(
-            listOf("123", "456"),
-            gameRepository.boundaryPreviewAreas.last().map { it.osmId },
-        )
+        assertTrue(viewModel.uiState.value.useLineBoundary)
+        assertEquals(previews, gameRepository.lineBoundaryPreviewCalls.size)
     }
 
     @Test
-    fun `clearing the selected lines clears the line boundary`() = runTest(dispatcher) {
+    fun `clearing the selected lines falls back to the selected areas`() = runTest(dispatcher) {
         val viewModel = selectableViewModel("1" to "A")
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
-        viewModel.useLinesAsBoundary()
-        advanceUntilIdle()
 
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.useLineBoundary)
+        assertTrue(viewModel.uiState.value.useLineBoundary)
+        assertEquals(listOf("123"), gameRepository.boundaryPreviewAreas.last().map { it.osmId })
     }
 
     @Test
@@ -461,8 +464,6 @@ class CreateGameViewModelTest {
         val viewModel = selectableViewModel("1" to "A")
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
-        advanceUntilIdle()
-        viewModel.useLinesAsBoundary()
         advanceUntilIdle()
 
         viewModel.onSizeChange(GameSize.Large)
@@ -480,9 +481,6 @@ class CreateGameViewModelTest {
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
 
-        viewModel.useLinesAsBoundary()
-        advanceUntilIdle()
-
         assertEquals(
             UiText.fromResource(R.string.area_fit_no_geometry),
             viewModel.uiState.value.boundaryError,
@@ -497,8 +495,6 @@ class CreateGameViewModelTest {
         advanceUntilIdle()
         viewModel.toggleTransitLineGroup(group("A", "1"))
         advanceUntilIdle()
-        viewModel.useLinesAsBoundary()
-        advanceUntilIdle()
         viewModel.onNameChange("Berlin")
 
         viewModel.createGame()
@@ -506,6 +502,21 @@ class CreateGameViewModelTest {
 
         assertEquals(emptyList<AreaInfo>(), gameRepository.lastCreateAreas)
         assertEquals(listOf("1"), gameRepository.lastCreateTransitLines?.map { it.osmId })
+    }
+
+    @Test
+    fun `creating in area mode sends the selected areas`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        advanceUntilIdle()
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+        viewModel.onLineBoundaryChange(false)
+        viewModel.onNameChange("Berlin")
+
+        viewModel.createGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("123"), gameRepository.lastCreateAreas?.map { it.osmId })
     }
 
     @Test

@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -26,12 +28,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.SectionHeader
+import fr.gshz.hideandseek.core.ui.resolve
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import java.text.NumberFormat
@@ -48,6 +52,15 @@ internal fun AreaSearchSection(
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         SectionHeader(text = stringResource(R.string.area_search_game_boundary), icon = Icons.Filled.Search)
+        if (uiState.showFitArea) {
+            LineBoundaryToggle(
+                checked = uiState.useLineBoundary,
+                onCheckedChange = actions.onLineBoundaryChange,
+            )
+            if (uiState.useLineBoundary && (uiState.isLoadingBoundary || uiState.boundaryError != null)) {
+                LineBoundaryStatus(uiState)
+            }
+        }
         AreaSearchInputRow(uiState, actions)
         if (uiState.selectedAreas.isNotEmpty()) {
             SelectedAreaChips(uiState.selectedAreas, actions.onToggleArea)
@@ -55,6 +68,44 @@ internal fun AreaSearchSection(
         if (uiState.areaSearchResults.isNotEmpty()) {
             AreaSearchResultList(uiState.areaSearchResults, uiState.selectedAreas, actions.onToggleArea)
         }
+    }
+}
+
+@Composable
+private fun LineBoundaryToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Spacer(Modifier.width(Spacing.sm))
+        Text(
+            text = stringResource(R.string.area_fit_toggle),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun LineBoundaryStatus(uiState: CreateGameUiState) {
+    if (uiState.isLoadingBoundary) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(Spacing.sm))
+            Text(
+                text = stringResource(R.string.area_fit_loading),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+    uiState.boundaryError?.let { error ->
+        Text(
+            text = error.resolve(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
     }
 }
 

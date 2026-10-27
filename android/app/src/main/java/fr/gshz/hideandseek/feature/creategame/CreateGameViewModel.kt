@@ -94,14 +94,10 @@ class CreateGameViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.map { boundaryInputOf(it) }
                 .distinctUntilChanged()
-                .debounce(PREVIEW_DEBOUNCE_MS)
-                .collectLatest { input ->
-                    if (input.useLineBoundary && !input.hasLines) {
-                        _uiState.update { it.copy(useLineBoundary = false) }
-                        return@collectLatest
-                    }
-                    loadBoundaryPreview(input)
+                .debounce {
+                    if (it.useLineBoundary && it.hasLines) LINE_BOUNDARY_DEBOUNCE_MS else PREVIEW_DEBOUNCE_MS
                 }
+                .collectLatest { loadBoundaryPreview(it) }
         }
     }
 
@@ -231,7 +227,11 @@ class CreateGameViewModel @Inject constructor(
                 state.size,
                 state.edition,
                 rulesVariant = rulesVariant,
-                areas = if (state.useLineBoundary) emptyList() else state.selectedAreas.ifEmpty { null },
+                areas = if (state.useLineBoundary && state.hasSelectedLines) {
+                    emptyList()
+                } else {
+                    state.selectedAreas.ifEmpty { null }
+                },
                 selectedTransitLines = selectedLines,
                 selectedGtfsLines = selectedGtfs,
             )
@@ -320,40 +320,39 @@ class CreateGameViewModel @Inject constructor(
             } else {
                 current.add(area)
             }
+            val lineMode = state.useLineBoundary && state.hasSelectedLines
             state.copy(
                 selectedAreas = current.toList(),
-                useLineBoundary = false,
-                boundaryGeoJson = null,
+                boundaryGeoJson = if (lineMode) state.boundaryGeoJson else null,
                 discoveryModeSelection = DEFAULT_DISCOVERY_MODES,
                 discoveryError = null,
             )
         }
     }
 
-    fun useLinesAsBoundary() {
-        _uiState.update { state ->
-            if (!state.hasSelectedLines) return@update state
-            state.copy(useLineBoundary = true, boundaryGeoJson = null, boundaryError = null)
-        }
-    }
-
-    fun clearLineBoundary() {
+    fun onLineBoundaryChange(enabled: Boolean) {
         _uiState.update {
-            it.copy(useLineBoundary = false, boundaryGeoJson = null, boundaryError = null)
+            it.copy(useLineBoundary = enabled, boundaryError = null)
         }
     }
 
-    private fun boundaryInputOf(state: CreateGameUiState): BoundaryInput = BoundaryInput(
-        useLineBoundary = state.useLineBoundary,
-        areas = state.selectedAreas,
-        osmLineIds = state.expandedSelectedLineIds,
-        gtfsLines = resolveGtfsSelections(state).orEmpty(),
-        size = state.size,
-        edition = state.edition,
-    )
+    private fun boundaryInputOf(state: CreateGameUiState): BoundaryInput {
+        val osmLineIds = state.expandedSelectedLineIds
+        val gtfsLines = resolveGtfsSelections(state).orEmpty()
+        val lineMode = state.useLineBoundary && (osmLineIds.isNotEmpty() || gtfsLines.isNotEmpty())
+        return BoundaryInput(
+            useLineBoundary = state.useLineBoundary,
+            areas = if (lineMode) emptyList() else state.selectedAreas,
+            osmLineIds = osmLineIds,
+            gtfsLines = gtfsLines,
+            size = state.size,
+            edition = state.edition,
+        )
+    }
 
     private suspend fun loadBoundaryPreview(input: BoundaryInput) {
-        if (!input.useLineBoundary && input.areas.isEmpty()) {
+        val lineMode = input.useLineBoundary && input.hasLines
+        if (!lineMode && input.areas.isEmpty()) {
             _uiState.update {
                 it.copy(boundaryGeoJson = null, isLoadingBoundary = false, boundaryError = null)
             }
@@ -364,7 +363,7 @@ class CreateGameViewModel @Inject constructor(
             it.copy(isLoadingBoundary = true, boundaryError = null)
         }
         try {
-            val geoJson = if (input.useLineBoundary) {
+            val geoJson = if (lineMode) {
                 gameRepository.boundaryPreviewFromLines(
                     osmLineIds = input.osmLineIds,
                     gtfsLines = input.gtfsLines,
@@ -900,6 +899,9 @@ class CreateGameViewModel @Inject constructor(
 
         /** Long enough to swallow a run of ticks, short enough that the map still feels live. */
         const val PREVIEW_DEBOUNCE_MS = 500L
+
+        /** The line boundary is costly to build, so it waits for the selection to settle. */
+        const val LINE_BOUNDARY_DEBOUNCE_MS = 2_000L
         const val REALTIME_PROBE_DEBOUNCE_MS = 600L
         const val CATALOG_DEBOUNCE_MS = 300L
         const val FEATURE_COLLECTION_PREFIX = """{"type":"FeatureCollection","features":["""

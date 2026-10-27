@@ -79,9 +79,7 @@
     <string name="area_search_button">Suchen</string>
     <string name="area_search_size_km">≈ <xliff:g>%1$d</xliff:g> × <xliff:g>%2$d</xliff:g> km</string>
     <string name="area_search_population"><xliff:g>%1$s</xliff:g> Einwohner</string>
-    <string name="area_fit_action">Die ausgewählten Linien als Spielfläche verwenden</string>
-    <string name="area_fit_active">Spielfläche: die ausgewählten Linien</string>
-    <string name="area_fit_clear">Stattdessen gesuchte Gebiete verwenden</string>
+    <string name="area_fit_toggle">Spielfläche an die ausgewählten Linien anpassen</string>
     <string name="area_fit_loading">Spielfläche wird berechnet...</string>
     <string name="area_fit_network_error">Die Spielfläche konnte nicht berechnet werden: Verbindung prüfen und erneut versuchen.</string>
     <string name="area_fit_no_lines">Wählen Sie zuerst mindestens eine Linie.</string>

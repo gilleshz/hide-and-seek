@@ -79,9 +79,7 @@
     <string name="area_search_button">Rechercher</string>
     <string name="area_search_size_km">≈ <xliff:g>%1$d</xliff:g> × <xliff:g>%2$d</xliff:g> km</string>
     <string name="area_search_population"><xliff:g>%1$s</xliff:g> habitants</string>
-    <string name="area_fit_action">Utiliser les lignes sélectionnées comme zone de jeu</string>
-    <string name="area_fit_active">Zone de jeu : les lignes sélectionnées</string>
-    <string name="area_fit_clear">Utiliser des zones recherchées</string>
+    <string name="area_fit_toggle">Ajuster la zone de jeu aux lignes de transport sélectionnées</string>
     <string name="area_fit_loading">Calcul de la zone de jeu...</string>
     <string name="area_fit_network_error">Impossible de dessiner la zone de jeu : vérifiez votre connexion et réessayez.</string>
     <string name="area_fit_no_lines">Sélectionnez d\'abord au moins une ligne.</string>

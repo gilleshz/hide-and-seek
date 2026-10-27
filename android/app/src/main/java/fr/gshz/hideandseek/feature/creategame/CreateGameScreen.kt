@@ -105,8 +105,7 @@ fun CreateGameScreen(
             onShowDiscoveryModeDialog = viewModel::showDiscoveryModeDialog,
             onDismissDiscoveryModeDialog = viewModel::dismissDiscoveryModeDialog,
             onDiscoverOsmTransit = viewModel::discoverOsmTransit,
-            onUseLinesAsBoundary = viewModel::useLinesAsBoundary,
-            onClearLineBoundary = viewModel::clearLineBoundary,
+            onLineBoundaryChange = viewModel::onLineBoundaryChange,
             onRetryTransitPreview = viewModel::retryTransitPreview,
             onShowGtfsDialog = viewModel::showGtfsDialog,
             onDismissGtfsDialog = viewModel::dismissGtfsDialog,
@@ -217,7 +216,6 @@ private fun CreateGameBody(
         CustomRulesSection(uiState, actions)
         AreaSearchSection(uiState = uiState, actions = actions)
         TransitLineSection(uiState, actions)
-        FitAreaSection(uiState = uiState, actions = actions)
         ErrorText(
             uiState.error,
             detail = uiState.errorDetail,
