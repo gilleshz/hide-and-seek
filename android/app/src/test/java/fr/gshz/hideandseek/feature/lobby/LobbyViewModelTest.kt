@@ -310,7 +310,7 @@ class LobbyViewModelTest {
         sessionRepository.seed(PlayerSession("game-1", "round-2", "player-1", "Alice", "token", side = null))
         gameRepository.getGameResult =
             Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-2"))
-        gameRepository.listPlayersResult = Result.success(listOf(Player("player-1", "Alice", side = Side.Hider)))
+        gameRepository.listPlayersResult = Result.success(listOf(Player("player-1", "Alice")))
 
         val viewModel = createViewModel()
         assertNull(viewModel.uiState.value.mySide)
@@ -319,6 +319,41 @@ class LobbyViewModelTest {
         sessionRepository.updateSide(Side.Hider, "fresh-token", listOf("topic"))
 
         assertEquals(Side.Hider, viewModel.uiState.value.mySide)
+    }
+
+    @Test
+    fun `a lobby load repairs the seeded side the location service cleared`() = runTest {
+        sessionRepository.seed(PlayerSession("game-1", "round-2", "player-1", "Alice", "token", side = null))
+        gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-2"))
+        gameRepository.listPlayersResult = Result.success(
+            listOf(Player("player-1", "Alice", side = Side.Seeker), Player("player-2", "Bob", side = Side.Hider)),
+        )
+        gameRepository.chooseTeamResult =
+            Result.success(TeamResult("player-1", "round-2", Side.Seeker, "fresh-token", listOf("topic")))
+
+        val viewModel = createViewModel()
+
+        assertEquals(Side.Seeker, viewModel.uiState.value.mySide)
+        assertEquals(Side.Seeker, sessionRepository.updatedSide)
+    }
+
+    @Test
+    fun `resuming the lobby repairs a side the location service cleared`() = runTest {
+        sessionRepository.seed(PlayerSession("game-1", "round-2", "player-1", "Alice", "token", side = null))
+        gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-2"))
+        gameRepository.listPlayersResult = Result.success(listOf(Player("player-1", "Alice")))
+
+        val viewModel = createViewModel()
+        assertNull(viewModel.uiState.value.mySide)
+
+        gameRepository.listPlayersResult = Result.success(listOf(Player("player-1", "Alice", side = Side.Seeker)))
+        gameRepository.chooseTeamResult =
+            Result.success(TeamResult("player-1", "round-2", Side.Seeker, "fresh-token", listOf("topic")))
+        viewModel.onScreenResumed()
+
+        assertEquals(Side.Seeker, viewModel.uiState.value.mySide)
     }
 
     @Test

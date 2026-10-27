@@ -117,7 +117,11 @@ class LobbyViewModel @Inject constructor(
         if (game != null && session != null && game.roundUuid != session.roundUuid) {
             loadWith(game)
         } else {
-            refreshRoster()
+            val roster = refreshRoster()
+            if (game != null && roster != null) {
+                val reconciled = reconcileSession(game.roundUuid, roster)
+                _uiState.update { it.copy(mySide = reconciled?.side?.let(Side::fromWireValue)) }
+            }
             refreshLeaderboard()
         }
     }
@@ -133,26 +137,26 @@ class LobbyViewModel @Inject constructor(
         null
     }
 
-    private suspend fun refreshRoster() {
-        try {
-            if (_uiState.value.apiUrl.isEmpty()) {
-                val apiUrl = try {
-                    connectionStore.current()?.apiUrl?.trimEnd('/')
-                } catch (e: IOException) {
-                    Log.w(TAG, "Connection read failed", e)
-                    null
-                }
-                if (apiUrl != null) {
-                    _uiState.update { it.copy(apiUrl = apiUrl) }
-                }
+    private suspend fun refreshRoster(): List<Player>? = try {
+        if (_uiState.value.apiUrl.isEmpty()) {
+            val apiUrl = try {
+                connectionStore.current()?.apiUrl?.trimEnd('/')
+            } catch (e: IOException) {
+                Log.w(TAG, "Connection read failed", e)
+                null
             }
-            applyRoster(gameStateCache.refreshRoster(gameUuid))
-        } catch (e: IOException) {
-            Log.w(TAG, "Roster refresh failed", e)
-        } catch (e: HttpException) {
-            if (e.isSessionExpired()) navigationRequestStore.emitSessionExpired(e.serverErrorKey())
-            Log.w(TAG, "Roster refresh failed", e)
+            if (apiUrl != null) {
+                _uiState.update { it.copy(apiUrl = apiUrl) }
+            }
         }
+        gameStateCache.refreshRoster(gameUuid).also { applyRoster(it) }
+    } catch (e: IOException) {
+        Log.w(TAG, "Roster refresh failed", e)
+        null
+    } catch (e: HttpException) {
+        if (e.isSessionExpired()) navigationRequestStore.emitSessionExpired(e.serverErrorKey())
+        Log.w(TAG, "Roster refresh failed", e)
+        null
     }
 
     private suspend fun applyRoster(roster: List<Player>) {
@@ -259,15 +263,19 @@ class LobbyViewModel @Inject constructor(
 
     // A device that missed the round-change SSE event self-heals on lobby entry.
     private suspend fun reconcileSession(activeRoundUuid: String, roster: List<Player>): PlayerSession? {
-        val session = sessionRepository.currentSession()
-        if (session == null || session.roundUuid == activeRoundUuid) return session
+        val session = sessionRepository.currentSession() ?: return null
         val seededSide = roster.firstOrNull { it.uuid == session.playerUuid }?.side
-        return if (seededSide == null) {
-            sessionRepository.updateRoundUuid(activeRoundUuid)
-            sessionRepository.clearSide()
-            session.copy(roundUuid = activeRoundUuid, side = null)
-        } else {
-            reconfirmSeededSide(session, activeRoundUuid, seededSide)
+        // The location service rekeys the round and clears the side before resolving the seeded one.
+        val settled = session.roundUuid == activeRoundUuid && session.side == seededSide?.wireValue
+        return when {
+            settled -> session
+            seededSide != null -> reconfirmSeededSide(session, activeRoundUuid, seededSide)
+            session.roundUuid == activeRoundUuid -> session
+            else -> {
+                sessionRepository.updateRoundUuid(activeRoundUuid)
+                sessionRepository.clearSide()
+                session.copy(roundUuid = activeRoundUuid, side = null)
+            }
         }
     }
 
