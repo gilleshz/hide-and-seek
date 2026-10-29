@@ -14,6 +14,7 @@ import fr.gshz.hideandseek.domain.repository.ReconnectedEvent
 import fr.gshz.hideandseek.domain.repository.RosterChanged
 import fr.gshz.hideandseek.domain.repository.SeekerCandidateAdded
 import fr.gshz.hideandseek.domain.repository.SeekerCandidateRemoved
+import fr.gshz.hideandseek.domain.repository.StreamRejected
 import fr.gshz.hideandseek.domain.repository.TimeTrapEvent
 import fr.gshz.hideandseek.domain.repository.TimerEvent
 import fr.gshz.hideandseek.domain.repository.ZoneChanged
@@ -46,6 +47,9 @@ class FakeGameEventRepository : GameEventRepository {
 
     private val _reconnectedEvents = MutableSharedFlow<ReconnectedEvent>(extraBufferCapacity = 4)
     override val reconnectedEvents: SharedFlow<ReconnectedEvent> = _reconnectedEvents
+
+    private val _streamRejected = MutableSharedFlow<StreamRejected>(extraBufferCapacity = 4)
+    override val streamRejected: SharedFlow<StreamRejected> = _streamRejected
 
     private val _seekerCandidateAdded = MutableSharedFlow<SeekerCandidateAdded>(extraBufferCapacity = 32)
     override val seekerCandidateAdded: SharedFlow<SeekerCandidateAdded> = _seekerCandidateAdded
@@ -81,6 +85,10 @@ class FakeGameEventRepository : GameEventRepository {
 
     fun emitReconnected() {
         _reconnectedEvents.tryEmit(ReconnectedEvent)
+    }
+
+    fun emitStreamRejected(statusCode: Int) {
+        _streamRejected.tryEmit(StreamRejected(statusCode))
     }
 
     fun emitPossibleAreaEvent(event: PossibleAreaEvent) {

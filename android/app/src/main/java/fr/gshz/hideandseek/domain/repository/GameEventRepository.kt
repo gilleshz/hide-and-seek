@@ -81,6 +81,9 @@ data object EndgameEvent
 
 data object ReconnectedEvent
 
+/** The hub refused the subscriber token (401/403); a fresh token may be accepted. */
+data class StreamRejected(val statusCode: Int)
+
 data class RosterChanged(val players: List<Player>)
 
 interface GameEventRepository {
@@ -92,6 +95,7 @@ interface GameEventRepository {
     val possibleAreaEvents: SharedFlow<PossibleAreaEvent>
     val endgameEvents: SharedFlow<EndgameEvent>
     val reconnectedEvents: SharedFlow<ReconnectedEvent>
+    val streamRejected: SharedFlow<StreamRejected>
     val seekerCandidateAdded: SharedFlow<SeekerCandidateAdded>
     val seekerCandidateRemoved: SharedFlow<SeekerCandidateRemoved>
     val manualConstraintAdded: SharedFlow<ManualConstraintAddedEvent>

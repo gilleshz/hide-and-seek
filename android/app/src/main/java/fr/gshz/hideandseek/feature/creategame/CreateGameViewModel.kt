@@ -10,7 +10,7 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.model.PlayerSession
-import fr.gshz.hideandseek.core.model.withoutLocationTopics
+import fr.gshz.hideandseek.core.model.withoutSideGrants
 import fr.gshz.hideandseek.core.util.geoJsonBoundingBox
 import fr.gshz.hideandseek.core.util.serverDetail
 import fr.gshz.hideandseek.core.util.serverErrorArgs
@@ -245,7 +245,7 @@ class CreateGameViewModel @Inject constructor(
                     displayName = join.displayName,
                     mercureToken = join.mercureToken,
                     side = null,
-                    topics = join.topics.withoutLocationTopics(),
+                    topics = join.topics.withoutSideGrants(),
                 ),
             )
             _uiState.update { it.copy(isLoading = false, createdGameUuid = game.uuid) }

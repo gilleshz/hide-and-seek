@@ -30,6 +30,9 @@ internal const val TOKEN_RETRY_DELAY_MS = 10 * 60 * 1000L
 
 internal const val MAX_REFRESH_ATTEMPTS = 3
 
+/** A still-rejecting stream reconnects faster than this; one re-mint per window is enough. */
+internal const val REFRESH_NOW_COOLDOWN_MS = 30_000L
+
 internal fun nextRefreshDelayMillis(exp: Long, nowMillis: Long): Long =
     (TimeUnit.SECONDS.toMillis(exp) - nowMillis - REFRESH_WINDOW_MS).coerceAtLeast(0)
 
@@ -57,7 +60,29 @@ class TokenRefresher @Inject constructor(
      * rather than hours later. One immediate attempt per process is enough: a server that still
      * hands out legacy tokens must not turn the session flow into a refresh loop.
      */
+    @Volatile
     private var immediateLegacyRefreshAttempted = false
+
+    @Volatile
+    private var lastForcedRefreshMillis = 0L
+
+    /**
+     * A 401/403 from the hub means the stream's token is no longer accepted while the scheduled
+     * refresh may be hours away. The cooldown stops a stream that keeps rejecting from turning every
+     * reconnect into a refresh call.
+     */
+    suspend fun refreshNow() {
+        val session = sessionRepository.currentSession()
+        // start() already spent the one immediate attempt a legacy token gets.
+        val legacyAlreadyAttempted =
+            session != null && !session.mercureToken.isMercureV1AccessToken() && immediateLegacyRefreshAttempted
+        val now = System.currentTimeMillis()
+        synchronized(this) {
+            if (legacyAlreadyAttempted || now - lastForcedRefreshMillis < REFRESH_NOW_COOLDOWN_MS) return
+            lastForcedRefreshMillis = now
+        }
+        session?.let { attemptOnce(it) }
+    }
 
     fun start() {
         if (started) return

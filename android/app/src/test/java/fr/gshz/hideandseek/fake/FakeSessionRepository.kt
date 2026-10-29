@@ -63,7 +63,7 @@ class FakeSessionRepository : SessionRepository {
 
     override suspend fun clearSide() {
         sideCleared = true
-        state.value = state.value?.let { it.copy(side = null, topics = it.topicsWithoutLocations()) }
+        state.value = state.value?.let { it.copy(side = null, topics = it.topicsWithoutSideGrants()) }
         silentState = null
     }
 

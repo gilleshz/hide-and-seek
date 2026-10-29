@@ -155,7 +155,7 @@ class TokenRefresherTest {
         // The refresh is now parked on the gate, past the first re-read.
         assertEquals(listOf("round-1"), roundRepository.refreshSubscriberTokenCalls)
 
-        sessionRepository.mutateSession { it.copy(side = null, topics = it.topicsWithoutLocations()) }
+        sessionRepository.mutateSession { it.copy(side = null, topics = it.topicsWithoutSideGrants()) }
         roundRepository.refreshSubscriberTokenGate?.complete(Unit)
         advanceUntilIdle()
 
@@ -187,6 +187,45 @@ class TokenRefresherTest {
         advanceUntilIdle()
 
         assertEquals(MAX_REFRESH_ATTEMPTS, roundRepository.refreshSubscriberTokenCalls.size)
+        assertNull(sessionRepository.refreshedMercureToken)
+    }
+
+    @Test
+    fun `refreshNow re-mints the current session token`() = runTest(dispatcher) {
+        sessionRepository.seed(session())
+        roundRepository.refreshSubscriberTokenResult =
+            Result.success(TokenRefresh("fresh-token", listOf("roster")))
+
+        refresher.refreshNow()
+        advanceUntilIdle()
+
+        assertEquals(listOf("round-1"), roundRepository.refreshSubscriberTokenCalls)
+        assertEquals("fresh-token", sessionRepository.refreshedMercureToken)
+    }
+
+    @Test
+    fun `refreshNow is rate limited inside the cooldown`() = runTest(dispatcher) {
+        sessionRepository.seed(session())
+        roundRepository.refreshSubscriberTokenResult =
+            Result.success(TokenRefresh("fresh-token", listOf("roster")))
+
+        refresher.refreshNow()
+        refresher.refreshNow()
+        advanceUntilIdle()
+
+        assertEquals(1, roundRepository.refreshSubscriberTokenCalls.size)
+    }
+
+    @Test
+    fun `refreshNow on a session-expired rejection emits the session expired request`() = runTest(dispatcher) {
+        sessionRepository.seed(session())
+        roundRepository.refreshSubscriberTokenResult =
+            Result.failure(httpException(401, """{"errorKey":"identity.token_invalid"}"""))
+
+        refresher.refreshNow()
+        advanceUntilIdle()
+
+        assertNotNull(navigationRequestStore.sessionExpiredRequest.value)
         assertNull(sessionRepository.refreshedMercureToken)
     }
 
@@ -237,6 +276,22 @@ class TokenRefresherTest {
 
         refresher.start()
         runCurrent()
+
+        assertEquals(1, roundRepository.refreshSubscriberTokenCalls.size)
+    }
+
+    @Test
+    fun `refreshNow does not re-mint a legacy token after the one immediate attempt`() = runTest(dispatcher) {
+        sessionRepository.seed(session(token = legacyToken(exp = FAR_FUTURE_EXP)))
+        roundRepository.refreshSubscriberTokenResult =
+            Result.success(TokenRefresh(legacyToken(exp = FAR_FUTURE_EXP), listOf("roster")))
+
+        refresher.start()
+        advanceUntilIdle()
+        assertEquals(1, roundRepository.refreshSubscriberTokenCalls.size)
+
+        refresher.refreshNow()
+        advanceUntilIdle()
 
         assertEquals(1, roundRepository.refreshSubscriberTokenCalls.size)
     }

@@ -9,13 +9,20 @@ data class PlayerSession(
     val side: String?,
     val topics: List<String> = emptyList(),
 ) {
-    // PRIV-*: location topics are side-scoped grants; a session without a confirmed side must not subscribe to them.
-    fun topicsWithoutLocations(): List<String> = topics.withoutLocationTopics()
+    // PRIV-*: side-scoped grants; a session without a confirmed side must not subscribe to them.
+    fun topicsWithoutSideGrants(): List<String> = topics.withoutSideGrants()
 
     companion object {
-        const val LOCATION_TOPIC_SUFFIX = "-locations"
+        val SIDE_SCOPED_TOPIC_SUFFIXES = listOf(
+            "-locations",
+            "/seeker-candidates",
+            "/seeker-zone",
+        )
     }
 }
 
-// PRIV-*: location topics are side-scoped grants; a side-less session must not carry them.
-fun List<String>.withoutLocationTopics(): List<String> = filterNot { it.endsWith(PlayerSession.LOCATION_TOPIC_SUFFIX) }
+// PRIV-*: side-scoped grants; a side-less session must not carry them.
+fun String.isSideScopedTopic(): Boolean =
+    PlayerSession.SIDE_SCOPED_TOPIC_SUFFIXES.any { suffix -> endsWith(suffix) }
+
+fun List<String>.withoutSideGrants(): List<String> = filterNot { it.isSideScopedTopic() }

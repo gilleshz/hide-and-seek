@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.core.model.ErrorType
+import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
@@ -81,6 +82,7 @@ class MapSessionViewModel @Inject constructor(
     private val focusedTransitRef = MutableStateFlow<String?>(null)
 
     private var loadGameInfoJob: Job? = null
+    private var lobbySignaledRoundUuid: String? = null
 
     /** A new round created elsewhere means this player must return to the lobby to pick a team. */
     private val _navigateToLobby = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
@@ -92,7 +94,25 @@ class MapSessionViewModel @Inject constructor(
             val roundUuid = sessionEvents.sessionRepository.currentSession()?.roundUuid
             // A rekey restarts this: the previous round's timer must not linger until the first poll lands.
             if (roundUuid != roundState.value?.roundUuid) roundState.value = null
-            if (roundUuid != null) launch { pollRound(roundUuid) }
+            if (roundUuid != null) {
+                launch { pollRound(roundUuid) }
+                launch {
+                    // A missed timer event would leave a map-resident player on the previous, dead round.
+                    while (currentCoroutineContext().isActive) {
+                        delay(POLL_INTERVAL_MS)
+                        try {
+                            val game = gameInfoSource.gameStateCache.refreshGameSummary(gameUuid)
+                            val session = sessionEvents.sessionRepository.currentSession()
+                            signalLobbyIfRoundMovedOn(game, session)
+                        } catch (e: IOException) {
+                            Log.w(TAG, "Round change poll failed", e)
+                        } catch (e: HttpException) {
+                            sessionEvents.handleSessionExpiry(e)
+                            Log.w(TAG, "Round change poll failed", e)
+                        }
+                    }
+                }
+            }
             roundState.collect { send(it) }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
@@ -109,6 +129,13 @@ class MapSessionViewModel @Inject constructor(
             }
             delay(POLL_INTERVAL_MS)
         }
+    }
+
+    private fun signalLobbyIfRoundMovedOn(game: GameSummary, session: PlayerSession?) {
+        if (session == null || _navigateToLobby.subscriptionCount.value == 0) return
+        if (game.roundUuid == session.roundUuid || game.roundUuid == lobbySignaledRoundUuid) return
+        lobbySignaledRoundUuid = game.roundUuid
+        _navigateToLobby.tryEmit(Unit)
     }
 
     private val ticker: StateFlow<Long> = flow {
@@ -148,7 +175,13 @@ class MapSessionViewModel @Inject constructor(
         MapSessionUiState(
             gameUuid = gameUuid,
             gameName = info.gameName,
-            markers = buildMarkers(players.roster, players.selfUuid, players.locations, players.selfGps),
+            markers = buildMarkers(
+                players.roster,
+                players.selfUuid,
+                players.locations,
+                players.selfGps,
+                players.info.side,
+            ),
             side = info.side,
             edition = info.edition,
             gameSize = info.gameSize,
@@ -256,25 +289,32 @@ class MapSessionViewModel @Inject constructor(
         } else {
             gameInfoSource.gameStateCache.getRoster(gameUuid)
         }
-        roster.value = rosterEntries(players, currentApiUrl())
+        applyRoster(players)
     }
 
     private fun observeRoster() {
         viewModelScope.launch {
             sessionEvents.gameEventRepository.rosterEvents.collect { changed ->
-                roster.value = rosterEntries(changed.players, currentApiUrl())
+                applyRoster(changed.players)
             }
         }
     }
 
-    private suspend fun currentApiUrl(): String =
-        gameInfoSource.connectionStore.current()?.apiUrl?.trimEnd('/').orEmpty()
+    private suspend fun applyRoster(players: List<Player>) {
+        val apiUrl = gameInfoSource.connectionStore.current()?.apiUrl?.trimEnd('/').orEmpty()
+        val entries = rosterEntries(players, apiUrl)
+        roster.value = entries
+        // A departed player's last point would otherwise render forever with the raw UUID as its label.
+        val known = entries.keys + listOfNotNull(selfPlayerUuid.value)
+        locations.update { current -> current.filterKeys { it in known } }
+    }
 
     private fun rosterEntries(players: List<Player>, apiUrl: String): Map<String, RosterPlayer> =
         players.associate { player ->
             player.uuid to RosterPlayer(
                 displayName = player.displayName,
                 avatarUrl = player.avatarRef?.takeIf { apiUrl.isNotEmpty() }?.let { "$apiUrl/api/avatars/$it" },
+                side = player.side,
             )
         }
 

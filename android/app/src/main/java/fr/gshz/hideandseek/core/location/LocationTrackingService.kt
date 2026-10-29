@@ -28,6 +28,7 @@ import fr.gshz.hideandseek.core.data.GameStateCache
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
 import fr.gshz.hideandseek.core.notification.ChatNotifier
+import fr.gshz.hideandseek.core.token.TokenRefresher
 import fr.gshz.hideandseek.core.util.isSessionExpired
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.domain.model.DeviceLocation
@@ -52,6 +53,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
+@Suppress("TooManyFunctions")
 @AndroidEntryPoint
 class LocationTrackingService : Service() {
 
@@ -82,6 +84,9 @@ class LocationTrackingService : Service() {
     @Inject
     lateinit var navigationRequestStore: NavigationRequestStore
 
+    @Inject
+    lateinit var tokenRefresher: TokenRefresher
+
     private lateinit var locationManager: LocationManager
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -102,7 +107,13 @@ class LocationTrackingService : Service() {
     private var lastFixLng: Double? = null
 
     @Volatile
+    private var lastFixAltitude: Double? = null
+
+    @Volatile
     private var lastFixAt = 0L
+
+    @Volatile
+    private var lastFixReceivedAt = 0L
 
     @Volatile
     private var currentPhase: RoundStatus? = null
@@ -136,6 +147,15 @@ class LocationTrackingService : Service() {
 
     @Volatile
     private var lastPostedLng: Double? = null
+
+    @Volatile
+    private var lastPostedAt = 0L
+
+    @Volatile
+    private var currentPingGeneration = 0L
+
+    @Volatile
+    private var trackedRoundUuid: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -222,10 +242,13 @@ class LocationTrackingService : Service() {
         lastFixAt = SystemClock.elapsedRealtime()
         // Each arm opens a new generation; a stale 4xx from the callback removed above must not pause this one.
         val pingGeneration = pingErrorGate.arm()
+        currentPingGeneration = pingGeneration
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) {
                 lastFixAt = SystemClock.elapsedRealtime()
+                lastFixReceivedAt = lastFixAt
                 val altitude = location.bestAltitudeMeters()
+                lastFixAltitude = altitude
                 locationRepository.updateLastKnownLocation(
                     DeviceLocation(location.latitude, location.longitude, altitude),
                 )
@@ -266,6 +289,19 @@ class LocationTrackingService : Service() {
         locationListener = null
     }
 
+    /** A cached fix belongs to the round it arrived in; carrying it into the next round posts it there. */
+    private fun trackRound(roundUuid: String) {
+        if (roundUuid == trackedRoundUuid) return
+        trackedRoundUuid = roundUuid
+        lastFixLat = null
+        lastFixLng = null
+        lastFixAltitude = null
+        lastFixReceivedAt = 0L
+        lastPostedLat = null
+        lastPostedLng = null
+        lastPostedAt = 0L
+    }
+
     private fun startEventCollectors() {
         if (collectorsStarted) return
         collectorsStarted = true
@@ -274,6 +310,9 @@ class LocationTrackingService : Service() {
             .launchIn(serviceScope)
         gameEventRepository.timerEvents
             .onEach { event -> handleTimerEvent(event) }
+            .launchIn(serviceScope)
+        gameEventRepository.streamRejected
+            .onEach { tokenRefresher.refreshNow() }
             .launchIn(serviceScope)
         gameEventRepository.chatEvents
             .onEach { event ->
@@ -297,12 +336,24 @@ class LocationTrackingService : Service() {
             var searching = false
             while (isActive) {
                 delay(FIX_STATUS_POLL_MS)
-                val nowSearching = locationListener != null &&
-                    SystemClock.elapsedRealtime() - lastFixAt > currentIntervalMs + SEARCHING_FIX_MARGIN_MS
+                val now = SystemClock.elapsedRealtime()
+                val maxFixAgeMs = currentIntervalMs + SEARCHING_FIX_MARGIN_MS
+                val nowSearching = locationListener != null && now - lastFixAt > maxFixAgeMs
                 if (nowSearching != searching) {
                     searching = nowSearching
                     refreshNotification()
                 }
+                maybeRepostHeartbeat(now, maxFixAgeMs)
+            }
+        }
+    }
+
+    private fun maybeRepostHeartbeat(now: Long, maxFixAgeMs: Long) {
+        val lat = lastFixLat
+        val lng = lastFixLng
+        if (lat != null && lng != null && locationListener != null) {
+            if (LocationHeartbeat.canRepost(now, lastPostedAt, lastFixReceivedAt, maxFixAgeMs)) {
+                sendLocationPing(lat, lng, lastFixAltitude, currentPingGeneration, force = true)
             }
         }
     }
@@ -312,6 +363,7 @@ class LocationTrackingService : Service() {
             stopSelf()
             return
         }
+        trackRound(session.roundUuid)
         // clearSide() scrubs location grants from the topics without minting a token; follow both.
         val topics = session.topics.toSet()
         if (session.mercureToken != connectedToken || topics != connectedTopics) {
@@ -361,6 +413,7 @@ class LocationTrackingService : Service() {
             // The 24h game-scoped token may still grant hider-locations; drop the stream until re-scoped,
             // and clear the persisted side/grants so a service restart cannot resubscribe with them.
             gameEventRepository.disconnect()
+            trackRound(roundUuid)
             sessionRepository.updateRoundUuid(roundUuid)
             sessionRepository.clearSide()
             pingErrorGate.reset()
@@ -391,7 +444,7 @@ class LocationTrackingService : Service() {
         }
         if (!confirmed && !sessionExpired) {
             connectionStore.current()?.let { config ->
-                val scrubbedTopics = rekeyed.topicsWithoutLocations()
+                val scrubbedTopics = rekeyed.topicsWithoutSideGrants()
                 connectedToken = rekeyed.mercureToken
                 connectedTopics = scrubbedTopics.toSet()
                 gameEventRepository.connect(config.apiUrl, rekeyed.mercureToken, scrubbedTopics)
@@ -436,16 +489,24 @@ class LocationTrackingService : Service() {
         )
     }
 
-    private fun sendLocationPing(lat: Double, lng: Double, altitude: Double?, pingGeneration: Long) {
+    private fun sendLocationPing(
+        lat: Double,
+        lng: Double,
+        altitude: Double?,
+        pingGeneration: Long,
+        force: Boolean = false,
+    ) {
         serviceScope.launch {
             val session = sessionRepository.currentSession() ?: return@launch
             if (session.side == null || pingBackoff.active) return@launch
-            val lastLat = lastPostedLat
-            val lastLng = lastPostedLng
-            if (lastLat != null && lastLng != null) {
-                val results = FloatArray(1)
-                android.location.Location.distanceBetween(lastLat, lastLng, lat, lng, results)
-                if (results[0] < LocationCadence.MOVE_THRESHOLD_M) return@launch
+            if (!force) {
+                val lastLat = lastPostedLat
+                val lastLng = lastPostedLng
+                if (lastLat != null && lastLng != null) {
+                    val results = FloatArray(1)
+                    Location.distanceBetween(lastLat, lastLng, lat, lng, results)
+                    if (results[0] < LocationCadence.MOVE_THRESHOLD_M) return@launch
+                }
             }
             try {
                 val endgame = locationRepository.postLocationPing(
@@ -457,6 +518,7 @@ class LocationTrackingService : Service() {
                 )
                 lastPostedLat = lat
                 lastPostedLng = lng
+                lastPostedAt = SystemClock.elapsedRealtime()
                 pingErrorGate.reset()
                 pingBackoff.reset()
                 if (endgame && currentSide == Side.Hider && !endgameProximity) {

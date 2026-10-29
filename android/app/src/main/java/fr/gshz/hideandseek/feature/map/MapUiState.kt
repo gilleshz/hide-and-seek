@@ -215,6 +215,7 @@ data class PlayerMarker(
 internal data class RosterPlayer(
     val displayName: String,
     val avatarUrl: String? = null,
+    val side: Side? = null,
 )
 
 data class ZonePin(val latitude: Double, val longitude: Double)
@@ -445,8 +446,15 @@ internal fun buildMarkers(
     selfUuid: String?,
     locationMap: Map<String, LocationUpdate>,
     selfGps: ZonePin?,
+    viewerSide: Side? = null,
 ): List<PlayerMarker> {
-    val markers = locationMap.map { (playerUuid, update) ->
+    // Defense in depth: the hub's grants stay authoritative, but a seeker must never draw a hider.
+    val visible = if (viewerSide == Side.Seeker) {
+        locationMap.filterKeys { uuid -> uuid == selfUuid || roster[uuid]?.side == Side.Seeker }
+    } else {
+        locationMap
+    }
+    val markers = visible.map { (playerUuid, update) ->
         playerMarker(roster, playerUuid, update.latitude, update.longitude, playerUuid == selfUuid)
     }.toMutableList()
 

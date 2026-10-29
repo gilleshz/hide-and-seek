@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.core.model.PlayerSession
-import fr.gshz.hideandseek.core.model.withoutLocationTopics
+import fr.gshz.hideandseek.core.model.withoutSideGrants
 import fr.gshz.hideandseek.core.util.ERROR_KEY_PLAYER_LEFT
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.domain.repository.ConnectionRepository
@@ -92,7 +92,7 @@ class RootViewModel @Inject constructor(
                     displayName = join.displayName,
                     mercureToken = join.mercureToken,
                     side = null,
-                    topics = join.topics.withoutLocationTopics(),
+                    topics = join.topics.withoutSideGrants(),
                 ),
             )
             SessionExpiredOutcome.Rejoined(join.gameUuid)

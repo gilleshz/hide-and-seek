@@ -83,4 +83,31 @@ class SessionStoreTest {
         assertEquals("hider", current?.side)
         assertEquals("fresh-token", current?.mercureToken)
     }
+
+    @Test
+    fun `clearSide removes every side-scoped topic and keeps the baseline ones`() = runTest {
+        val baseline = listOf(
+            "game/g/roster",
+            "game/g/chat",
+            "game/g/timer",
+            "game/g/round/r/time-traps",
+            "game/g/round/r/possible-area",
+            "player/p/endgame",
+        )
+        store.save(
+            session(side = "seeker").copy(
+                topics = baseline + listOf(
+                    "game/g/round/r/seeker-locations",
+                    "game/g/round/r/hider-locations",
+                    "game/g/round/r/seeker-candidates",
+                    "game/g/round/r/seeker-zone",
+                ),
+            ),
+        )
+
+        store.clearSide()
+
+        assertNull(store.current()?.side)
+        assertEquals(baseline.toSet(), store.current()?.topics?.toSet())
+    }
 }

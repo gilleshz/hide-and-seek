@@ -9,7 +9,7 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
-import fr.gshz.hideandseek.core.model.withoutLocationTopics
+import fr.gshz.hideandseek.core.model.withoutSideGrants
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.core.util.ERROR_KEY_GAME_NOT_FOUND
 import fr.gshz.hideandseek.core.util.serverDetail
@@ -140,7 +140,7 @@ class JoinGameViewModel @Inject constructor(
                     displayName = join.displayName,
                     mercureToken = join.mercureToken,
                     side = null,
-                    topics = join.topics.withoutLocationTopics(),
+                    topics = join.topics.withoutSideGrants(),
                 ),
             )
             _uiState.update { it.copy(isLoading = false, joinedGameUuid = join.gameUuid) }

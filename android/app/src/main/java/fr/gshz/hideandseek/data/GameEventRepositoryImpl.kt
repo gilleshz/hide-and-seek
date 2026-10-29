@@ -21,6 +21,7 @@ import fr.gshz.hideandseek.domain.repository.ReconnectedEvent
 import fr.gshz.hideandseek.domain.repository.RosterChanged
 import fr.gshz.hideandseek.domain.repository.SeekerCandidateAdded
 import fr.gshz.hideandseek.domain.repository.SeekerCandidateRemoved
+import fr.gshz.hideandseek.domain.repository.StreamRejected
 import fr.gshz.hideandseek.domain.repository.TimeTrapEvent
 import fr.gshz.hideandseek.domain.repository.TimerEvent
 import fr.gshz.hideandseek.domain.repository.ZoneChanged
@@ -82,6 +83,9 @@ class GameEventRepositoryImpl @Inject constructor(
 
     private val _reconnectedEvents = MutableSharedFlow<ReconnectedEvent>(extraBufferCapacity = 4)
     override val reconnectedEvents: SharedFlow<ReconnectedEvent> = _reconnectedEvents
+
+    private val _streamRejected = MutableSharedFlow<StreamRejected>(extraBufferCapacity = 4)
+    override val streamRejected: SharedFlow<StreamRejected> = _streamRejected
 
     private val _seekerCandidateAdded = MutableSharedFlow<SeekerCandidateAdded>(extraBufferCapacity = 32)
     override val seekerCandidateAdded: SharedFlow<SeekerCandidateAdded> = _seekerCandidateAdded
@@ -175,6 +179,10 @@ class GameEventRepositoryImpl @Inject constructor(
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
                 if (epoch != streamEpoch.get()) return
                 Log.w(TAG, "SSE connection failed", t)
+                val statusCode = response?.code
+                if (statusCode == HTTP_UNAUTHORIZED || statusCode == HTTP_FORBIDDEN) {
+                    scope.launch { _streamRejected.emit(StreamRejected(statusCode)) }
+                }
                 scheduleReconnect()
             }
         }
@@ -420,6 +428,8 @@ class GameEventRepositoryImpl @Inject constructor(
         const val SSE_READ_TIMEOUT_SEC = 45L
         const val JITTER_MIN_FACTOR = 0.75
         const val JITTER_RANGE = 0.5
+        const val HTTP_UNAUTHORIZED = 401
+        const val HTTP_FORBIDDEN = 403
     }
 }
 

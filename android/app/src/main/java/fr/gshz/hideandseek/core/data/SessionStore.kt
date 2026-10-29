@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import fr.gshz.hideandseek.core.model.PlayerSession
+import fr.gshz.hideandseek.core.model.isSideScopedTopic
 import fr.gshz.hideandseek.di.SessionDataStore
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -78,7 +79,7 @@ class SessionStore @Inject constructor(
         dataStore.edit { prefs ->
             prefs.remove(Keys.SIDE)
             prefs[Keys.TOPICS] = prefs[Keys.TOPICS].orEmpty()
-                .filterNotTo(mutableSetOf()) { it.endsWith(PlayerSession.LOCATION_TOPIC_SUFFIX) }
+                .filterNotTo(mutableSetOf()) { it.isSideScopedTopic() }
         }
     }
 

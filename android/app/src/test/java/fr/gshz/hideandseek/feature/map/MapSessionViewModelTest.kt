@@ -16,8 +16,12 @@ import fr.gshz.hideandseek.domain.repository.TimerEvent
 import io.mockk.coEvery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -680,6 +684,156 @@ class MapSessionViewModelTest {
                 "https://api.example.com/api/avatars/ref-2",
                 state.markers.first { it.playerUuid == "player-1" }.avatarUrl,
             )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a roster update drops a departed player's marker`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = null),
+        )
+        fixture.gameRepository.listPlayersResult =
+            Result.success(listOf(Player("player-1", "Alice"), Player("player-2", "Bob")))
+
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            fixture.locationRepository.emit(LocationUpdate("player-2", 1.0, 2.0, "2026-01-01T00:00:00Z"))
+            while (state.markers.none { it.playerUuid == "player-2" }) state = awaitItem()
+
+            fixture.gameEventRepository.emitRosterChanged(listOf(Player("player-1", "Alice")))
+            while (state.markers.any { it.playerUuid == "player-2" }) state = awaitItem()
+
+            assertTrue(state.markers.none { it.playerUuid == "player-2" })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a seeker sees self and seekers but never a hider teammate`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
+        )
+        fixture.gameRepository.listPlayersResult = Result.success(
+            listOf(
+                Player("player-1", "Alice", Side.Seeker),
+                Player("player-2", "Bob", Side.Seeker),
+                Player("player-3", "Carol", Side.Hider),
+            ),
+        )
+
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            fixture.locationRepository.emit(LocationUpdate("player-1", 1.0, 1.0, "t1"))
+            fixture.locationRepository.emit(LocationUpdate("player-2", 2.0, 2.0, "t2"))
+            fixture.locationRepository.emit(LocationUpdate("player-3", 3.0, 3.0, "t3"))
+            while (state.markers.size < 2) state = awaitItem()
+
+            assertEquals(setOf("player-1", "player-2"), state.markers.map { it.playerUuid }.toSet())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a hider still sees every player's marker`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "hider"),
+        )
+        fixture.gameRepository.listPlayersResult = Result.success(
+            listOf(
+                Player("player-1", "Alice", Side.Hider),
+                Player("player-2", "Bob", Side.Seeker),
+                Player("player-3", "Carol", Side.Hider),
+            ),
+        )
+
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            fixture.locationRepository.emit(LocationUpdate("player-1", 1.0, 1.0, "t1"))
+            fixture.locationRepository.emit(LocationUpdate("player-2", 2.0, 2.0, "t2"))
+            fixture.locationRepository.emit(LocationUpdate("player-3", 3.0, 3.0, "t3"))
+            while (state.markers.size < 3) state = awaitItem()
+
+            assertEquals(
+                setOf("player-1", "player-2", "player-3"),
+                state.markers.map { it.playerUuid }.toSet(),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a roster change to hider removes that player from a seeker's markers`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
+        )
+        fixture.gameRepository.listPlayersResult = Result.success(
+            listOf(Player("player-1", "Alice", Side.Seeker), Player("player-2", "Bob", Side.Seeker)),
+        )
+
+        val viewModel = fixture.createSessionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            fixture.locationRepository.emit(LocationUpdate("player-1", 1.0, 1.0, "t1"))
+            fixture.locationRepository.emit(LocationUpdate("player-2", 2.0, 2.0, "t2"))
+            while (state.markers.size < 2) state = awaitItem()
+
+            fixture.gameEventRepository.emitRosterChanged(
+                listOf(Player("player-1", "Alice", Side.Seeker), Player("player-2", "Bob", Side.Hider)),
+            )
+            while (state.markers.any { it.playerUuid == "player-2" }) state = awaitItem()
+
+            assertEquals(listOf("player-1"), state.markers.map { it.playerUuid })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a periodic round poll asks the lobby when a new round was missed`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
+        )
+        fixture.gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-1"))
+        val viewModel = fixture.createSessionViewModel()
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+
+        viewModel.navigateToLobby.test {
+            fixture.gameRepository.getGameResult =
+                Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-2"))
+            advanceTimeBy(60_000)
+            runCurrent()
+            awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a lobby request dropped while the map is gone is retried on the next poll`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "seeker"),
+        )
+        fixture.gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-1"))
+        val viewModel = fixture.createSessionViewModel()
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+
+        fixture.gameRepository.getGameResult =
+            Result.success(GameSummary("game-1", "Berlin", GameSize.Medium, Edition.Metric, "round-2"))
+        advanceTimeBy(60_000)
+        runCurrent()
+
+        viewModel.navigateToLobby.test {
+            advanceTimeBy(60_000)
+            runCurrent()
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
     }
