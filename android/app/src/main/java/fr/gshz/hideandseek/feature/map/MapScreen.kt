@@ -979,10 +979,8 @@ private fun MapFabColumn(
                 Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.draw_constraint_button))
             }
         }
-        if (uiState.side == Side.Hider) {
-            FloatingActionButton(onClick = fabActions.onBrowsePois) {
-                Icon(Icons.Filled.TravelExplore, contentDescription = stringResource(R.string.map_browse_pois))
-            }
+        FloatingActionButton(onClick = fabActions.onBrowsePois) {
+            Icon(Icons.Filled.TravelExplore, contentDescription = stringResource(R.string.map_browse_pois))
         }
         FloatingActionButton(onClick = { navigation.onOpenChatClick(uiState.gameUuid) }) {
             Icon(Icons.Filled.Chat, contentDescription = stringResource(R.string.map_open_chat))

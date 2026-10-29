@@ -576,6 +576,213 @@ JSON;
     }
 
     #[Test]
+    public function itQueriesRailStationsAndHaltsAsNodesWaysAndRelations(): void
+    {
+        $game = $this->createGameWithBoundary();
+
+        $capturedBody = '';
+        $httpClient = new MockHttpClient(
+            function (string $method, string $url, array $options) use (&$capturedBody): MockResponse {
+                $body = $options['body'] ?? null;
+                $capturedBody = is_string($body) ? $body : '';
+
+                return new MockResponse('{"version": 0.6, "elements": []}');
+            },
+        );
+
+        $features = $this->createStub(FeatureRepository::class);
+        $features->method('countByGameAndType')->willReturn(0);
+
+        $em = $this->createStub(EntityManagerInterface::class);
+
+        $service = new OverpassService(new OverpassHttpClient($httpClient, 'https://test.example/api/', false), $features, $em);
+        $service->ingestFeatureType($game, FeatureType::RailStation);
+
+        $decoded = urldecode($capturedBody);
+        self::assertStringContainsString('node["railway"="station"]', $decoded);
+        self::assertStringContainsString('way["railway"="station"]', $decoded);
+        self::assertStringContainsString('relation["railway"="station"]', $decoded);
+        self::assertStringContainsString('node["railway"="halt"]', $decoded);
+        self::assertStringContainsString('way["railway"="halt"]', $decoded);
+        self::assertStringContainsString('relation["railway"="halt"]', $decoded);
+    }
+
+    #[Test]
+    public function itMapsRailHaltsAndAreaMappedStationsToRailStations(): void
+    {
+        $game = $this->createGameWithBoundary();
+        $json = <<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "node", "id": 800, "lat": 48.60, "lon": 2.20, "tags": {"railway": "halt", "name": "Ars-sur-Moselle"}},
+        {"type": "way", "id": 801, "bounds": {"minlat": 48.70, "minlon": 2.30, "maxlat": 48.72, "maxlon": 2.32},
+         "tags": {"railway": "station", "name": "Woippy"}, "geometry": [
+            {"lat": 48.70, "lon": 2.30},
+            {"lat": 48.70, "lon": 2.32},
+            {"lat": 48.72, "lon": 2.32},
+            {"lat": 48.72, "lon": 2.30},
+            {"lat": 48.70, "lon": 2.30}
+        ]}
+    ]
+}
+JSON;
+        $httpClient = new MockHttpClient(new MockResponse($json));
+
+        $captured = [];
+        $features = $this->createStub(FeatureRepository::class);
+        $features->method('save')->willReturnCallback(
+            function ($entity) use (&$captured): void {
+                $captured[] = $entity;
+            },
+        );
+
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('flush');
+
+        $service = new OverpassService(new OverpassHttpClient($httpClient, 'https://test.example/api/', false), $features, $em);
+        $count = $service->ingestFeatures($game);
+
+        self::assertSame(2, $count);
+        self::assertCount(2, $captured);
+
+        $expected = [
+            ['Ars-sur-Moselle', 48.60, 2.20],
+            ['Woippy', 48.71, 2.31],
+        ];
+
+        $idx = 0;
+        foreach ($expected as [$expectedName, $expectedLat, $expectedLng]) {
+            $feature = $captured[$idx];
+            self::assertInstanceOf(\App\Entity\Feature::class, $feature);
+            self::assertSame(FeatureType::RailStation, $feature->getFeatureType(), "Item {$idx}: wrong type");
+            self::assertSame($expectedName, $feature->getName(), "Item {$idx}: wrong name");
+            self::assertEqualsWithDelta($expectedLat, $feature->getPoint()->getLatitude(), 1e-9);
+            self::assertEqualsWithDelta($expectedLng, $feature->getPoint()->getLongitude(), 1e-9);
+            ++$idx;
+        }
+    }
+
+    #[Test]
+    public function itMergesARailStationNodeAndItsStationBuilding(): void
+    {
+        $result = $this->ingest(<<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "way", "id": 900, "bounds": {"minlat": 48.7592, "minlon": 2.40, "maxlat": 48.7594, "maxlon": 2.40},
+         "tags": {"railway": "station", "name": "Lyon Part-Dieu"}},
+        {"type": "node", "id": 901, "lat": 48.7600, "lon": 2.40,
+         "tags": {"railway": "station", "name": "Lyon Part-Dieu"}}
+    ]
+}
+JSON);
+
+        self::assertSame(1, $result['count']);
+        self::assertCount(1, $result['features']);
+        $feature = $result['features'][0];
+        self::assertSame('Lyon Part-Dieu', $feature->getName());
+        self::assertEqualsWithDelta(48.76, $feature->getPoint()->getLatitude(), 1e-9);
+    }
+
+    #[Test]
+    public function itDropsARailHaltWhenAStationSitsAtTheSamePlace(): void
+    {
+        $result = $this->ingest(<<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "node", "id": 910, "lat": 48.7000, "lon": 2.30,
+         "tags": {"railway": "halt", "name": "Duppigheim"}},
+        {"type": "node", "id": 911, "lat": 48.7010, "lon": 2.30,
+         "tags": {"railway": "station", "name": "Gare de Duppigheim"}}
+    ]
+}
+JSON, FeatureType::RailStation);
+
+        self::assertSame(1, $result['count']);
+        $feature = $result['features'][0];
+        self::assertSame('Gare de Duppigheim', $feature->getName());
+    }
+
+    #[Test]
+    public function itKeepsDistinctStationsAndNamesBeyondTheDedupeRadius(): void
+    {
+        $result = $this->ingest(<<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "node", "id": 920, "lat": 48.7200, "lon": 2.32,
+         "tags": {"railway": "station", "name": "Gare d'Oullins"}},
+        {"type": "node", "id": 921, "lat": 48.7208, "lon": 2.32,
+         "tags": {"railway": "station", "name": "Oullins"}},
+        {"type": "node", "id": 922, "lat": 48.7230, "lon": 2.32,
+         "tags": {"railway": "station", "name": "Gare d'Oullins"}}
+    ]
+}
+JSON, FeatureType::RailStation);
+
+        self::assertSame(3, $result['count']);
+    }
+
+    #[Test]
+    public function itStoresAHaltUnderTheTransitTypeWhenThatTypeIsRequested(): void
+    {
+        $result = $this->ingest(<<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "node", "id": 940, "lat": 48.75, "lon": 2.35,
+         "tags": {"railway": "halt", "public_transport": "station", "name": "Metz Nord"}}
+    ]
+}
+JSON, FeatureType::TransitStation);
+
+        self::assertSame(1, $result['count']);
+        $feature = $result['features'][0];
+        self::assertSame(FeatureType::TransitStation, $feature->getFeatureType());
+    }
+
+    #[Test]
+    public function itDropsAHaltFromTheTransitListWhenAStationSitsAtTheSamePlace(): void
+    {
+        $result = $this->ingest(<<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "node", "id": 950, "lat": 48.70, "lon": 2.30,
+         "tags": {"railway": "halt", "public_transport": "station", "name": "Limersheim"}},
+        {"type": "node", "id": 951, "lat": 48.7002, "lon": 2.30,
+         "tags": {"railway": "station", "public_transport": "station", "name": "Gare de Limersheim"}}
+    ]
+}
+JSON, FeatureType::TransitStation);
+
+        self::assertSame(1, $result['count']);
+        $feature = $result['features'][0];
+        self::assertSame(FeatureType::TransitStation, $feature->getFeatureType());
+        self::assertSame('Gare de Limersheim', $feature->getName());
+    }
+
+    #[Test]
+    public function itDoesNotMergeNonRailFeaturesWithTheSameName(): void
+    {
+        $result = $this->ingest(<<<'JSON'
+{
+    "version": 0.6,
+    "elements": [
+        {"type": "way", "id": 930, "bounds": {"minlat": 48.80, "minlon": 2.50, "maxlat": 48.8002, "maxlon": 2.5002},
+         "tags": {"tourism": "museum", "name": "Museum B"}},
+        {"type": "node", "id": 931, "lat": 48.8001, "lon": 2.5001,
+         "tags": {"tourism": "museum", "name": "Museum B"}}
+    ]
+}
+JSON);
+
+        self::assertSame(2, $result['count']);
+    }
+
+    #[Test]
     public function itIngestsHealthcareOnlyHospitalsAndSkipsConflictingAmenities(): void
     {
         $game = $this->createGameWithBoundary();
@@ -655,6 +862,33 @@ JSON;
             $names[] = $feature->getName();
         }
         self::assertSame(['Nouvel Hopital Civil', 'Clinique Sainte Anne', 'Hopital Civil'], $names);
+    }
+
+    /**
+     * @return array{count: int, features: list<\App\Entity\Feature>}
+     */
+    private function ingest(string $json, ?FeatureType $type = null): array
+    {
+        $game = $this->createGameWithBoundary();
+        $httpClient = new MockHttpClient(new MockResponse($json));
+
+        $captured = [];
+        $features = $this->createStub(FeatureRepository::class);
+        $features->method('countByGameAndType')->willReturn(0);
+        $features->method('save')->willReturnCallback(
+            function ($entity) use (&$captured): void {
+                $captured[] = $entity;
+            },
+        );
+
+        $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('flush');
+
+        $service = new OverpassService(new OverpassHttpClient($httpClient, 'https://test.example/api/', false), $features, $em);
+        $count = $type === null ? $service->ingestFeatures($game) : $service->ingestFeatureType($game, $type);
+
+        /** @var list<\App\Entity\Feature> $captured */
+        return ['count' => $count, 'features' => $captured];
     }
 
     private function createGameWithBoundary(): Game

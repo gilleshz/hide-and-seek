@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
-/** The hider's read-only POI browser: no anchor, no answer, no selection. Null means closed. */
+/** The read-only POI browser: no anchor, no answer, no selection. Null means closed. */
 data class PoiBrowseState(
     val featureType: FeatureType? = null,
     val features: List<FeatureSummary> = emptyList(),

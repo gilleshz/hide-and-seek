@@ -20,6 +20,14 @@ readonly class OverpassService
     private const int MAX_RESPONSE_BYTES = 100_663_296;
 
     /**
+     * Two representations of the same passenger station closer than this are merged
+     * while ingesting: a halt next to a station, or a station node and its building.
+     */
+    private const float RAIL_STATION_DEDUPE_METERS = 150.0;
+
+    private const float EARTH_RADIUS_METERS = 6_371_000.0;
+
+    /**
      * @var array<string, array<string, FeatureType>>
      */
     private const array TAG_MAP = [
@@ -45,7 +53,10 @@ readonly class OverpassService
             'water' => FeatureType::BodyOfWater,
             'coastline' => FeatureType::Coastline,
         ],
-        'railway' => ['station' => FeatureType::RailStation],
+        'railway' => [
+            'station' => FeatureType::RailStation,
+            'halt' => FeatureType::RailStation,
+        ],
         'highspeed' => ['yes' => FeatureType::HighSpeedRailLine],
         'public_transport' => ['station' => FeatureType::TransitStation],
         'office' => [
@@ -110,7 +121,14 @@ readonly class OverpassService
             ['way', 'aeroway', 'aerodrome', ['iata' => '']],
             ['relation', 'aeroway', 'aerodrome', ['iata' => '']],
         ],
-        FeatureType::RailStation->value => [['node', 'railway', 'station']],
+        FeatureType::RailStation->value => [
+            ['node', 'railway', 'station'],
+            ['way', 'railway', 'station'],
+            ['relation', 'railway', 'station'],
+            ['node', 'railway', 'halt'],
+            ['way', 'railway', 'halt'],
+            ['relation', 'railway', 'halt'],
+        ],
         FeatureType::HighSpeedRailLine->value => [
             ['way', 'highspeed', 'yes'],
             ['relation', 'highspeed', 'yes'],
@@ -186,7 +204,7 @@ readonly class OverpassService
         $bbox = "{$swLat},{$swLng},{$neLat},{$neLng}";
         $query = $this->buildQueryForTypes([$type], $bbox);
 
-        return $this->ingestQueryLocked($game, $type, $query);
+        return $this->ingestQueryLocked($game, $type, $query, $type);
     }
 
     private function ingestAdminDivision(Game $game, FeatureType $type): int
@@ -367,10 +385,12 @@ readonly class OverpassService
         if (!is_array($elements)) {
             return 0;
         }
+        $elements = array_values($elements);
+        $duplicates = $this->duplicateRailStations($elements, $forceType);
 
         $count = 0;
-        foreach ($elements as $element) {
-            if (!is_array($element)) {
+        foreach ($elements as $index => $element) {
+            if (isset($duplicates[$index]) || !is_array($element)) {
                 continue;
             }
 
@@ -468,6 +488,128 @@ readonly class OverpassService
         }
 
         return $count;
+    }
+
+    /**
+     * A station can be mapped several times at the same place: its node plus the
+     * station building, or a halt plus the station node under another name. Keep one
+     * representative per station, preferring nodes over ways and stations over halts.
+     *
+     * @param list<mixed> $elements
+     * @return array<int, true>
+     */
+    private function duplicateRailStations(array $elements, ?FeatureType $forceType): array
+    {
+        $candidates = $this->railStationCandidates($elements, $forceType);
+
+        $duplicates = [];
+        foreach ($candidates as $index => $candidate) {
+            foreach ($candidates as $otherIndex => $other) {
+                if ($index !== $otherIndex && $this->isStationDuplicate($index, $candidate, $otherIndex, $other)) {
+                    $duplicates[$index] = true;
+                    break;
+                }
+            }
+        }
+
+        return $duplicates;
+    }
+
+    /**
+     * @param array{lat: float, lon: float, name: string, halt: bool, priority: int} $candidate
+     * @param array{lat: float, lon: float, name: string, halt: bool, priority: int} $other
+     */
+    private function isStationDuplicate(int $index, array $candidate, int $otherIndex, array $other): bool
+    {
+        $distance = $this->distanceMeters(
+            $candidate['lat'],
+            $candidate['lon'],
+            $other['lat'],
+            $other['lon'],
+        );
+        if ($distance > self::RAIL_STATION_DEDUPE_METERS) {
+            return false;
+        }
+
+        $sameStation = $candidate['name'] === $other['name']
+            || ($candidate['halt'] && !$other['halt']);
+        $worse = $candidate['priority'] > $other['priority']
+            || ($candidate['priority'] === $other['priority'] && $index > $otherIndex);
+
+        return $sameStation && $worse;
+    }
+
+    /**
+     * @param list<mixed> $elements
+     * @return array<int, array{lat: float, lon: float, name: string, halt: bool, priority: int}>
+     */
+    private function railStationCandidates(array $elements, ?FeatureType $forceType): array
+    {
+        $candidates = [];
+        foreach ($elements as $index => $element) {
+            if (!is_array($element)) {
+                continue;
+            }
+            $tags = $element['tags'] ?? null;
+            if (!is_array($tags)) {
+                continue;
+            }
+            /** @var array<string, string> $tags */
+            $type = $forceType ?? $this->matchFeatureType($tags);
+            if ($type !== FeatureType::RailStation && $type !== FeatureType::TransitStation) {
+                continue;
+            }
+            $railway = $tags['railway'] ?? null;
+            $name = $tags['name'] ?? null;
+            if (($railway !== 'station' && $railway !== 'halt') || !is_string($name)) {
+                continue;
+            }
+            $point = $this->elementPoint($element);
+            if ($point === null) {
+                continue;
+            }
+            $halt = $railway === 'halt';
+            $rank = match ($element['type'] ?? null) {
+                'node' => 0,
+                'way' => 1,
+                default => 2,
+            };
+            $candidates[$index] = [
+                'lat' => $point['lat'],
+                'lon' => $point['lon'],
+                'name' => strtolower(trim($name)),
+                'halt' => $halt,
+                'priority' => ($halt ? 3 : 0) + $rank,
+            ];
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @param array<array-key, mixed> $element
+     * @return array{lat: float, lon: float}|null
+     */
+    private function elementPoint(array $element): ?array
+    {
+        $lat = $element['lat'] ?? null;
+        $lon = $element['lon'] ?? null;
+        if (is_float($lat) && is_float($lon)) {
+            return ['lat' => $lat, 'lon' => $lon];
+        }
+
+        /** @var array<string, mixed> $element */
+        return $this->boundsCenter($element);
+    }
+
+    private function distanceMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $latDelta = deg2rad($lat2 - $lat1);
+        $lonDelta = deg2rad($lon2 - $lon1);
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($lonDelta / 2) ** 2;
+
+        return 2 * self::EARTH_RADIUS_METERS * asin(sqrt($a));
     }
 
     /**
