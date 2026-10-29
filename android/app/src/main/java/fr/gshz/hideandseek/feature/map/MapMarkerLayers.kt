@@ -173,10 +173,9 @@ internal fun Style.updateMarkerSources(
     markers: List<PlayerMarker>,
     avatarUrls: Map<String, String> = emptyMap(),
 ) {
-    val offsets = fanOffsets(markers)
     val (self, others) = markers.partition { it.isSelf }
-    val selfJson = toFeatureCollectionJson(self, offsets, avatarUrls)
-    val othersJson = toFeatureCollectionJson(others, offsets, avatarUrls)
+    val selfJson = toFeatureCollectionJson(self, avatarUrls)
+    val othersJson = toFeatureCollectionJson(others, avatarUrls)
     (getSource(SELF_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(selfJson)
     (getSource(SELF_LABEL_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(selfJson)
     (getSource(OTHERS_SOURCE_ID) as? GeoJsonSource)?.setGeoJson(othersJson)
@@ -314,7 +313,6 @@ internal fun MapLibreMap.frameCameraIfNeeded(
 private fun pinLayer(layerId: String, sourceId: String): SymbolLayer =
     SymbolLayer(layerId, sourceId).withProperties(
         PropertyFactory.iconImage(Expression.get(PROPERTY_PIN_IMAGE)),
-        PropertyFactory.iconOffset(Expression.get(PROPERTY_PIN_OFFSET)),
         PropertyFactory.iconAllowOverlap(true),
         PropertyFactory.iconAnchor(Property.ICON_ANCHOR_CENTER),
     )
@@ -323,7 +321,7 @@ private fun initialsLayer(layerId: String, sourceId: String): SymbolLayer =
     SymbolLayer(layerId, sourceId).withProperties(
         PropertyFactory.textField(Expression.get(PROPERTY_INITIALS)),
         PropertyFactory.textFont(LABEL_FONT),
-        PropertyFactory.textOffset(Expression.get(PROPERTY_INITIALS_OFFSET)),
+        PropertyFactory.textOffset(arrayOf(0f, 0f)),
         PropertyFactory.textAnchor(Property.TEXT_ANCHOR_CENTER),
         PropertyFactory.textAllowOverlap(true),
         PropertyFactory.textSize(INITIALS_TEXT_SIZE),
@@ -334,7 +332,7 @@ private fun labelLayer(layerId: String, sourceId: String): SymbolLayer =
     SymbolLayer(layerId, sourceId).withProperties(
         PropertyFactory.textField(Expression.get(PROPERTY_DISPLAY_NAME)),
         PropertyFactory.textFont(LABEL_FONT),
-        PropertyFactory.textOffset(Expression.get(PROPERTY_LABEL_OFFSET)),
+        PropertyFactory.textOffset(arrayOf(0f, LABEL_OFFSET_Y)),
         PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
         PropertyFactory.textAllowOverlap(true),
         PropertyFactory.textSize(LABEL_TEXT_SIZE),
@@ -345,12 +343,10 @@ private fun labelLayer(layerId: String, sourceId: String): SymbolLayer =
 
 private fun toFeatureCollectionJson(
     markers: List<PlayerMarker>,
-    offsets: Map<String, MarkerFanOffset>,
     avatarUrls: Map<String, String>,
 ): String {
     val collection = FeatureCollectionDto(
         features = markers.map {
-            val fan = offsets[it.playerUuid] ?: MarkerFanOffset.NONE
             val avatarUrl = avatarUrls[it.playerUuid]
             FeatureDto(
                 geometry = GeometryDto(coordinates = listOf(it.longitude, it.latitude)),
@@ -358,12 +354,6 @@ private fun toFeatureCollectionJson(
                     displayName = it.displayName,
                     initials = if (avatarUrl != null) "" else it.initials,
                     pinImage = pinImageId(it, avatarUrl),
-                    pinOffset = listOf(fan.x, fan.y),
-                    initialsOffset = listOf(fan.x / INITIALS_TEXT_SIZE, fan.y / INITIALS_TEXT_SIZE),
-                    labelOffset = listOf(
-                        fan.x / LABEL_TEXT_SIZE,
-                        LABEL_OFFSET_Y + fan.y / LABEL_TEXT_SIZE,
-                    ),
                 ),
             )
         },
@@ -401,9 +391,6 @@ private data class PropertiesDto(
     val displayName: String,
     val initials: String = "",
     val pinImage: String,
-    val pinOffset: List<Float>,
-    val initialsOffset: List<Float>,
-    val labelOffset: List<Float>,
 )
 
 private const val BOUNDARY_SOURCE_ID = "boundary-source"
@@ -431,10 +418,7 @@ private val LABEL_FONT = arrayOf("Noto Sans Regular")
 private const val PROPERTY_DISPLAY_NAME = "displayName"
 private const val PROPERTY_INITIALS = "initials"
 private const val PROPERTY_PIN_IMAGE = "pinImage"
-private const val PROPERTY_PIN_OFFSET = "pinOffset"
 private const val AVATAR_PREFIX = "avatar-"
-private const val PROPERTY_INITIALS_OFFSET = "initialsOffset"
-private const val PROPERTY_LABEL_OFFSET = "labelOffset"
 private const val BOUNDARY_FILL_COLOR = "#3B82F6"
 private const val BOUNDARY_FILL_OPACITY = 0.08f
 private const val BOUNDARY_LINE_COLOR = "#3B82F6"
