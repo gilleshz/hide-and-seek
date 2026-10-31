@@ -136,6 +136,8 @@ class QuestionViewModel @Inject constructor(
         MapQuestionUiState(
             possibleAreaGeoJson = pa?.possibleAreaGeoJson?.takeUnless(::isEmptyGeoJsonGeometry),
             exclusionGeoJson = pa?.exclusionGeoJson,
+            stationBandGeoJson = pa?.stationBandGeoJson,
+            stationAreaGeoJson = pa?.stationAreaGeoJson,
             outstandingQuestion = qs.firstOrNull { it.isOutstanding },
             askedQuestions = qs.filter { q ->
                 q.status != QuestionStatus.Randomized &&
@@ -585,6 +587,8 @@ class QuestionViewModel @Inject constructor(
 data class MapQuestionUiState(
     val possibleAreaGeoJson: String? = null,
     val exclusionGeoJson: String? = null,
+    val stationBandGeoJson: String? = null,
+    val stationAreaGeoJson: String? = null,
     val outstandingQuestion: AskedQuestion? = null,
     val askedQuestions: List<AskedQuestion> = emptyList(),
     val simulation: SimulationState? = null,

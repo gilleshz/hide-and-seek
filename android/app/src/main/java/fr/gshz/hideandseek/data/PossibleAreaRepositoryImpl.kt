@@ -14,7 +14,12 @@ class PossibleAreaRepositoryImpl @Inject constructor(
 
     override suspend fun getPossibleArea(roundUuid: String): PossibleAreaData =
         api.getPossibleArea(url = urlFor("/api/rounds/$roundUuid/possible-area")).let { dto ->
-            PossibleAreaData(possibleAreaGeoJson = dto.geoJson, exclusionGeoJson = dto.exclusionGeoJson)
+            PossibleAreaData(
+                possibleAreaGeoJson = dto.geoJson,
+                exclusionGeoJson = dto.exclusionGeoJson,
+                stationBandGeoJson = dto.stationBandGeoJson,
+                stationAreaGeoJson = dto.stationAreaGeoJson,
+            )
         }
 
     private suspend fun urlFor(path: String): String =

@@ -7,4 +7,6 @@ data class PossibleAreaDto(
     val roundUuid: String,
     val geoJson: String? = null,
     val exclusionGeoJson: String? = null,
+    val stationBandGeoJson: String? = null,
+    val stationAreaGeoJson: String? = null,
 )

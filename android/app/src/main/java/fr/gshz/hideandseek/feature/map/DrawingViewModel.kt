@@ -295,7 +295,11 @@ class DrawingViewModel @Inject constructor(
 
     /** The hiding radius around a station the seekers are sure of, kept as searchable area. */
     fun addSearchAreaConstraint(latitude: Double, longitude: Double, radiusMeters: Double) {
-        addManualConstraint(circleRingGeoJson(latitude, longitude, radiusMeters), ConstraintMode.Include)
+        addManualConstraint(
+            circleRingGeoJson(latitude, longitude, radiusMeters),
+            ConstraintMode.Include,
+            SEARCH_AREA_LABEL,
+        )
     }
 
     fun deleteManualConstraint(constraintUuid: String) {
@@ -371,6 +375,9 @@ class DrawingViewModel @Inject constructor(
         // Three tries ~10 s apart covers the server's 30 s warm window without polling a dead network.
         const val STREET_NETWORK_ATTEMPTS = 3
         const val STREET_NETWORK_RETRY_DELAY_MS = 10_000L
+
+        // Backend contract: PossibleAreaConstraint::SEARCH_AREA_LABEL must equal this value.
+        const val SEARCH_AREA_LABEL = "search-area"
     }
 }
 

@@ -241,8 +241,13 @@ class MapUiStateAssemblerTest {
     }
 
     @Test
-    fun `the possible-area and exclusion geometry flow through the assembly`() {
-        val question = MapQuestionUiState(possibleAreaGeoJson = "geo-1", exclusionGeoJson = "excl-1")
+    fun `the possible-area, exclusion, band and station area flow through the assembly`() {
+        val question = MapQuestionUiState(
+            possibleAreaGeoJson = "geo-1",
+            exclusionGeoJson = "excl-1",
+            stationBandGeoJson = "band-1",
+            stationAreaGeoJson = "area-1",
+        )
 
         val state = assembleMapUiState(
             MapSessionUiState(), MapZoneUiState(), MapDrawingUiState(), MapTimeTrapUiState(), emptyList(), question,
@@ -250,6 +255,8 @@ class MapUiStateAssemblerTest {
 
         assertEquals("geo-1", state.possibleAreaGeoJson)
         assertEquals("excl-1", state.exclusionGeoJson)
+        assertEquals("band-1", state.stationBandGeoJson)
+        assertEquals("area-1", state.stationAreaGeoJson)
     }
 
     @Test

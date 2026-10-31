@@ -5,6 +5,15 @@ declare(strict_types=1);
 namespace App\Tests\Api;
 
 use ApiPlatform\Test\Client;
+use App\Dto\ManualConstraintDraft;
+use App\Entity\PossibleAreaConstraint;
+use App\Enum\ConstraintMode;
+use App\Repository\PlayerRepository;
+use App\Repository\PossibleAreaConstraintRepository;
+use App\Repository\RoundMembershipRepository;
+use App\Repository\RoundRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use LongitudeOne\Spatial\PHP\Types\Geography\Point;
 use PHPUnit\Framework\Attributes\Test;
 
 final class QuestionPreviewApiTest extends ApiTestCase
@@ -106,6 +115,64 @@ final class QuestionPreviewApiTest extends ApiTestCase
         $areas = $this->extractAreas($response->toArray());
         self::assertGreaterThan(0.0, $areas['current']);
         self::assertGreaterThan($areas['current'] * 0.9, $areas['projected']);
+    }
+
+    #[Test]
+    public function aCommittedSearchAreaIsThePreviewCurrentArea(): void
+    {
+        $client = static::createClient();
+        $ctx = $this->createGameAndJoinAs($client, 'PreviewZone', 'seeker');
+
+        /** @var RoundRepository $rounds */
+        $rounds = self::getContainer()->get(RoundRepository::class);
+        $round = $rounds->findOneByUuid($ctx['roundUuid']);
+        self::assertNotNull($round);
+
+        /** @var PlayerRepository $players */
+        $players = self::getContainer()->get(PlayerRepository::class);
+        $player = $players->findOneByUuid($ctx['playerUuid']);
+        self::assertNotNull($player);
+
+        /** @var RoundMembershipRepository $memberships */
+        $memberships = self::getContainer()->get(RoundMembershipRepository::class);
+        $membership = $memberships->findOneByRoundAndPlayer($round, $player);
+        self::assertNotNull($membership);
+
+        /** @var PossibleAreaConstraintRepository $constraints */
+        $constraints = self::getContainer()->get(PossibleAreaConstraintRepository::class);
+        $seeker = new Point(13.405, 52.52);
+        $constraints->insertDiskConstraint($round, $seeker, 1000.0, true, 'Radar yes');
+        $station = new Point(13.405, 52.530779);
+        $constraints->insertManualConstraint(
+            $round,
+            $membership,
+            new ManualConstraintDraft(
+                $this->ringAround($station, 500.0),
+                ConstraintMode::Include,
+                PossibleAreaConstraint::SEARCH_AREA_LABEL,
+            ),
+        );
+
+        $client->request('POST', $this->previewUrl($ctx['roundUuid']), $this->headersWithToken($ctx['token']) + [
+            'json' => [
+                'askerPlayerUuid' => $ctx['playerUuid'],
+                'category' => 'radar',
+                'seekerLat' => 52.52,
+                'seekerLng' => 13.405,
+                'radiusMeters' => 1000,
+                'hypotheticalAnswer' => 'inside',
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(201);
+        $response = $client->getResponse();
+        self::assertNotNull($response);
+        $data = $response->toArray();
+        self::assertEqualsWithDelta(1.0, $data['currentAreaKm2'], 0.05);
+
+        $geojson = $data['currentPossibleAreaGeoJson'] ?? null;
+        self::assertIsString($geojson);
+        self::assertTrue($this->geojsonContains($geojson, $station));
     }
 
     #[Test]
@@ -531,5 +598,42 @@ final class QuestionPreviewApiTest extends ApiTestCase
 
         // Identity comes from the token: a body naming a hider must not turn this into a hider action.
         self::assertResponseStatusCodeSame(201);
+    }
+
+    private function ringAround(Point $center, float $radiusMeters): string
+    {
+        $latDelta = $radiusMeters / 111320.0;
+        $lngDelta = $radiusMeters / (111320.0 * cos(deg2rad($center->getLatitude())));
+        $minLng = $center->getLongitude() - $lngDelta;
+        $maxLng = $center->getLongitude() + $lngDelta;
+        $minLat = $center->getLatitude() - $latDelta;
+        $maxLat = $center->getLatitude() + $latDelta;
+
+        return sprintf(
+            '{"type":"Polygon","coordinates":[[[%F,%F],[%F,%F],[%F,%F],[%F,%F],[%F,%F]]]}',
+            $minLng,
+            $minLat,
+            $maxLng,
+            $minLat,
+            $maxLng,
+            $maxLat,
+            $minLng,
+            $maxLat,
+            $minLng,
+            $minLat,
+        );
+    }
+
+    private function geojsonContains(string $geojson, Point $point): bool
+    {
+        /** @var EntityManagerInterface $em */
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+        $conn = $em->getConnection();
+        $row = $conn->fetchAssociative(
+            'SELECT ST_Contains(ST_GeomFromGeoJSON(:g), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) AS c',
+            ['g' => $geojson, 'lng' => $point->getLongitude(), 'lat' => $point->getLatitude()],
+        );
+
+        return (bool) ($row['c'] ?? false);
     }
 }

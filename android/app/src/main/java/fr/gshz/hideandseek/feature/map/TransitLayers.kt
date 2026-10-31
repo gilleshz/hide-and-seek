@@ -51,8 +51,13 @@ internal fun Style.ensureTransitOverlayLayer(overlayGeoJson: String, focusedRef:
         stationLayer(STATION_FILL_LAYER_ID),
         stationBorderLayer(STATION_BORDER_LAYER_ID),
     )
-    val labelId = firstSymbolLayerId()
-    ordered.forEach { if (labelId != null) addLayerBelow(it, labelId) else addLayer(it) }
+    // Fixed order: exclusion under transit, band border over transit.
+    val insertBelow = if (getLayer(STATION_BAND_BACKDROP_LAYER_ID) != null) {
+        STATION_BAND_BACKDROP_LAYER_ID
+    } else {
+        firstSymbolLayerId()
+    }
+    ordered.forEach { if (insertBelow != null) addLayerBelow(it, insertBelow) else addLayer(it) }
 
     val haloWidth = CASING_WIDTH_Z14 * FOCUS_HALO_FACTOR
     val halo = focusLayer(FOCUS_CASING_LAYER_ID, FOCUS_HALO_COLOR, haloWidth, FOCUS_HALO_OPACITY)

@@ -285,6 +285,132 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
         return $geojson;
     }
 
+    /**
+     * The seekers' search area plus the band where a hiding-zone centre is still possible.
+     *
+     * Each constraint is buffered before intersecting: the hider may move anywhere within the
+     * hiding radius between two answers, so a station up to one radius outside an answer region
+     * is still a valid centre. The body fold already intersects a committed hiding zone's include
+     * constraint, so unioning the committed rings back in restores the whole circle; everything
+     * outside it stays excluded by that same constraint. stationArea is the buffered fold unioned
+     * with the search area, so search plus band tile it exactly for the band overlay.
+     *
+     * @return array{searchArea: ?string, stationArea: ?string, stationBand: ?string}
+     */
+    public function computeSearchAreas(Round $round, float $radiusMeters): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $boundary = $round->getGame()->getBoundaryGeoJson();
+        $bodyClipOpen = $boundary !== null ? 'ST_Intersection(' : '';
+        $bodyClipClose = $boundary !== null ? ', ST_GeomFromGeoJSON(:boundaryBody))' : '';
+        $stationClipOpen = $boundary !== null ? 'ST_Intersection(' : '';
+        $stationClipClose = $boundary !== null ? ', ST_GeomFromGeoJSON(:boundaryStation))' : '';
+        $committedClipOpen = $boundary !== null ? 'ST_Intersection(' : '';
+        $committedClipClose = $boundary !== null ? ', ST_GeomFromGeoJSON(:boundaryCommitted))' : '';
+        $bodyStep = 'ST_CollectionExtract(ST_Intersection(f.geom, o.geom), 3)';
+        $stationStep = 'ST_CollectionExtract(ST_Intersection(f.geom, b.geom), 3)';
+        $sql = <<<SQL
+            WITH RECURSIVE ordered AS (
+                SELECT geometry::geometry AS geom,
+                       ROW_NUMBER() OVER (ORDER BY created_at, id) AS rn
+                FROM possible_area_constraints
+                WHERE round_id = :roundId AND enabled = true
+            ),
+            buffered AS (
+                SELECT ST_Buffer(geom::geography, :radiusMeters)::geometry AS geom, rn
+                FROM ordered
+            ),
+            body_folded AS (
+                SELECT geom, rn FROM ordered WHERE rn = 1
+                UNION ALL
+                SELECT CASE
+                           WHEN ST_IsEmpty({$bodyStep}) OR ST_Area({$bodyStep}) <= 0 THEN f.geom
+                           ELSE {$bodyStep}
+                       END,
+                       o.rn
+                FROM body_folded f
+                JOIN ordered o ON o.rn = f.rn + 1
+            ),
+            station_folded AS (
+                SELECT geom, rn FROM buffered WHERE rn = 1
+                UNION ALL
+                SELECT CASE
+                           WHEN ST_IsEmpty({$stationStep}) OR ST_Area({$stationStep}) <= 0 THEN f.geom
+                           ELSE {$stationStep}
+                       END,
+                       b.rn
+                FROM station_folded f
+                JOIN buffered b ON b.rn = f.rn + 1
+            ),
+            body_area AS (
+                SELECT {$bodyClipOpen}geom{$bodyClipClose} AS g
+                FROM body_folded ORDER BY rn DESC LIMIT 1
+            ),
+            station_area AS (
+                SELECT {$stationClipOpen}geom{$stationClipClose} AS g
+                FROM station_folded ORDER BY rn DESC LIMIT 1
+            ),
+            committed AS (
+                SELECT {$committedClipOpen}geometry::geometry{$committedClipClose} AS g
+                FROM possible_area_constraints
+                WHERE round_id = :committedRoundId AND enabled = true
+                  AND source = 'manual' AND mode = 'include' AND label = :searchAreaLabel
+            ),
+            search_area AS (
+                SELECT ST_CollectionExtract(ST_UnaryUnion(ST_Collect(g)), 3) AS g
+                FROM (
+                    SELECT g FROM body_area
+                    UNION ALL
+                    SELECT g FROM committed
+                ) parts
+            ),
+            station_view AS (
+                SELECT ST_CollectionExtract(ST_UnaryUnion(ST_Collect(g)), 3) AS g
+                FROM (
+                    SELECT g FROM station_area
+                    UNION ALL
+                    SELECT g FROM search_area
+                ) parts
+            ),
+            band AS (
+                SELECT ST_CollectionExtract(
+                    ST_Difference((SELECT g FROM station_area), (SELECT g FROM search_area)),
+                    3
+                ) AS g
+            )
+            SELECT
+                CASE WHEN (SELECT g FROM search_area) IS NULL OR ST_IsEmpty((SELECT g FROM search_area))
+                     THEN NULL ELSE ST_AsGeoJSON((SELECT g FROM search_area)) END AS search_geojson,
+                CASE WHEN (SELECT g FROM station_view) IS NULL OR ST_IsEmpty((SELECT g FROM station_view))
+                     THEN NULL ELSE ST_AsGeoJSON((SELECT g FROM station_view)) END AS station_geojson,
+                CASE WHEN (SELECT g FROM band) IS NULL OR ST_IsEmpty((SELECT g FROM band))
+                     THEN NULL ELSE ST_AsGeoJSON((SELECT g FROM band)) END AS band_geojson
+        SQL;
+
+        $params = [
+            'roundId' => $round->getId(),
+            'committedRoundId' => $round->getId(),
+            'radiusMeters' => $radiusMeters,
+            'searchAreaLabel' => PossibleAreaConstraint::SEARCH_AREA_LABEL,
+        ];
+        if ($boundary !== null) {
+            $params['boundaryBody'] = $boundary;
+            $params['boundaryStation'] = $boundary;
+            $params['boundaryCommitted'] = $boundary;
+        }
+
+        $result = $conn->fetchAssociative($sql, $params);
+        $searchArea = $result['search_geojson'] ?? null;
+        $stationArea = $result['station_geojson'] ?? null;
+        $stationBand = $result['band_geojson'] ?? null;
+
+        return [
+            'searchArea' => is_string($searchArea) && $searchArea !== '' ? $searchArea : null,
+            'stationArea' => is_string($stationArea) && $stationArea !== '' ? $stationArea : null,
+            'stationBand' => is_string($stationBand) && $stationBand !== '' ? $stationBand : null,
+        ];
+    }
+
     public function computeExclusion(Round $round): ?string
     {
         $game = $round->getGame();
@@ -296,6 +422,8 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
         $boundary = $game->getBoundaryGeoJson();
         $clipOpen = $boundary !== null ? 'ST_Intersection(' : '';
         $clipClose = $boundary !== null ? ', ST_GeomFromGeoJSON(:boundaryGeoJson))' : '';
+        $committedClipOpen = $boundary !== null ? 'ST_Intersection(' : '';
+        $committedClipClose = $boundary !== null ? ', ST_GeomFromGeoJSON(:boundaryCommitted))' : '';
         $sql = <<<SQL
             WITH area AS (
                 WITH RECURSIVE ordered AS (
@@ -310,8 +438,19 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
                     SELECT ST_Intersection(f.geom, o.geom), o.rn
                     FROM folded f
                     JOIN ordered o ON o.rn = f.rn + 1
+                ),
+                committed AS (
+                    SELECT {$committedClipOpen}geometry::geometry{$committedClipClose} AS geom
+                    FROM possible_area_constraints
+                    WHERE round_id = :committedRoundId AND enabled = true
+                      AND source = 'manual' AND mode = 'include' AND label = :searchAreaLabel
                 )
-                SELECT {$clipOpen}geom{$clipClose} AS geom FROM folded ORDER BY rn DESC LIMIT 1
+                SELECT ST_CollectionExtract(ST_UnaryUnion(ST_Collect(g)), 3) AS geom
+                FROM (
+                    (SELECT {$clipOpen}geom{$clipClose} AS g FROM folded ORDER BY rn DESC LIMIT 1)
+                    UNION ALL
+                    (SELECT geom AS g FROM committed)
+                ) parts
             )
             SELECT ST_AsGeoJSON(
                 CASE WHEN (SELECT geom FROM area) IS NOT NULL
@@ -321,9 +460,14 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
             ) AS geojson
         SQL;
 
-        $params = ['roundId' => $round->getId()];
+        $params = [
+            'roundId' => $round->getId(),
+            'committedRoundId' => $round->getId(),
+            'searchAreaLabel' => PossibleAreaConstraint::SEARCH_AREA_LABEL,
+        ];
         if ($boundary !== null) {
             $params['boundaryGeoJson'] = $boundary;
+            $params['boundaryCommitted'] = $boundary;
         }
         if ($game->getBoundarySwLat() !== null) {
             $swLng = (float) $game->getBoundarySwLng();
@@ -437,6 +581,8 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
 
         $params = [
             'roundId' => $round->getId(),
+            'committedRoundId' => $round->getId(),
+            'searchAreaLabel' => PossibleAreaConstraint::SEARCH_AREA_LABEL,
             'gameId' => $game->getId(),
             'swLng' => $env['swLng'],
             'swLat' => $env['swLat'],
@@ -470,8 +616,19 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
                     SELECT ST_Intersection(f.geom, o.geom), o.rn
                     FROM folded f
                     JOIN ordered o ON o.rn = f.rn + 1
+                ),
+                committed AS (
+                    SELECT geometry::geometry AS geom
+                    FROM possible_area_constraints
+                    WHERE round_id = :committedRoundId AND enabled = true
+                      AND source = 'manual' AND mode = 'include' AND label = :searchAreaLabel
                 )
-                SELECT geom FROM folded ORDER BY rn DESC LIMIT 1
+                SELECT ST_CollectionExtract(ST_UnaryUnion(ST_Collect(g)), 3) AS geom
+                FROM (
+                    (SELECT geom AS g FROM folded ORDER BY rn DESC LIMIT 1)
+                    UNION ALL
+                    (SELECT geom AS g FROM committed)
+                ) parts
             ),
             effective_area AS (
                 SELECT $effectiveAreaExpr AS geom
@@ -580,8 +737,19 @@ class PossibleAreaConstraintRepository extends ServiceEntityRepository
                     SELECT ST_Intersection(f.geom, o.geom), o.rn
                     FROM folded f
                     JOIN ordered o ON o.rn = f.rn + 1
+                ),
+                committed AS (
+                    SELECT geometry::geometry AS geom
+                    FROM possible_area_constraints
+                    WHERE round_id = :committedRoundId AND enabled = true
+                      AND source = 'manual' AND mode = 'include' AND label = :searchAreaLabel
                 )
-                SELECT geom FROM folded ORDER BY rn DESC LIMIT 1
+                SELECT ST_CollectionExtract(ST_UnaryUnion(ST_Collect(g)), 3) AS geom
+                FROM (
+                    (SELECT geom AS g FROM folded ORDER BY rn DESC LIMIT 1)
+                    UNION ALL
+                    (SELECT geom AS g FROM committed)
+                ) parts
             ),
             effective_area AS (
                 SELECT $effectiveAreaExpr AS geom

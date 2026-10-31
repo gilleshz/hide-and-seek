@@ -1,5 +1,11 @@
+@file:Suppress("TooManyFunctions")
+
 package fr.gshz.hideandseek.feature.map
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import kotlin.math.roundToInt
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -11,46 +17,109 @@ import org.maplibre.android.style.sources.GeoJsonSource
 
 private const val EXCLUSION_SOURCE_ID = "exclusion-zone-source"
 private const val EXCLUSION_FILL_LAYER_ID = "exclusion-zone-fill"
-private const val EXCLUSION_FILL_COLOR = "#1A1C2E"
-private const val EXCLUSION_FILL_OPACITY = 0.45f
+
+private const val STATION_BAND_SOURCE_ID = "station-band-source"
+internal const val STATION_BAND_BACKDROP_LAYER_ID = "station-band-backdrop"
+internal const val STATION_BAND_FILL_LAYER_ID = "station-band-fill"
+private const val STATION_BAND_BORDER_LAYER_ID = "station-band-border"
+private const val STATION_BAND_PATTERN_ID = "station-band-hatch"
+private const val MIN_PATTERN_TILE_PX = 4
 
 private const val POSSIBLE_AREA_SOURCE_ID = "possible-area-outline-source"
 private const val POSSIBLE_AREA_LINE_LAYER_ID = "possible-area-outline-line"
-
-// Same blue as the boundary border, so the possible area reads as the boundary shrinking.
-private const val POSSIBLE_AREA_LINE_COLOR = "#3B82F6"
-private const val POSSIBLE_AREA_LINE_WIDTH = 2f
 
 internal fun Style.ensureExclusionLayer() {
     if (getSource(EXCLUSION_SOURCE_ID) != null) return
     addSource(GeoJsonSource(EXCLUSION_SOURCE_ID))
     addLayer(
         FillLayer(EXCLUSION_FILL_LAYER_ID, EXCLUSION_SOURCE_ID).withProperties(
-            PropertyFactory.fillColor(EXCLUSION_FILL_COLOR),
-            PropertyFactory.fillOpacity(EXCLUSION_FILL_OPACITY),
-        ),
-    )
-    addSource(GeoJsonSource(POSSIBLE_AREA_SOURCE_ID))
-    addLayer(
-        LineLayer(POSSIBLE_AREA_LINE_LAYER_ID, POSSIBLE_AREA_SOURCE_ID).withProperties(
-            PropertyFactory.lineColor(POSSIBLE_AREA_LINE_COLOR),
-            PropertyFactory.lineWidth(POSSIBLE_AREA_LINE_WIDTH),
+            PropertyFactory.fillColor(MapOverlayStyle.hex(MapOverlayStyle.exclusion)),
+            PropertyFactory.fillOpacity(MapOverlayStyle.EXCLUSION_OPACITY),
         ),
     )
 }
 
-/**
- * Inverted mask: a world-spanning polygon with the play area punched out as holes,
- * dimming everything outside it. Built from [possibleAreaGeoJson] so it narrows as
- * questions are answered, falling back to [boundaryGeoJson] before any.
- */
-internal fun Style.updateExclusionSource(possibleAreaGeoJson: String?, boundaryGeoJson: String?) {
+/** Inverted mask: dims outside the station area, else the possible area, else the boundary. */
+internal fun Style.updateExclusionSource(
+    possibleAreaGeoJson: String?,
+    stationAreaGeoJson: String?,
+    boundaryGeoJson: String?,
+) {
     val source = getSource(EXCLUSION_SOURCE_ID) as? GeoJsonSource ?: return
-    source.setGeoJson(worldMaskGeoJson(possibleAreaGeoJson ?: boundaryGeoJson) ?: EMPTY_FEATURE_COLLECTION)
+    val maskArea = stationAreaGeoJson?.takeIf { it.isNotBlank() }
+        ?: possibleAreaGeoJson
+        ?: boundaryGeoJson
+    source.setGeoJson(worldMaskGeoJson(maskArea) ?: EMPTY_FEATURE_COLLECTION)
 
     val outlineSource = getSource(POSSIBLE_AREA_SOURCE_ID) as? GeoJsonSource ?: return
     outlineSource.setGeoJson(
         possibleAreaGeoJson?.let { asFeatureCollection(it) } ?: EMPTY_FEATURE_COLLECTION,
+    )
+}
+
+internal fun Style.ensureStationBandLayer(density: Float, densityDpi: Int) {
+    if (getSource(STATION_BAND_SOURCE_ID) != null) return
+    addImage(STATION_BAND_PATTERN_ID, stationBandHatch(density, densityDpi))
+    addSource(GeoJsonSource(STATION_BAND_SOURCE_ID))
+    addLayer(
+        FillLayer(STATION_BAND_BACKDROP_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
+            PropertyFactory.fillColor(MapOverlayStyle.hex(MapOverlayStyle.band)),
+            PropertyFactory.fillOpacity(MapOverlayStyle.BAND_BACKDROP_OPACITY),
+        ),
+    )
+    addLayer(
+        FillLayer(STATION_BAND_FILL_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
+            PropertyFactory.fillPattern(STATION_BAND_PATTERN_ID),
+        ),
+    )
+    addLayer(
+        LineLayer(STATION_BAND_BORDER_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
+            PropertyFactory.lineColor(MapOverlayStyle.hex(MapOverlayStyle.band)),
+            PropertyFactory.lineWidth(MapOverlayStyle.BAND_BORDER_WIDTH_DP * density),
+            PropertyFactory.lineOpacity(MapOverlayStyle.BAND_BORDER_OPACITY),
+        ),
+    )
+}
+
+internal fun Style.ensurePossibleAreaOutlineLayer() {
+    if (getSource(POSSIBLE_AREA_SOURCE_ID) != null) return
+    addSource(GeoJsonSource(POSSIBLE_AREA_SOURCE_ID))
+    addLayer(
+        LineLayer(POSSIBLE_AREA_LINE_LAYER_ID, POSSIBLE_AREA_SOURCE_ID).withProperties(
+            PropertyFactory.lineColor(MapOverlayStyle.hex(MapOverlayStyle.possibleArea)),
+            PropertyFactory.lineWidth(MapOverlayStyle.POSSIBLE_AREA_WIDTH),
+        ),
+    )
+}
+
+private fun stationBandHatch(density: Float, densityDpi: Int): Bitmap {
+    val scale = 2
+    val minPx = MIN_PATTERN_TILE_PX * scale
+    val size = (MapOverlayStyle.BAND_HATCH_TILE_DP * density * scale).roundToInt().coerceAtLeast(minPx)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
+        this.density = densityDpi * scale
+    }
+    val canvas = Canvas(bitmap)
+    val stripeWidth = MapOverlayStyle.BAND_HATCH_STRIPE_DP * density * scale
+    val stripe = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = MapOverlayStyle.BAND_STRIPE
+        strokeWidth = stripeWidth
+        strokeCap = Paint.Cap.ROUND
+        style = Paint.Style.STROKE
+    }
+    val step = size.toFloat()
+    val overshoot = stripeWidth
+    for (index in 0..1) {
+        val offset = step / 2f + index * step
+        canvas.drawLine(-overshoot, offset + overshoot, size + overshoot, offset - step - overshoot, stripe)
+    }
+    return bitmap
+}
+
+internal fun Style.updateStationBandSource(geoJson: String?) {
+    val source = getSource(STATION_BAND_SOURCE_ID) as? GeoJsonSource ?: return
+    source.setGeoJson(
+        geoJson?.takeIf { it.isNotBlank() }?.let(::asFeatureCollection) ?: EMPTY_FEATURE_COLLECTION,
     )
 }
 

@@ -143,6 +143,17 @@
     <string name="map_style_ign_satellite">IGN Satellite</string>
     <string name="map_browse_pois">POIs anzeigen</string>
     <string name="map_browse_title">POIs</string>
+    <string name="map_legend_title">Legende</string>
+    <string name="map_legend_search_area">Suchgebiet</string>
+    <string name="map_legend_possible_area">Mögliches Gebiet</string>
+    <string name="map_legend_excluded">Ausgeschlossen</string>
+    <string name="map_legend_edge_zone">Randzone</string>
+    <string name="map_legend_edge_zone_detail">Eine hier zentrierte Versteckzone kann die Versteckenden noch enthalten, weil sich die Antworten auf Fragen auf die Position der Person zum Zeitpunkt der Antwort beziehen.</string>
+    <string name="map_legend_edge_zone_info">Über die Randzone</string>
+    <string name="map_legend_info_close">Verstanden</string>
+    <string name="map_legend_suspected_station">Verdächtige Haltestelle</string>
+    <string name="map_legend_hiding_zone">Versteckzone</string>
+    <string name="map_legend_players">Spielende</string>
 
     <string name="timetable_action">Nächste Abfahrten</string>
     <string name="timetable_title">Abfahrten</string>

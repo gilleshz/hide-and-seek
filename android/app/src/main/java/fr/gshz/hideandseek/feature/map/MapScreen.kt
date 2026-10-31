@@ -58,7 +58,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -617,6 +616,8 @@ private fun BoxScope.MapContentLayout(
     MapLibreMapView(
         markers = uiState.markers,
         possibleAreaGeoJson = uiState.possibleAreaGeoJson,
+        stationBandGeoJson = uiState.stationBandGeoJson,
+        stationAreaGeoJson = uiState.stationAreaGeoJson,
         boundary = uiState.boundary,
         transitOverlayGeoJson = uiState.transitOverlayGeoJson,
         focusedTransitRef = uiState.focusedTransitRef,
@@ -730,6 +731,29 @@ private fun drawingOverlayState(uiState: MapUiState, drawingActions: DrawingActi
 
 private const val PENDING_CHIP_ALPHA = 0.88f
 
+private val LEGEND_BOTTOM_CLEARANCE = 20.dp
+
+@Composable
+private fun BoxScope.MapLegendOverlay(uiState: MapUiState, timetable: TimetableUiState) {
+    if (legendVisible(uiState, timetable)) {
+        MapLegend(
+            entries = legendEntries(uiState),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = LEGEND_BOTTOM_CLEARANCE),
+        )
+    }
+}
+
+private fun legendVisible(uiState: MapUiState, timetable: TimetableUiState): Boolean =
+    !timetable.isVisible &&
+        !uiState.showZonePlacementPanel &&
+        !uiState.showTimeTrapPanel &&
+        uiState.simulation == null &&
+        uiState.poiBrowse == null &&
+        !uiState.drawing.isActive &&
+        uiState.selectedManualConstraintUuid == null
+
 @Suppress("LongMethod", "LongParameterList")
 @Composable
 private fun BoxScope.MapOverlays(
@@ -747,6 +771,7 @@ private fun BoxScope.MapOverlays(
     val simActions = overlayActions.sim
     val drawingActions = overlayActions.drawing
     DrawingOverlays(uiState, drawingActions)
+    MapLegendOverlay(uiState, timetableState)
     TimeTrapValueChips(
         traps = uiState.timeTraps,
         modifier = Modifier.align(Alignment.TopStart).padding(Spacing.sm),
@@ -1252,6 +1277,8 @@ internal data class ZoneOverlayState(
 private fun MapLibreMapView(
     markers: List<PlayerMarker>,
     possibleAreaGeoJson: String?,
+    stationBandGeoJson: String?,
+    stationAreaGeoJson: String?,
     boundary: MapBounds?,
     zoneOverlay: ZoneOverlayState,
     transitOverlayGeoJson: String? = null,
@@ -1286,7 +1313,6 @@ private fun MapLibreMapView(
         MapLibre.getInstance(context)
         MapView(context)
     }
-
     StyleReloadEffect(state, styleSource)
 
     Box(modifier = modifier) {
@@ -1334,7 +1360,8 @@ private fun MapLibreMapView(
     SeekerActionTracker(seekerAction = seekerAction, mapRef = state.mapRef)
 
     LaunchedEffect(
-        state.styleReady.value, markers, possibleAreaGeoJson, boundary,
+        state.styleReady.value, markers, possibleAreaGeoJson, stationBandGeoJson,
+        stationAreaGeoJson, boundary,
         zoneOverlay.pin, transitOverlayGeoJson, zoneOverlay.radiusMeters,
         boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
         seekerCircles, seekerOverlay.radiusMeters,
@@ -1342,7 +1369,7 @@ private fun MapLibreMapView(
         avatars,
     ) {
         state.syncSources(
-            markers, possibleAreaGeoJson, boundary,
+            markers, possibleAreaGeoJson, stationBandGeoJson, stationAreaGeoJson, boundary,
             zoneOverlay.pin, transitOverlayGeoJson, zoneOverlay.radiusMeters,
             boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
             seekerCircles, seekerOverlay.radiusMeters,
@@ -1432,6 +1459,8 @@ private class MapViewState(private val markerPins: MarkerPins) {
     private fun attachOverlays(style: Style) {
         registeredAvatars.clear()
         style.ensureExclusionLayer()
+        style.ensureStationBandLayer(markerPins.density, markerPins.densityDpi)
+        style.ensurePossibleAreaOutlineLayer()
         style.ensureBoundaryLayer()
         style.ensureZoneLayer()
         style.ensureSimulationLayer()
@@ -1448,6 +1477,8 @@ private class MapViewState(private val markerPins: MarkerPins) {
     fun syncSources(
         markers: List<PlayerMarker>,
         possibleAreaGeoJson: String?,
+        stationBandGeoJson: String?,
+        stationAreaGeoJson: String?,
         boundary: MapBounds?,
         zonePin: ZonePin?,
         transitOverlayGeoJson: String?,
@@ -1481,7 +1512,8 @@ private class MapViewState(private val markerPins: MarkerPins) {
         style.updateZoneSource(zonePin, zoneRadiusMeters ?: DEFAULT_ZONE_RADIUS_METERS)
         style.updateSeekerMarkerSource(seekerCircles, seekerRadiusMeters ?: DEFAULT_ZONE_RADIUS_METERS)
         style.updateTimeTrapSource(trapPins)
-        style.updateExclusionSource(possibleAreaGeoJson, boundaryGeoJson)
+        style.updateExclusionSource(possibleAreaGeoJson, stationAreaGeoJson, boundaryGeoJson)
+        style.updateStationBandSource(stationBandGeoJson)
         // Hide the static boundary border when the possible area has its own outline.
         style.updateBoundarySource(if (possibleAreaGeoJson != null) null else boundaryGeoJson)
         style.updateSimulationSource(simulationGeoJson)
@@ -1712,6 +1744,8 @@ private fun MapWithTooltipOverlay(
             edition = seekerHost.edition,
             onConfirm = {
                 seekerHost.onConstrainSearchArea(pending.lat, pending.lng, constraintRadius)
+                // The promoted circle replaces the suspect marker.
+                pending.existingMarkerUuid?.let(seekerHost.onUnmark)
                 pendingConstraint.value = null
             },
             onDismiss = { pendingConstraint.value = null },

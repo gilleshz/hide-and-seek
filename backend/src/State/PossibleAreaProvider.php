@@ -7,12 +7,15 @@ namespace App\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ApiResource\PossibleAreaResource;
+use App\Entity\Round;
 use App\Enum\Side;
 use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
 use App\Exception\FunctionalException;
+use App\Repository\HidingZoneRepository;
 use App\Repository\RoundMembershipRepository;
 use App\Repository\RoundRepository;
+use App\RoundTiming;
 use App\Service\IdentityResolver;
 use App\Service\PossibleAreaService;
 
@@ -26,6 +29,7 @@ final readonly class PossibleAreaProvider implements ProviderInterface
         private PossibleAreaService $possibleAreaService,
         private RoundMembershipRepository $memberships,
         private IdentityResolver $identity,
+        private HidingZoneRepository $hidingZones,
     ) {
     }
 
@@ -52,9 +56,23 @@ final readonly class PossibleAreaProvider implements ProviderInterface
             );
         }
 
-        $geoJson = $this->possibleAreaService->computeCurrent($round);
+        $areas = $this->possibleAreaService->computeSearchAreas($round, $this->hidingRadiusMeters($round));
         $exclusionGeoJson = $this->possibleAreaService->computeExclusion($round);
 
-        return PossibleAreaResource::fromRound($roundUuid, $geoJson, $exclusionGeoJson);
+        return PossibleAreaResource::fromRound($roundUuid, [
+            'searchArea' => $areas['searchArea'],
+            'exclusion' => $exclusionGeoJson,
+            'stationArea' => $areas['stationArea'],
+            'stationBand' => $areas['stationBand'],
+        ]);
+    }
+
+    private function hidingRadiusMeters(Round $round): float
+    {
+        $zone = $this->hidingZones->findOneByRound($round);
+        $game = $round->getGame();
+
+        return $zone?->getRadiusMeters()
+            ?? RoundTiming::defaultRadiusMeters($game->getSize(), $game->getEdition());
     }
 }

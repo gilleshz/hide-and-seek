@@ -250,6 +250,7 @@ class DrawingViewModelTest {
 
             val call = fixture.manualConstraintRepository.addCalls.single()
             assertEquals(ConstraintMode.Include, call.mode)
+            assertEquals("search-area", call.label)
             val vertices = RING_VERTEX.findAll(call.geoJson)
                 .map { it.groupValues[1].toDouble() to it.groupValues[2].toDouble() }
                 .toList()

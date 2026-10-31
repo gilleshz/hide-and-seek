@@ -143,6 +143,17 @@
     <string name="map_style_ign_satellite">IGN Satellite</string>
     <string name="map_browse_pois">Parcourir les points d\'intérêt</string>
     <string name="map_browse_title">Points d\'intérêt</string>
+    <string name="map_legend_title">Légende</string>
+    <string name="map_legend_search_area">Zone de recherche</string>
+    <string name="map_legend_possible_area">Zone possible</string>
+    <string name="map_legend_excluded">Zone exclue</string>
+    <string name="map_legend_edge_zone">Zone de marge</string>
+    <string name="map_legend_edge_zone_detail">Une zone de cache centrée ici peut encore contenir l\'équipe qui se cache, car les réponses aux questions se basent sur la position de la personne au moment où elle répond.</string>
+    <string name="map_legend_edge_zone_info">À propos de la zone de marge</string>
+    <string name="map_legend_info_close">Compris</string>
+    <string name="map_legend_suspected_station">Station suspecte</string>
+    <string name="map_legend_hiding_zone">Zone de cache</string>
+    <string name="map_legend_players">Joueurs</string>
 
     <string name="timetable_action">Prochains départs</string>
     <string name="timetable_title">Départs</string>

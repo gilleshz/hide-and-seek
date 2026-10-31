@@ -8,6 +8,7 @@ use App\Dto\ManualConstraintDraft;
 use App\Entity\Feature;
 use App\Entity\Game;
 use App\Entity\Player;
+use App\Entity\PossibleAreaConstraint;
 use App\Entity\Round;
 use App\Entity\RoundMembership;
 use App\Enum\ConstraintMode;
@@ -458,6 +459,130 @@ final class PossibleAreaConstraintRepositoryTest extends KernelTestCase
         );
     }
 
+    #[Test]
+    public function theStationBandKeepsAStationOutsideARadarDiskWhileTheHiderStayedInside(): void
+    {
+        $round = $this->persistBoundedRound();
+        $seeker = new Point(13.405, 52.52);
+        $this->repository->insertDiskConstraint($round, $seeker, 1000.0, true, 'Radar yes');
+
+        $areas = $this->repository->computeSearchAreas($round, 500.0);
+
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationBand'], $seeker));
+        self::assertTrue($this->pointIsInsideGeoJson($areas['stationBand'], $this->northOf($seeker, 1200.0)));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationBand'], $this->northOf($seeker, 2000.0)));
+        self::assertTrue($this->pointIsInsideGeoJson($areas['stationArea'], $this->northOf($seeker, 1200.0)));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationArea'], $this->northOf($seeker, 2000.0)));
+    }
+
+    #[Test]
+    public function theStationBandShrinksTheMissDiskByOneHidingRadius(): void
+    {
+        $round = $this->persistBoundedRound();
+        $seeker = new Point(13.405, 52.52);
+        $this->repository->insertDiskConstraint($round, $seeker, 1000.0, false, 'Radar no');
+
+        $areas = $this->repository->computeSearchAreas($round, 500.0);
+
+        self::assertTrue($this->pointIsInsideGeoJson($areas['stationBand'], $this->northOf($seeker, 700.0)));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationBand'], $this->northOf($seeker, 300.0)));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationBand'], $this->northOf($seeker, 1900.0)));
+    }
+
+    #[Test]
+    public function aCommittedSearchAreaClearsEarlierExclusionsInsideIt(): void
+    {
+        $round = $this->persistBoundedRound();
+        $creator = $this->persistCreator($round);
+        $seeker = new Point(13.405, 52.52);
+        $this->repository->insertDiskConstraint($round, $seeker, 1000.0, true, 'Radar yes');
+
+        $station = $this->northOf($seeker, 1200.0);
+        self::assertFalse($this->pointIsInsidePossibleArea($round, $station));
+
+        $this->repository->insertManualConstraint(
+            $round,
+            $creator,
+            new ManualConstraintDraft(
+                $this->ringAround($station, 500.0),
+                ConstraintMode::Include,
+                PossibleAreaConstraint::SEARCH_AREA_LABEL,
+            ),
+        );
+
+        $areas = $this->repository->computeSearchAreas($round, 500.0);
+
+        self::assertFalse($this->pointIsInsidePossibleArea($round, $station));
+        self::assertTrue($this->pointIsInsideGeoJson($areas['searchArea'], $station));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationBand'], $station));
+        // The commitment replaces the earlier answer inside the ring, not everywhere it once applied.
+        self::assertFalse($this->pointIsInsideGeoJson($areas['searchArea'], $seeker));
+        self::assertFalse($this->pointIsInsideGeoJson($this->repository->computeExclusion($round), $station));
+        // The station area contains the search area, including the ring beyond the buffered radar disk.
+        $ringFarSide = $this->northOf($seeker, 1600.0);
+        self::assertTrue($this->pointIsInsideGeoJson($areas['searchArea'], $ringFarSide));
+        self::assertTrue($this->pointIsInsideGeoJson($areas['stationArea'], $ringFarSide));
+    }
+
+    #[Test]
+    public function theSearchAreasAreClippedToTheBoundaryPolygon(): void
+    {
+        $round = $this->persistPolygonBoundedRound();
+        $seeker = new Point(13.405, 52.52);
+        $this->repository->insertDiskConstraint($round, $seeker, 3000.0, true, 'Radar yes');
+
+        $areas = $this->repository->computeSearchAreas($round, 500.0);
+        $outside = new Point(13.43, 52.52);
+
+        self::assertTrue($this->pointIsInsideGeoJson($areas['searchArea'], new Point(13.40, 52.52)));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['searchArea'], $outside));
+        self::assertFalse($this->pointIsInsideGeoJson($areas['stationBand'], $outside));
+    }
+
+    private function northOf(Point $point, float $meters): Point
+    {
+        return new Point($point->getLongitude(), $point->getLatitude() + $meters / 111320.0);
+    }
+
+    private function ringAround(Point $center, float $radiusMeters): string
+    {
+        $latDelta = $radiusMeters / 111320.0;
+        $lngDelta = $radiusMeters / (111320.0 * cos(deg2rad($center->getLatitude())));
+        $minLng = $center->getLongitude() - $lngDelta;
+        $maxLng = $center->getLongitude() + $lngDelta;
+        $minLat = $center->getLatitude() - $latDelta;
+        $maxLat = $center->getLatitude() + $latDelta;
+
+        return sprintf(
+            '{"type":"Polygon","coordinates":[[[%F,%F],[%F,%F],[%F,%F],[%F,%F],[%F,%F]]]}',
+            $minLng,
+            $minLat,
+            $maxLng,
+            $minLat,
+            $maxLng,
+            $maxLat,
+            $minLng,
+            $maxLat,
+            $minLng,
+            $minLat,
+        );
+    }
+
+    private function pointIsInsideGeoJson(?string $geojson, Point $point): bool
+    {
+        if ($geojson === null) {
+            return false;
+        }
+
+        $conn = $this->em->getConnection();
+        $result = $conn->fetchAssociative(
+            'SELECT ST_Contains(ST_GeomFromGeoJSON(:g), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)) AS c',
+            ['g' => $geojson, 'lng' => $point->getLongitude(), 'lat' => $point->getLatitude()],
+        );
+
+        return (bool) ($result['c'] ?? false);
+    }
+
     private function persistCreator(Round $round): RoundMembership
     {
         $account = IdentityFactory::create('Seeker ' . bin2hex(random_bytes(4)));
@@ -643,6 +768,20 @@ final class PossibleAreaConstraintRepositoryTest extends KernelTestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $game->setBoundary(52.40, 13.20, 52.65, 13.60);
+        $round = new Round($game);
+        $this->em->persist($game);
+        $this->em->persist($round);
+        $this->em->flush();
+
+        return $round;
+    }
+
+    private function persistPolygonBoundedRound(): Round
+    {
+        $game = new Game('Berlin', GameSize::Large, Edition::Metric);
+        $game->setBoundaryGeoJson(
+            '{"type":"Polygon","coordinates":[[[13.38,52.50],[13.42,52.50],[13.42,52.54],[13.38,52.54],[13.38,52.50]]]}',
+        );
         $round = new Round($game);
         $this->em->persist($game);
         $this->em->persist($round);

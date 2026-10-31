@@ -310,6 +310,8 @@ final class RoundApiTest extends ApiTestCase
 
         $before = $client->request('GET', "/api/rounds/{$roundUuid}/possible-area", $this->headersWithToken($token))->toArray();
         self::assertNotNull($before['geoJson']);
+        self::assertIsString($before['stationAreaGeoJson'] ?? null);
+        self::assertIsString($before['stationBandGeoJson'] ?? null);
 
         $client->request('POST', "/api/rounds/{$roundUuid}/stop", $this->headersWithToken($token) + ['json' => []]);
         self::assertResponseIsSuccessful();
@@ -320,6 +322,8 @@ final class RoundApiTest extends ApiTestCase
 
         $area = $client->request('GET', "/api/rounds/{$next['roundUuid']}/possible-area", $this->headersWithToken($token))->toArray();
         self::assertNull($area['geoJson']);
+        self::assertNull($area['stationAreaGeoJson'] ?? null);
+        self::assertNull($area['stationBandGeoJson'] ?? null);
 
         $questions = $client->request('GET', "/api/rounds/{$next['roundUuid']}/questions", self::AUTH)->toArray();
         self::assertSame([], $questions['member']);
@@ -327,6 +331,8 @@ final class RoundApiTest extends ApiTestCase
         // The aborted run stays queryable; nothing was deleted, only superseded.
         $old = $client->request('GET', "/api/rounds/{$roundUuid}/possible-area", $this->headersWithToken($token))->toArray();
         self::assertNotNull($old['geoJson']);
+        self::assertIsString($old['stationAreaGeoJson'] ?? null);
+        self::assertIsString($old['stationBandGeoJson'] ?? null);
     }
 
     #[Test]

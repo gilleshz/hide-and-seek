@@ -74,6 +74,26 @@ class QuestionViewModelTest {
     }
 
     @Test
+    fun `the station band and station area geometry reach the map state`() = runTest(testDispatcher) {
+        seedSeeker()
+        fixture.possibleAreaRepository.getPossibleAreaResult = PossibleAreaData(
+            possibleAreaGeoJson = "geo-1",
+            exclusionGeoJson = null,
+            stationBandGeoJson = "band-1",
+            stationAreaGeoJson = "area-1",
+        )
+        val viewModel = fixture.createQuestionViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.stationBandGeoJson == null || state.stationAreaGeoJson == null) state = awaitItem()
+            assertEquals("band-1", state.stationBandGeoJson)
+            assertEquals("area-1", state.stationAreaGeoJson)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `a seeker sees the possible area refresh promptly after an SSE possible-area event`() =
         runTest(testDispatcher) {
             seedSeeker()

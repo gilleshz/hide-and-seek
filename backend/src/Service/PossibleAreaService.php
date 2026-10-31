@@ -89,9 +89,12 @@ readonly class PossibleAreaService
         ));
     }
 
-    public function computeCurrent(Round $round): ?string
+    /**
+     * @return array{searchArea: ?string, stationArea: ?string, stationBand: ?string}
+     */
+    public function computeSearchAreas(Round $round, float $radiusMeters): array
     {
-        return $this->constraints->computePossibleArea($round);
+        return $this->constraints->computeSearchAreas($round, $radiusMeters);
     }
 
     public function computeExclusion(Round $round): ?string

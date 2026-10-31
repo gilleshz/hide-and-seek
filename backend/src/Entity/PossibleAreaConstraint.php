@@ -15,6 +15,12 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_pac_round', columns: ['round_id'])]
 class PossibleAreaConstraint
 {
+    /**
+     * Marks a seeker-drawn include circle as a committed hiding zone, so its interior is searched
+     * afresh instead of being carved by answers about the hider's earlier positions.
+     */
+    public const string SEARCH_AREA_LABEL = 'search-area';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]

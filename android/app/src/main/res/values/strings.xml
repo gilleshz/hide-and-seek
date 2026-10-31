@@ -143,6 +143,17 @@
     <string name="map_style_ign_satellite">IGN Satellite</string>
     <string name="map_browse_pois">Browse POIs</string>
     <string name="map_browse_title">Points of interest</string>
+    <string name="map_legend_title">Legend</string>
+    <string name="map_legend_search_area">Search area</string>
+    <string name="map_legend_possible_area">Possible area</string>
+    <string name="map_legend_excluded">Excluded</string>
+    <string name="map_legend_edge_zone">Edge zone</string>
+    <string name="map_legend_edge_zone_detail">A hiding zone centered here can still contain the hider, because question answers are based on the person\'s position at the moment they answer.</string>
+    <string name="map_legend_edge_zone_info">About the edge zone</string>
+    <string name="map_legend_info_close">Got it</string>
+    <string name="map_legend_suspected_station">Suspected station</string>
+    <string name="map_legend_hiding_zone">Hiding zone</string>
+    <string name="map_legend_players">Players</string>
 
     <string name="timetable_action">Next departures</string>
     <string name="timetable_title">Departures</string>

@@ -37,12 +37,28 @@ final class PossibleAreaResource
     #[Groups(['possible-area:read'])]
     public ?string $exclusionGeoJson;
 
-    public static function fromRound(string $roundUuid, ?string $geoJson, ?string $exclusionGeoJson = null): self
+    #[Groups(['possible-area:read'])]
+    public ?string $stationAreaGeoJson;
+
+    #[Groups(['possible-area:read'])]
+    public ?string $stationBandGeoJson;
+
+    /**
+     * @param array{
+     *     searchArea: ?string,
+     *     exclusion: ?string,
+     *     stationArea: ?string,
+     *     stationBand: ?string,
+     * } $areas
+     */
+    public static function fromRound(string $roundUuid, array $areas): self
     {
         $self = new self();
         $self->roundUuid = $roundUuid;
-        $self->geoJson = $geoJson;
-        $self->exclusionGeoJson = $exclusionGeoJson;
+        $self->geoJson = $areas['searchArea'];
+        $self->exclusionGeoJson = $areas['exclusion'];
+        $self->stationAreaGeoJson = $areas['stationArea'];
+        $self->stationBandGeoJson = $areas['stationBand'];
 
         return $self;
     }

@@ -192,23 +192,33 @@ final class PossibleAreaServiceTest extends TestCase
     }
 
     #[Test]
-    public function computeCurrentReturnsNullWhenNoConstraintsExist(): void
+    public function computeSearchAreasReturnsNullsWhenNoConstraintsExist(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
 
         $constraints = $this->createStub(PossibleAreaConstraintRepository::class);
-        $constraints->method('computePossibleArea')->willReturn(null);
+        $constraints->method('computeSearchAreas')
+            ->willReturn(['searchArea' => null, 'stationArea' => null, 'stationBand' => null]);
 
         $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
 
-        self::assertNull($service->computeCurrent($round));
+        self::assertSame(
+            ['searchArea' => null, 'stationArea' => null, 'stationBand' => null],
+            $service->computeSearchAreas($round, 500.0),
+        );
     }
 
     #[Test]
     public function itCanComputePossibleAreaForBothCategories(): void
     {
         $constraints = $this->createStub(PossibleAreaConstraintRepository::class);
+        $constraints->method('computeSearchAreas')
+            ->willReturn([
+                'searchArea' => '{"type":"Polygon"}',
+                'stationArea' => '{"type":"Polygon"}',
+                'stationBand' => '{"type":"Polygon"}',
+            ]);
         $service = new PossibleAreaService($constraints, new MercureJwtService(self::SECRET, 'https://jetlag.test'), new FakeMercureHub());
 
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
@@ -229,6 +239,13 @@ final class PossibleAreaServiceTest extends TestCase
             ->setThermometerAnswer(ThermometerResult::Hotter);
         $service->computeAfterReveal($thermometerQuestion, new Point(0.0, 0.0));
 
-        self::assertNull($service->computeCurrent($round));
+        self::assertSame(
+            [
+                'searchArea' => '{"type":"Polygon"}',
+                'stationArea' => '{"type":"Polygon"}',
+                'stationBand' => '{"type":"Polygon"}',
+            ],
+            $service->computeSearchAreas($round, 500.0),
+        );
     }
 }
