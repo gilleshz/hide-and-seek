@@ -53,6 +53,7 @@ import fr.gshz.hideandseek.core.ui.ProfileAvatar
 import fr.gshz.hideandseek.core.ui.RoleBadge
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.Player
+import fr.gshz.hideandseek.domain.model.Side
 
 private const val ROSTER_AVATAR_SIZE_DP = 32
 
@@ -281,6 +282,48 @@ internal fun HidingTimeField(value: String, onValueChange: (String) -> Unit, mod
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier.fillMaxWidth(),
+    )
+}
+
+internal fun teamNames(roster: List<Player>, side: Side): String? =
+    roster.filter { it.side == side }
+        .joinToString(", ") { it.displayName }
+        .ifEmpty { null }
+
+@Composable
+internal fun StartRoundDialog(
+    hidingTimeMinutes: Int?,
+    roster: List<Player>,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.lobby_start_confirm_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                hidingTimeMinutes?.let {
+                    Text(stringResource(R.string.lobby_start_confirm_hiding_time, it))
+                }
+                teamNames(roster, Side.Hider)?.let {
+                    Text(stringResource(R.string.lobby_start_confirm_hiders, it))
+                }
+                teamNames(roster, Side.Seeker)?.let {
+                    Text(stringResource(R.string.lobby_start_confirm_seekers, it))
+                }
+                Text(stringResource(R.string.lobby_start_confirm_body))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.lobby_start_round))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.lobby_ingest_features_dialog_cancel))
+            }
+        },
     )
 }
 

@@ -112,6 +112,11 @@
     <string name="lobby_start_round_needs_sides">All players must pick a side before the round can start</string>
     <string name="lobby_hiding_time_label">Hiding time</string>
     <string name="lobby_hiding_time_unit">min</string>
+    <string name="lobby_start_confirm_title">Start the round?</string>
+    <string name="lobby_start_confirm_hiding_time">Hiding time: %1$d min</string>
+    <string name="lobby_start_confirm_hiders">Hiders: %1$s</string>
+    <string name="lobby_start_confirm_seekers">Seekers: %1$s</string>
+    <string name="lobby_start_confirm_body">Confirm that everything is right and that the hiders have picked up the deck of cards.</string>
     <string name="lobby_ingest_features">Ingest features</string>
     <string name="lobby_ingest_features_dialog_title">Ingest features</string>
     <string name="lobby_ingest_features_dialog_text">This will fetch nearby points of interest from OpenStreetMap. Continue?</string>
@@ -148,7 +153,7 @@
     <string name="map_legend_possible_area">Possible area</string>
     <string name="map_legend_excluded">Excluded</string>
     <string name="map_legend_edge_zone">Edge zone</string>
-    <string name="map_legend_edge_zone_detail">A hiding zone centered here can still contain the hider, because question answers are based on the person\'s position at the moment they answer.</string>
+    <string name="map_legend_edge_zone_detail">A hiding zone centered here can still contain the hiders, because question answers are based on their position at the moment they answer.</string>
     <string name="map_legend_edge_zone_info">About the edge zone</string>
     <string name="map_legend_info_close">Got it</string>
     <string name="map_legend_suspected_station">Suspected station</string>
@@ -364,12 +369,12 @@
     <string name="sim_preview_toggle">Preview an answer…</string>
     <string name="sim_ask_toggle">Back to asking…</string>
     <string name="sim_pick_photo_target">Pick a photo target</string>
-    <string name="question_outstanding_pending">Waiting for the hider to reveal…</string>
+    <string name="question_outstanding_pending">Waiting for the hiders to reveal…</string>
     <string name="question_radar_custom">Custom</string>
     <string name="sim_custom_radius_hint">Enter radius</string>
     <string name="sim_close_button">Close</string>
     <string name="repeat_question_title">Repeat question</string>
-    <string name="repeat_question_body">This question has already been asked this round. The hider will draw <xliff:g>%1$d</xliff:g>, keep <xliff:g>%2$d</xliff:g>, x<xliff:g>%3$d</xliff:g>.</string>
+    <string name="repeat_question_body">This question has already been asked this round. The hiders will draw <xliff:g>%1$d</xliff:g>, keep <xliff:g>%2$d</xliff:g>, x<xliff:g>%3$d</xliff:g>.</string>
     <string name="repeat_question_confirm">Ask anyway</string>
     <string name="repeat_question_cancel">Cancel</string>
     <string name="question_pending_chip">⏳ <xliff:g>%1$s</xliff:g> waiting for reveal</string>
@@ -727,7 +732,7 @@
 
     <!-- Backend error message keys -->
     <string name="error_seeker_only">Only the seeker can ask questions.</string>
-    <string name="error_hider_only">Only the hider can perform this action.</string>
+    <string name="error_hider_only">Only the hiders can perform this action.</string>
     <string name="error_out_of_turn">It\'s not your turn right now.</string>
     <string name="error_game_not_active">The game hasn\'t started yet.</string>
     <string name="error_round_not_active">No round is currently active.</string>
@@ -739,7 +744,7 @@
     <string name="error_question_already_answered">This question was already answered.</string>
     <string name="error_thermometer_already_complete">This thermometer is already complete.</string>
     <string name="error_round_already_active">A round is already in progress.</string>
-    <string name="error_not_hider">Only the hider can do this.</string>
+    <string name="error_not_hider">Only the hiders can do this.</string>
     <string name="error_not_seeker">Only the seeker can do this.</string>
     <string name="error_cannot_end_round">The round cannot be ended right now.</string>
     <string name="error_game_full">This game is full.</string>

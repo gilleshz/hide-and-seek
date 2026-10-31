@@ -309,7 +309,7 @@ internal fun locationPermissionOutcome(
     else -> LocationPermissionOutcome.Denied
 }
 
-@Suppress("LongMethod", "LongParameterList")
+@Suppress("LongMethod", "LongParameterList", "CyclomaticComplexMethod")
 @Composable
 internal fun LobbyContent(
     uiState: LobbyUiState,
@@ -374,12 +374,24 @@ internal fun LobbyContent(
             LeaderboardSection(entries = uiState.leaderboard)
         }
 
+        var showStartConfirm by remember { mutableStateOf(false) }
         if (uiState.canStartRound) {
             HidingTimeField(value = uiState.hidingTimeMinutesInput, onValueChange = actions.onHidingTimeChanged)
             StartRoundButton(
                 isStarting = uiState.isStartingRound,
                 allSidesChosen = uiState.allPlayersChoseSide,
-                onClick = actions.onStartRoundClick,
+                onClick = { showStartConfirm = true },
+            )
+        }
+        if (showStartConfirm && uiState.canStartRound) {
+            StartRoundDialog(
+                hidingTimeMinutes = uiState.hidingTimeMinutes,
+                roster = uiState.roster,
+                onConfirm = {
+                    showStartConfirm = false
+                    actions.onStartRoundClick()
+                },
+                onDismiss = { showStartConfirm = false },
             )
         }
 

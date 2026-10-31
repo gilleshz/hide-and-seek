@@ -112,6 +112,11 @@
     <string name="lobby_start_round_needs_sides">Chaque personne doit choisir un camp avant de démarrer la manche</string>
     <string name="lobby_hiding_time_label">Temps de cache</string>
     <string name="lobby_hiding_time_unit">min</string>
+    <string name="lobby_start_confirm_title">Démarrer la manche ?</string>
+    <string name="lobby_start_confirm_hiding_time">Temps de cache : %1$d min</string>
+    <string name="lobby_start_confirm_hiders">Cachette : %1$s</string>
+    <string name="lobby_start_confirm_seekers">Recherche : %1$s</string>
+    <string name="lobby_start_confirm_body">Confirmez que tout est correct et que l\'équipe qui se cache a bien récupéré le paquet de cartes.</string>
     <string name="lobby_ingest_features">Importer des éléments</string>
     <string name="lobby_ingest_features_dialog_title">Importer des éléments</string>
     <string name="lobby_ingest_features_dialog_text">Cela va récupérer les points d\'intérêt à proximité depuis OpenStreetMap. Continuer ?</string>
@@ -148,7 +153,7 @@
     <string name="map_legend_possible_area">Zone possible</string>
     <string name="map_legend_excluded">Zone exclue</string>
     <string name="map_legend_edge_zone">Zone de marge</string>
-    <string name="map_legend_edge_zone_detail">Une zone de cache centrée ici peut encore contenir l\'équipe qui se cache, car les réponses aux questions se basent sur la position de la personne au moment où elle répond.</string>
+    <string name="map_legend_edge_zone_detail">Une zone de cache centrée ici peut encore contenir l\'équipe qui se cache, car les réponses aux questions se basent sur la position de l\'équipe au moment de la réponse.</string>
     <string name="map_legend_edge_zone_info">À propos de la zone de marge</string>
     <string name="map_legend_info_close">Compris</string>
     <string name="map_legend_suspected_station">Station suspecte</string>
@@ -361,12 +366,12 @@
     <string name="sim_preview_toggle">Prévisualiser une réponse…</string>
     <string name="sim_ask_toggle">Retour à la question…</string>
     <string name="sim_pick_photo_target">Choisir une cible photo</string>
-    <string name="question_outstanding_pending">En attente de la révélation de la personne cachée…</string>
+    <string name="question_outstanding_pending">En attente de la révélation de l\'équipe qui se cache…</string>
     <string name="question_radar_custom">Personnalisé</string>
     <string name="sim_custom_radius_hint">Entrez un rayon</string>
     <string name="sim_close_button">Fermer</string>
     <string name="repeat_question_title">Répéter la question</string>
-    <string name="repeat_question_body">Cette question a déjà été posée durant cette manche. La personne cachée piochera <xliff:g>%1$d</xliff:g>, gardera <xliff:g>%2$d</xliff:g> (x<xliff:g>%3$d</xliff:g>).</string>
+    <string name="repeat_question_body">Cette question a déjà été posée durant cette manche. L\'équipe qui se cache piochera <xliff:g>%1$d</xliff:g>, gardera <xliff:g>%2$d</xliff:g> (x<xliff:g>%3$d</xliff:g>).</string>
     <string name="repeat_question_confirm">Poser quand même</string>
     <string name="repeat_question_cancel">Annuler</string>
     <string name="question_pending_chip">⏳ <xliff:g>%1$s</xliff:g> en attente de révélation</string>
@@ -724,7 +729,7 @@
 
     <!-- Messages d\'erreur du backend -->
     <string name="error_seeker_only">Seule l\'équipe qui cherche peut poser des questions.</string>
-    <string name="error_hider_only">Seule la personne cachée peut effectuer cette action.</string>
+    <string name="error_hider_only">Seule l\'équipe qui se cache peut effectuer cette action.</string>
     <string name="error_out_of_turn">Ce n\'est pas votre tour.</string>
     <string name="error_game_not_active">La partie n\'a pas encore commencé.</string>
     <string name="error_round_not_active">Aucune manche n\'est en cours.</string>
@@ -736,7 +741,7 @@
     <string name="error_question_already_answered">Cette question a déjà reçu une réponse.</string>
     <string name="error_thermometer_already_complete">Ce thermomètre est déjà terminé.</string>
     <string name="error_round_already_active">Une manche est déjà en cours.</string>
-    <string name="error_not_hider">Seule la personne cachée peut faire ceci.</string>
+    <string name="error_not_hider">Seule l\'équipe qui se cache peut faire ceci.</string>
     <string name="error_not_seeker">Seule l\'équipe qui cherche peut faire ceci.</string>
     <string name="error_cannot_end_round">La manche ne peut pas être terminée pour le moment.</string>
     <string name="error_game_full">Cette partie est complète.</string>

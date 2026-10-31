@@ -112,6 +112,11 @@
     <string name="lobby_start_round_needs_sides">Alle Spielenden müssen eine Seite wählen, bevor die Runde starten kann</string>
     <string name="lobby_hiding_time_label">Versteckzeit</string>
     <string name="lobby_hiding_time_unit">min</string>
+    <string name="lobby_start_confirm_title">Runde starten?</string>
+    <string name="lobby_start_confirm_hiding_time">Versteckzeit: %1$d min</string>
+    <string name="lobby_start_confirm_hiders">Versteckende: %1$s</string>
+    <string name="lobby_start_confirm_seekers">Suchende: %1$s</string>
+    <string name="lobby_start_confirm_body">Bestätige, dass alles stimmt und die Versteckenden das Kartendeck abgeholt haben.</string>
     <string name="lobby_ingest_features">Merkmale einlesen</string>
     <string name="lobby_ingest_features_dialog_title">Merkmale einlesen</string>
     <string name="lobby_ingest_features_dialog_text">Dies ruft nahegelegene Points of Interest von OpenStreetMap ab. Fortfahren?</string>
@@ -148,7 +153,7 @@
     <string name="map_legend_possible_area">Mögliches Gebiet</string>
     <string name="map_legend_excluded">Ausgeschlossen</string>
     <string name="map_legend_edge_zone">Randzone</string>
-    <string name="map_legend_edge_zone_detail">Eine hier zentrierte Versteckzone kann die Versteckenden noch enthalten, weil sich die Antworten auf Fragen auf die Position der Person zum Zeitpunkt der Antwort beziehen.</string>
+    <string name="map_legend_edge_zone_detail">Eine hier zentrierte Versteckzone kann die Versteckenden noch enthalten, weil sich die Antworten auf Fragen auf die Position der Versteckenden zum Zeitpunkt der Antwort beziehen.</string>
     <string name="map_legend_edge_zone_info">Über die Randzone</string>
     <string name="map_legend_info_close">Verstanden</string>
     <string name="map_legend_suspected_station">Verdächtige Haltestelle</string>
@@ -361,12 +366,12 @@
     <string name="sim_preview_toggle">Antwortvorschau…</string>
     <string name="sim_ask_toggle">Zurück zur Frage…</string>
     <string name="sim_pick_photo_target">Foto-Ziel wählen</string>
-    <string name="question_outstanding_pending">Warte auf Aufdeckung durch die versteckende Person…</string>
+    <string name="question_outstanding_pending">Warte auf Aufdeckung durch die Versteckenden…</string>
     <string name="question_radar_custom">Benutzerdefiniert</string>
     <string name="sim_custom_radius_hint">Radius eingeben</string>
     <string name="sim_close_button">Schließen</string>
     <string name="repeat_question_title">Frage wiederholen</string>
-    <string name="repeat_question_body">Diese Frage wurde in dieser Runde bereits gestellt. Die versteckende Person zieht <xliff:g>%1$d</xliff:g>, behält <xliff:g>%2$d</xliff:g> (x<xliff:g>%3$d</xliff:g>).</string>
+    <string name="repeat_question_body">Diese Frage wurde in dieser Runde bereits gestellt. Die Versteckenden ziehen <xliff:g>%1$d</xliff:g>, behält <xliff:g>%2$d</xliff:g> (x<xliff:g>%3$d</xliff:g>).</string>
     <string name="repeat_question_confirm">Trotzdem fragen</string>
     <string name="repeat_question_cancel">Abbrechen</string>
     <string name="question_pending_chip">⏳ <xliff:g>%1$s</xliff:g> wartet auf Aufdeckung</string>
@@ -724,7 +729,7 @@
 
     <!-- Backend-Fehlermeldungen -->
     <string name="error_seeker_only">Nur die suchende Person kann Fragen stellen.</string>
-    <string name="error_hider_only">Nur die versteckende Person kann diese Aktion ausführen.</string>
+    <string name="error_hider_only">Nur die Versteckenden können diese Aktion ausführen.</string>
     <string name="error_out_of_turn">Du bist gerade nicht an der Reihe.</string>
     <string name="error_game_not_active">Das Spiel hat noch nicht begonnen.</string>
     <string name="error_round_not_active">Es läuft gerade keine Runde.</string>
@@ -736,7 +741,7 @@
     <string name="error_question_already_answered">Diese Frage wurde bereits beantwortet.</string>
     <string name="error_thermometer_already_complete">Dieses Thermometer ist bereits abgeschlossen.</string>
     <string name="error_round_already_active">Eine Runde läuft bereits.</string>
-    <string name="error_not_hider">Nur die versteckende Person kann das tun.</string>
+    <string name="error_not_hider">Nur die Versteckenden können das tun.</string>
     <string name="error_not_seeker">Nur die suchende Person kann das tun.</string>
     <string name="error_cannot_end_round">Die Runde kann gerade nicht beendet werden.</string>
     <string name="error_game_full">Dieses Spiel ist voll.</string>
