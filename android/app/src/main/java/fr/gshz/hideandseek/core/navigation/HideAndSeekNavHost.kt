@@ -246,6 +246,7 @@ private fun ScanResultEffect(navController: NavController, onResult: (String) ->
 private fun LobbyRoute(navController: NavController) {
     LobbyScreen(
         onOpenMapClick = { gameUuid -> navController.navigate(HideAndSeekDestinations.mapRoute(gameUuid)) },
+        onOpenChatClick = { gameUuid -> navController.navigate(HideAndSeekDestinations.chatRoute(gameUuid)) },
         onNavigateHome = {
             navController.navigate(HideAndSeekDestinations.HOME) {
                 popUpTo(0) { inclusive = true }

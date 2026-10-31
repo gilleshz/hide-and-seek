@@ -20,12 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Groups
@@ -35,16 +34,21 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -58,6 +62,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -89,6 +94,7 @@ import fr.gshz.hideandseek.domain.model.Side
 @Composable
 fun LobbyScreen(
     onOpenMapClick: (gameUuid: String) -> Unit,
+    onOpenChatClick: (gameUuid: String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onOpenSettingsClick: () -> Unit = {},
     viewModel: LobbyViewModel = hiltViewModel(),
@@ -245,6 +251,7 @@ fun LobbyScreen(
             onSideClick = viewModel::chooseSide,
             onStartRoundClick = viewModel::startRound,
             onOpenMapClick = { onOpenMapClick(uiState.gameUuid) },
+            onOpenChatClick = { onOpenChatClick(uiState.gameUuid) },
             onHidingTimeChanged = viewModel::onHidingTimeChanged,
             onCreateNewRoundClick = viewModel::createNewRound,
             onStopRoundClick = viewModel::stopRound,
@@ -270,6 +277,7 @@ internal data class LobbyActions(
     val onSideClick: (Side) -> Unit,
     val onStartRoundClick: () -> Unit,
     val onOpenMapClick: () -> Unit,
+    val onOpenChatClick: () -> Unit = {},
     val onHidingTimeChanged: (String) -> Unit = {},
     val onCreateNewRoundClick: () -> Unit = {},
     val onStopRoundClick: () -> Unit = {},
@@ -310,6 +318,7 @@ internal fun locationPermissionOutcome(
 }
 
 @Suppress("LongMethod", "LongParameterList", "CyclomaticComplexMethod")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LobbyContent(
     uiState: LobbyUiState,
@@ -320,150 +329,163 @@ internal fun LobbyContent(
     onOpenLocationSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(Spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(Spacing.md),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = uiState.gameName.ifBlank { stringResource(R.string.lobby_title) },
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = actions.onOpenSettingsClick) {
-                Icon(
-                    Icons.Filled.Settings,
-                    contentDescription = stringResource(R.string.settings_title),
-                )
-            }
-        }
-
-        ErrorText(
-            uiState.error,
-            detail = uiState.errorDetail,
-            errorKey = uiState.errorKey,
-            errorArgs = uiState.errorArgs,
-        )
-
-        var showQr by remember { mutableStateOf(false) }
-        GameCodeCard(
-            code = uiState.gameJoinCode,
-            isQrVisible = showQr,
-            onToggleQrClick = { showQr = !showQr },
-        )
-
-        if (showQr && uiState.qrPayload != null) {
-            QrCode(
-                content = uiState.qrPayload,
-                size = 180.dp,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-        }
-
-        CustomRulesDisclosure(variant = uiState.gameVariant, edition = uiState.gameEdition)
-
-        if (uiState.hasLeaderboard) {
-            LeaderboardSection(entries = uiState.leaderboard)
-        }
-
-        var showStartConfirm by remember { mutableStateOf(false) }
-        if (uiState.canStartRound) {
-            HidingTimeField(value = uiState.hidingTimeMinutesInput, onValueChange = actions.onHidingTimeChanged)
-            StartRoundButton(
-                isStarting = uiState.isStartingRound,
-                allSidesChosen = uiState.allPlayersChoseSide,
-                onClick = { showStartConfirm = true },
-            )
-        }
-        if (showStartConfirm && uiState.canStartRound) {
-            StartRoundDialog(
-                hidingTimeMinutes = uiState.hidingTimeMinutes,
-                roster = uiState.roster,
-                onConfirm = {
-                    showStartConfirm = false
-                    actions.onStartRoundClick()
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = uiState.gameName.ifBlank { stringResource(R.string.lobby_title) },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 },
-                onDismiss = { showStartConfirm = false },
+                actions = {
+                    IconButton(onClick = actions.onOpenSettingsClick) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
+                        )
+                    }
+                    IconButton(onClick = actions.onOpenChatClick) {
+                        BadgedBox(badge = { if (uiState.hasUnreadChat) Badge() }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Chat,
+                                contentDescription = stringResource(R.string.chat_title),
+                            )
+                        }
+                    }
+                },
             )
-        }
-
-        if (uiState.canCreateNewRound) {
-            Button(
-                onClick = actions.onCreateNewRoundClick,
-                enabled = !uiState.isCreatingRound,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (uiState.isCreatingRound) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(stringResource(R.string.lobby_new_round))
-                }
-            }
-        }
-
-        if (uiState.canStopRound) {
-            FilledTonalButton(
-                onClick = actions.onStopRoundClick,
-                enabled = !uiState.isStoppingRound,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.lobby_stop_round))
-            }
-        }
-
-        SectionHeader(text = stringResource(R.string.lobby_pick_side_title), icon = Icons.Filled.Route)
-        SidePicker(selected = uiState.mySide, onSideClick = actions.onSideClick)
-
-        if (uiState.mySide != null) {
-            OpenMapButton(onOpenMapClick = actions.onOpenMapClick, showHint = showBackgroundLocationHint)
-        }
-
-        if (showLocationOffHint) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = stringResource(R.string.lobby_location_off),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextButton(onClick = onEnableLocation) {
-                    Text(stringResource(R.string.lobby_location_enable))
-                }
-                TextButton(onClick = onOpenLocationSettings) {
-                    Text(stringResource(R.string.lobby_precise_location_settings))
-                }
-            }
-        }
-
-        SectionHeader(text = stringResource(R.string.lobby_roster_title), icon = Icons.Filled.Groups)
-        if (uiState.isLoading) {
-            CircularProgressIndicator()
-        } else {
-            RosterList(
-                roster = uiState.roster,
-                apiUrl = uiState.apiUrl,
-                onPlayerLongPress = actions.onPlayerLongPress,
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            ErrorText(
+                uiState.error,
+                detail = uiState.errorDetail,
+                errorKey = uiState.errorKey,
+                errorArgs = uiState.errorArgs,
             )
-        }
 
-        GameActionButtons(uiState = uiState, actions = actions)
+            var showQr by remember { mutableStateOf(false) }
+            GameCodeCard(
+                code = uiState.gameJoinCode,
+                isQrVisible = showQr,
+                onToggleQrClick = { showQr = !showQr },
+            )
+
+            if (showQr && uiState.qrPayload != null) {
+                QrCode(
+                    content = uiState.qrPayload,
+                    size = 180.dp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
+
+            CustomRulesDisclosure(variant = uiState.gameVariant, edition = uiState.gameEdition)
+
+            if (uiState.hasLeaderboard) {
+                LeaderboardSection(entries = uiState.leaderboard)
+            }
+
+            var showStartConfirm by remember { mutableStateOf(false) }
+            if (uiState.canStartRound) {
+                HidingTimeField(value = uiState.hidingTimeMinutesInput, onValueChange = actions.onHidingTimeChanged)
+                StartRoundButton(
+                    isStarting = uiState.isStartingRound,
+                    allSidesChosen = uiState.allPlayersChoseSide,
+                    onClick = { showStartConfirm = true },
+                )
+            }
+            if (showStartConfirm && uiState.canStartRound) {
+                StartRoundDialog(
+                    hidingTimeMinutes = uiState.hidingTimeMinutes,
+                    roster = uiState.roster,
+                    onConfirm = {
+                        showStartConfirm = false
+                        actions.onStartRoundClick()
+                    },
+                    onDismiss = { showStartConfirm = false },
+                )
+            }
+
+            if (uiState.canCreateNewRound) {
+                Button(
+                    onClick = actions.onCreateNewRoundClick,
+                    enabled = !uiState.isCreatingRound,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (uiState.isCreatingRound) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.lobby_new_round))
+                    }
+                }
+            }
+
+            if (uiState.canStopRound) {
+                FilledTonalButton(
+                    onClick = actions.onStopRoundClick,
+                    enabled = !uiState.isStoppingRound,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.lobby_stop_round))
+                }
+            }
+
+            SectionHeader(text = stringResource(R.string.lobby_pick_side_title), icon = Icons.Filled.Route)
+            SidePicker(selected = uiState.mySide, onSideClick = actions.onSideClick)
+
+            if (uiState.mySide != null) {
+                OpenMapButton(onOpenMapClick = actions.onOpenMapClick, showHint = showBackgroundLocationHint)
+            }
+
+            if (showLocationOffHint) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.lobby_location_off),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = onEnableLocation) {
+                        Text(stringResource(R.string.lobby_location_enable))
+                    }
+                    TextButton(onClick = onOpenLocationSettings) {
+                        Text(stringResource(R.string.lobby_precise_location_settings))
+                    }
+                }
+            }
+
+            SectionHeader(text = stringResource(R.string.lobby_roster_title), icon = Icons.Filled.Groups)
+            if (uiState.isLoading) {
+                CircularProgressIndicator()
+            } else {
+                RosterList(
+                    roster = uiState.roster,
+                    apiUrl = uiState.apiUrl,
+                    onPlayerLongPress = actions.onPlayerLongPress,
+                )
+            }
+
+            GameActionButtons(uiState = uiState, actions = actions)
+        }
     }
 
     uiState.playerMenuTarget?.let { target ->

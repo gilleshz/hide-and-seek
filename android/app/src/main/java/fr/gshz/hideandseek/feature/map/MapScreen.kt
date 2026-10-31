@@ -20,8 +20,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -33,9 +34,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
@@ -465,7 +465,6 @@ internal data class TimeTrapActions(
     val onResolve: (trapUuid: String, confirmed: Boolean) -> Unit = { _, _ -> },
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Suppress("LongParameterList", "LongMethod")
 @Composable
 internal fun MapContent(
@@ -497,8 +496,7 @@ internal fun MapContent(
         modifier = modifier,
         topBar = {
             Column {
-                TopAppBar(title = { Text(uiState.gameName.ifBlank { stringResource(R.string.map_title) }) })
-                RoundBanner(uiState.roundStatus, uiState.roundTimerSeconds)
+                MapStatusBar(uiState.roundStatus, uiState.roundTimerSeconds)
                 if (frozenHidingSeconds.value == null) {
                     ErrorText(uiState.roundError, errorKey = uiState.roundErrorKey, errorArgs = uiState.roundErrorArgs)
                 }
@@ -1008,7 +1006,9 @@ private fun MapFabColumn(
             Icon(Icons.Filled.TravelExplore, contentDescription = stringResource(R.string.map_browse_pois))
         }
         FloatingActionButton(onClick = { navigation.onOpenChatClick(uiState.gameUuid) }) {
-            Icon(Icons.Filled.Chat, contentDescription = stringResource(R.string.map_open_chat))
+            BadgedBox(badge = { if (uiState.hasUnreadChat) Badge() }) {
+                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = stringResource(R.string.map_open_chat))
+            }
         }
         if (styles.size > 1) {
             MapStyleSwitcher(styles = styles, onStyleSelected = fabActions.onStyleSelected)

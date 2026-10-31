@@ -136,7 +136,6 @@
     <string name="lobby_delete_game_confirm_body">Cela supprime définitivement la partie et en retire tout le monde. Cette action est irréversible.</string>
     <string name="lobby_delete_game_confirm">Supprimer</string>
 
-    <string name="map_title">Carte</string>
     <string name="map_open_questions">Questions</string>
     <string name="map_recenter_button">Recentrer sur ma position</string>
     <string name="map_style_button">Style de carte</string>
@@ -176,10 +175,10 @@
     <string name="timetable_delay_early">avance <xliff:g>%1$d</xliff:g> min</string>
     <string name="timetable_direction">Direction <xliff:g>%1$d</xliff:g></string>
 
-    <string name="round_banner_not_started">Manche non commencée</string>
-    <string name="round_banner_hiding">Cache : <xliff:g>%1$s</xliff:g> restant</string>
-    <string name="round_banner_seeking">Recherche : <xliff:g>%1$s</xliff:g></string>
-    <string name="round_banner_ended">Manche terminée : temps total <xliff:g>%1$s</xliff:g></string>
+    <string name="round_status_not_started">Non commencée</string>
+    <string name="round_status_hiding">Cache :</string>
+    <string name="round_status_seeking">Recherche :</string>
+    <string name="round_status_ended">Terminée :</string>
     <string name="round_end_button">Terminer la manche</string>
 
     <string name="zone_set_button">Définir la zone</string>

@@ -136,7 +136,6 @@
     <string name="lobby_delete_game_confirm_body">Dies löscht das Spiel dauerhaft und entfernt alle Spielenden. Dies kann nicht rückgängig gemacht werden.</string>
     <string name="lobby_delete_game_confirm">Löschen</string>
 
-    <string name="map_title">Karte</string>
     <string name="map_open_questions">Fragen</string>
     <string name="map_recenter_button">Auf meinen Standort zentrieren</string>
     <string name="map_style_button">Kartenstil</string>
@@ -176,10 +175,10 @@
     <string name="timetable_delay_early"><xliff:g>%1$d</xliff:g> Min. zu früh</string>
     <string name="timetable_direction">Richtung <xliff:g>%1$d</xliff:g></string>
 
-    <string name="round_banner_not_started">Nicht gestartet</string>
-    <string name="round_banner_hiding">Verstecken: <xliff:g>%1$s</xliff:g> übrig</string>
-    <string name="round_banner_seeking">Suchen: <xliff:g>%1$s</xliff:g></string>
-    <string name="round_banner_ended">Beendet: Versteckzeit <xliff:g>%1$s</xliff:g></string>
+    <string name="round_status_not_started">Nicht gestartet</string>
+    <string name="round_status_hiding">Verstecken:</string>
+    <string name="round_status_seeking">Suchen:</string>
+    <string name="round_status_ended">Beendet:</string>
     <string name="round_end_button">Runde beenden</string>
 
     <string name="zone_set_button">Versteckzone setzen</string>

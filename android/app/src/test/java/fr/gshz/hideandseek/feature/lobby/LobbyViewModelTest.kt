@@ -6,6 +6,7 @@ import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
+import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
 import fr.gshz.hideandseek.core.util.ERROR_KEY_PLAYER_LEFT
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
@@ -87,6 +88,7 @@ class LobbyViewModelTest {
         settingsStore,
         navigationRequestStore,
         gameEventRepository,
+        ChatVisibilityTracker(),
         SavedStateHandle(mapOf(HideAndSeekDestinations.LOBBY_ARG to gameUuid)),
     )
 

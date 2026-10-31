@@ -6,6 +6,7 @@ import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.data.GameStateCache
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
+import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
 import fr.gshz.hideandseek.domain.model.ClientConfig
 import fr.gshz.hideandseek.domain.repository.ClientConfigRepository
 import fr.gshz.hideandseek.domain.repository.QuestionPreviewRepository
@@ -44,6 +45,7 @@ class MapTestFixture(
     val timeTrapRepository = FakeTimeTrapRepository()
     val possibleAreaRepository = FakePossibleAreaRepository()
     val gameEventRepository = FakeGameEventRepository()
+    val chatVisibilityTracker = ChatVisibilityTracker()
     val connectionStore = mockk<ConnectionStore>()
     val questionRepository = mockk<QuestionRepository>()
     val questionPreviewRepository = mockk<QuestionPreviewRepository>()
@@ -78,6 +80,7 @@ class MapTestFixture(
 
     fun createSessionViewModel() = MapSessionViewModel(
         locationRepository, roundRepository, sessionEvents, gameInfoSource, roundRefreshFlow,
+        chatVisibilityTracker,
     )
 
     fun createZoneViewModel() = ZoneViewModel(

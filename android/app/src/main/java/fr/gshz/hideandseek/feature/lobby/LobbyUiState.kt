@@ -42,6 +42,7 @@ data class LobbyUiState(
     val removePlayerError: ErrorType? = null,
     val removePlayerErrorKey: String? = null,
     val locationDisclosureAccepted: Boolean = false,
+    val hasUnreadChat: Boolean = false,
 ) {
     val canStartRound: Boolean get() = roundStatus == RoundStatus.Lobby && !isStartingRound
     val allPlayersChoseSide: Boolean get() = roster.isNotEmpty() && roster.all { it.side != null }

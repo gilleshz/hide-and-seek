@@ -92,6 +92,7 @@ enum class SimAnswer(val wireValue: String) {
 data class MapUiState(
     val gameUuid: String = "",
     val gameName: String = "",
+    val hasUnreadChat: Boolean = false,
     val markers: List<PlayerMarker> = emptyList(),
     val side: Side? = null,
     val edition: Edition = Edition.Metric,
@@ -377,6 +378,7 @@ private fun sessionAndZoneUiState(session: MapSessionUiState, zone: MapZoneUiSta
     return MapUiState(
         gameUuid = session.gameUuid,
         gameName = session.gameName,
+        hasUnreadChat = session.hasUnreadChat,
         side = session.side,
         edition = session.edition,
         gameSize = session.gameSize,

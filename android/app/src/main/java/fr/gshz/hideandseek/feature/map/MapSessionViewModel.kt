@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
+import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
 import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
@@ -61,6 +62,7 @@ class MapSessionViewModel @Inject constructor(
     private val sessionEvents: MapSessionEvents,
     private val gameInfoSource: MapGameInfoSource,
     private val roundRefreshFlow: RoundRefreshFlow,
+    private val chatVisibilityTracker: ChatVisibilityTracker,
 ) : ViewModel() {
 
     private val gameUuid: String = sessionEvents.gameUuid
@@ -168,13 +170,15 @@ class MapSessionViewModel @Inject constructor(
         },
         selectedMapStyle,
         focusedTransitRef,
-    ) { players, roundPart, style, focusedRef ->
+        chatVisibilityTracker.hasUnread,
+    ) { players, roundPart, style, focusedRef, hasUnreadChat ->
         val info = players.info
         val currentRound = roundPart.round
         val nowMillis = roundPart.nowMillis
         MapSessionUiState(
             gameUuid = gameUuid,
             gameName = info.gameName,
+            hasUnreadChat = hasUnreadChat,
             markers = buildMarkers(
                 players.roster,
                 players.selfUuid,
@@ -511,6 +515,7 @@ class MapSessionViewModel @Inject constructor(
 data class MapSessionUiState(
     val gameUuid: String = "",
     val gameName: String = "",
+    val hasUnreadChat: Boolean = false,
     val markers: List<PlayerMarker> = emptyList(),
     val side: Side? = null,
     val edition: Edition = Edition.Metric,

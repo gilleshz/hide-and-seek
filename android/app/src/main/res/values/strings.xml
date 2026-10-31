@@ -136,7 +136,6 @@
     <string name="lobby_delete_game_confirm_body">This permanently deletes the game and removes all players. This cannot be undone.</string>
     <string name="lobby_delete_game_confirm">Delete</string>
 
-    <string name="map_title">Map</string>
     <string name="map_open_questions">Questions</string>
     <string name="map_recenter_button">Recenter on my location</string>
     <string name="map_style_button">Map style</string>
@@ -176,10 +175,10 @@
     <string name="timetable_delay_early">early <xliff:g>%1$d</xliff:g> min</string>
     <string name="timetable_direction">Direction <xliff:g>%1$d</xliff:g></string>
 
-    <string name="round_banner_not_started">Not started</string>
-    <string name="round_banner_hiding">Hiding: <xliff:g>%1$s</xliff:g> left</string>
-    <string name="round_banner_seeking">Seeking: <xliff:g>%1$s</xliff:g></string>
-    <string name="round_banner_ended">Ended: hiding time <xliff:g>%1$s</xliff:g></string>
+    <string name="round_status_not_started">Not started</string>
+    <string name="round_status_hiding">Hiding:</string>
+    <string name="round_status_seeking">Seeking:</string>
+    <string name="round_status_ended">Ended:</string>
     <string name="round_end_button">End round</string>
 
     <string name="zone_set_button">Set hiding zone</string>

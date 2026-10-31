@@ -12,6 +12,7 @@ import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
+import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
 import fr.gshz.hideandseek.core.util.ERROR_KEY_PLAYER_LEFT
 import fr.gshz.hideandseek.core.util.isSessionExpired
 import fr.gshz.hideandseek.core.util.serverDetail
@@ -52,6 +53,7 @@ class LobbyViewModel @Inject constructor(
     private val settingsStore: SettingsStore,
     private val navigationRequestStore: NavigationRequestStore,
     gameEventRepository: GameEventRepository,
+    private val chatVisibilityTracker: ChatVisibilityTracker,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -65,6 +67,11 @@ class LobbyViewModel @Inject constructor(
         viewModelScope.launch {
             settingsStore.locationDisclosureAccepted.collect { accepted ->
                 _uiState.update { it.copy(locationDisclosureAccepted = accepted) }
+            }
+        }
+        viewModelScope.launch {
+            chatVisibilityTracker.hasUnread.collect { unread ->
+                _uiState.update { it.copy(hasUnreadChat = unread) }
             }
         }
         // A timer event for a brand-new round means resync; otherwise another device just started or

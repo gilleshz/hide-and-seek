@@ -28,6 +28,7 @@ import fr.gshz.hideandseek.core.data.GameStateCache
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
 import fr.gshz.hideandseek.core.notification.ChatNotifier
+import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
 import fr.gshz.hideandseek.core.token.TokenRefresher
 import fr.gshz.hideandseek.core.util.isSessionExpired
 import fr.gshz.hideandseek.core.util.serverErrorKey
@@ -77,6 +78,9 @@ class LocationTrackingService : Service() {
 
     @Inject
     lateinit var chatNotifier: ChatNotifier
+
+    @Inject
+    lateinit var chatVisibilityTracker: ChatVisibilityTracker
 
     @Inject
     lateinit var gameStateCache: GameStateCache
@@ -317,6 +321,7 @@ class LocationTrackingService : Service() {
         gameEventRepository.chatEvents
             .onEach { event ->
                 sessionRepository.currentSession()?.let { session ->
+                    chatVisibilityTracker.onChatEvent(event, session.playerUuid, session.gameUuid)
                     chatNotifier.onChatEvent(event, session.playerUuid, session.gameUuid)
                 }
             }
