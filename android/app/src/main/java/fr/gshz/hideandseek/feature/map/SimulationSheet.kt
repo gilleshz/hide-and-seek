@@ -59,6 +59,7 @@ import fr.gshz.hideandseek.feature.question.CUSTOM_RADAR_SENTINEL
 import fr.gshz.hideandseek.feature.question.QuestionCategoryChips
 import fr.gshz.hideandseek.feature.question.QuestionPresets
 import fr.gshz.hideandseek.feature.question.availableFeatureTypes
+import fr.gshz.hideandseek.feature.question.questionCardsText
 import fr.gshz.hideandseek.feature.question.tentaclesRangeMeters
 import kotlin.math.roundToInt
 
@@ -153,6 +154,14 @@ private fun SimSheetScrollContent(
             OutstandingQuestionCard(outstanding, state, actions, edition)
         }
         QuestionCategoryChips(state.category, gameSize, actions.onSetCategory)
+        Text(
+            text = stringResource(
+                R.string.question_card_cost,
+                questionCardsText(state.category, repeatCountFor(state, askedQuestions)),
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         SimCategoryContent(state, edition, gameSize, actions, askedQuestions, rulesVariant)
         if (state.category != QuestionCategory.Photos) {
             PreviewToggle(isPreview, actions.onTogglePreviewMode)
@@ -362,16 +371,26 @@ private fun matchingOptions(
 }
 
 @Composable
+private fun InstructionLine(text: String?) {
+    if (text == null) return
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
 private fun RadarPresetRows(
     state: SimulationState,
     edition: Edition,
     actions: SimulationActions,
     askedQuestions: List<AskedQuestion>,
 ) {
-    val instruction = if (state.mode == QuestionSheetMode.Ask) stringResource(R.string.sim_using_gps)
+    val instruction = if (state.mode == QuestionSheetMode.Ask) null
         else if (state.seeker == null) stringResource(R.string.sim_place_start)
         else stringResource(R.string.sim_pick_radius)
-    Text(instruction, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    InstructionLine(instruction)
     val presets = QuestionPresets.radarPresets(edition)
     val displaySelectedRadius = if (state.isCustomRadius) CUSTOM_RADAR_SENTINEL.toInt() else state.radiusMeters
     presets.chunked(PRESETS_PER_ROW).forEach { chunk ->
@@ -428,13 +447,12 @@ private fun ThermometerPresetRow(
 ) {
     val instruction = when {
         state.travelingThermometer != null -> stringResource(R.string.question_thermometer_awaiting_arrival)
-        state.mode == QuestionSheetMode.Ask -> stringResource(R.string.sim_using_gps)
+        state.mode == QuestionSheetMode.Ask -> null
         state.seeker == null -> stringResource(R.string.sim_place_start)
         state.end == null -> stringResource(R.string.sim_place_end)
         else -> stringResource(R.string.sim_pick_distance)
     }
-    Text(instruction, style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    InstructionLine(instruction)
     when {
         state.travelingThermometer != null -> Unit
         state.mode == QuestionSheetMode.Ask -> {
@@ -587,14 +605,10 @@ private fun MeasuringContent(
     actions: SimulationActions,
     askedQuestions: List<AskedQuestion>,
 ) {
-    val instruction = if (state.mode == QuestionSheetMode.Ask) stringResource(R.string.sim_using_gps)
+    val instruction = if (state.mode == QuestionSheetMode.Ask) null
         else if (state.seeker == null) stringResource(R.string.sim_place_start)
         else stringResource(R.string.sim_pick_feature)
-    Text(
-        instruction,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    InstructionLine(instruction)
     OptionDropdown(
         stringResource(R.string.sim_pick_feature),
         measuringOptions(state, gameSize, actions, askedQuestions),
@@ -617,16 +631,12 @@ private fun MatchingContent(
     actions: SimulationActions,
     askedQuestions: List<AskedQuestion>,
 ) {
-    val instruction = if (state.mode == QuestionSheetMode.Ask) stringResource(R.string.sim_using_gps)
+    val instruction = if (state.mode == QuestionSheetMode.Ask) null
         else if (state.seeker == null) stringResource(R.string.sim_place_start)
         else if (state.featureType == null && !state.transitLineSelected && !state.stationNameLengthSelected)
             stringResource(R.string.sim_pick_feature)
         else stringResource(R.string.sim_pick_poi)
-    Text(
-        instruction,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    InstructionLine(instruction)
     OptionDropdown(
         stringResource(R.string.sim_pick_feature),
         matchingOptions(state, gameSize, actions, askedQuestions),
@@ -693,17 +703,13 @@ private fun TentaclesContent(
 ) {
     if (gameSize == GameSize.Small) return
     val instruction = when {
-        state.mode == QuestionSheetMode.Ask -> stringResource(R.string.sim_using_gps)
+        state.mode == QuestionSheetMode.Ask -> null
         state.seeker == null -> stringResource(R.string.sim_place_start)
         state.withinMeters == null -> stringResource(R.string.sim_pick_range)
         state.featureType == null -> stringResource(R.string.sim_pick_feature)
         else -> stringResource(R.string.sim_pick_poi)
     }
-    Text(
-        instruction,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    InstructionLine(instruction)
     val rangeMeters = tentaclesRangeMeters(gameSize).toInt()
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         val rangeRepeatCount = askedQuestions.count {

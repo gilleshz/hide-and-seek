@@ -365,7 +365,7 @@
     <string name="sim_pick_poi">Tap a POI on the map</string>
     <string name="sim_pick_range">Pick a range</string>
     <string name="sim_ask_title">Ask a question</string>
-    <string name="sim_using_gps">Your GPS location will be used</string>
+    <string name="question_card_cost">Cost: <xliff:g>%1$s</xliff:g></string>
     <string name="sim_preview_toggle">Preview an answer…</string>
     <string name="sim_ask_toggle">Back to asking…</string>
     <string name="sim_pick_photo_target">Pick a photo target</string>

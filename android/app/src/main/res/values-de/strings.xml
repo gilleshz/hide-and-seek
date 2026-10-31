@@ -362,7 +362,7 @@
     <string name="sim_pick_poi">Auf einen POI auf der Karte tippen</string>
     <string name="sim_pick_range">Reichweite wählen</string>
     <string name="sim_ask_title">Frage stellen</string>
-    <string name="sim_using_gps">Dein GPS-Standort wird verwendet</string>
+    <string name="question_card_cost">Kosten: <xliff:g>%1$s</xliff:g></string>
     <string name="sim_preview_toggle">Antwortvorschau…</string>
     <string name="sim_ask_toggle">Zurück zur Frage…</string>
     <string name="sim_pick_photo_target">Foto-Ziel wählen</string>
@@ -371,7 +371,7 @@
     <string name="sim_custom_radius_hint">Radius eingeben</string>
     <string name="sim_close_button">Schließen</string>
     <string name="repeat_question_title">Frage wiederholen</string>
-    <string name="repeat_question_body">Diese Frage wurde in dieser Runde bereits gestellt. Die Versteckenden ziehen <xliff:g>%1$d</xliff:g>, behält <xliff:g>%2$d</xliff:g> (x<xliff:g>%3$d</xliff:g>).</string>
+    <string name="repeat_question_body">Diese Frage wurde in dieser Runde bereits gestellt. Die Versteckenden ziehen <xliff:g>%1$d</xliff:g>, behalten <xliff:g>%2$d</xliff:g> (x<xliff:g>%3$d</xliff:g>).</string>
     <string name="repeat_question_confirm">Trotzdem fragen</string>
     <string name="repeat_question_cancel">Abbrechen</string>
     <string name="question_pending_chip">⏳ <xliff:g>%1$s</xliff:g> wartet auf Aufdeckung</string>

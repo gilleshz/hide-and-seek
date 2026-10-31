@@ -74,7 +74,7 @@ import fr.gshz.hideandseek.core.ui.theme.extendedColors
 import fr.gshz.hideandseek.domain.model.AskedQuestion
 import fr.gshz.hideandseek.domain.model.ChatMessage
 import fr.gshz.hideandseek.domain.model.QuestionCategory
-import fr.gshz.hideandseek.domain.model.cardEconomy
+import fr.gshz.hideandseek.feature.question.questionCardsText
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -330,13 +330,7 @@ private fun SeekerDistanceLine(message: ChatMessage, uiState: ChatUiState, quest
 
 @Composable
 private fun CardsLine(category: QuestionCategory, repeatCount: Int = 1) {
-    val (draw, keep) = cardEconomy.getValue(category)
-    val text = when {
-        repeatCount > 1 -> stringResource(R.string.chat_cards_line_repeat, draw, keep, repeatCount)
-        draw == 1 -> stringResource(R.string.chat_cards_line_single)
-        else -> stringResource(R.string.chat_cards_line, draw, keep)
-    }
-    SubtextLine(text)
+    SubtextLine(questionCardsText(category, repeatCount))
 }
 
 /**

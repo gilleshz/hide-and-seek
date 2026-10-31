@@ -362,7 +362,7 @@
     <string name="sim_pick_poi">Touchez un point d\'intérêt sur la carte</string>
     <string name="sim_pick_range">Choisir une portée</string>
     <string name="sim_ask_title">Poser une question</string>
-    <string name="sim_using_gps">Votre position GPS sera utilisée</string>
+    <string name="question_card_cost">Coût : <xliff:g>%1$s</xliff:g></string>
     <string name="sim_preview_toggle">Prévisualiser une réponse…</string>
     <string name="sim_ask_toggle">Retour à la question…</string>
     <string name="sim_pick_photo_target">Choisir une cible photo</string>
