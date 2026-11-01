@@ -104,7 +104,7 @@ final class CatalogDefinition
     private static function matching(): CatalogCategory
     {
         $featureOptions = [
-            FeatureType::CommercialAirport,
+            FeatureType::CommercialAirport, FeatureType::RailStation,
             FeatureType::AdminBoundary1st, FeatureType::AdminBoundary2nd,
             FeatureType::AdminBoundary3rd, FeatureType::AdminBoundary4th,
             FeatureType::Mountain, FeatureType::Park,

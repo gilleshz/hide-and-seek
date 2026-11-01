@@ -36,6 +36,7 @@ private fun tentaclesTypes(size: GameSize): List<FeatureType> = when (size) {
 
 private val MATCHING_TYPES = listOf(
     FeatureType.CommercialAirport,
+    FeatureType.RailStation,
     FeatureType.AdminBoundary1st,
     FeatureType.AdminBoundary2nd,
     FeatureType.AdminBoundary3rd,

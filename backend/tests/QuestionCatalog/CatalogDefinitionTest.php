@@ -62,12 +62,12 @@ final class CatalogDefinitionTest extends TestCase
     }
 
     #[Test]
-    public function matchingOmitsTheRemovedFeatureOptions(): void
+    public function matchingOffersRailStationButOmitsTransitStation(): void
     {
         $features = self::featureTypes(QuestionCategory::Matching);
 
         self::assertNotContains(FeatureType::TransitStation, $features);
-        self::assertNotContains(FeatureType::RailStation, $features);
+        self::assertContains(FeatureType::RailStation, $features);
         self::assertContains(FeatureType::AdminBoundary1st, $features);
         self::assertContains(FeatureType::AdminBoundary2nd, $features);
         self::assertContains(FeatureType::AdminBoundary3rd, $features);

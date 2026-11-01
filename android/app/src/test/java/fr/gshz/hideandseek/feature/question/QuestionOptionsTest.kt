@@ -31,6 +31,13 @@ class QuestionOptionsTest {
     }
 
     @Test
+    fun `matching offers the nearest rail station`() {
+        val matching = availableFeatureTypes(QuestionCategory.Matching, GameSize.Large)
+
+        assertTrue(FeatureType.RailStation in matching)
+    }
+
+    @Test
     fun `tentacles offers exactly the backend catalog options for each size`() {
         assertEquals(
             emptyList<FeatureType>(),
