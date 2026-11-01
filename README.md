@@ -4,6 +4,64 @@ Self-hosted companion for playing Hide + Seek with friends: one phone per
 player, a server you run, live positions on an OpenStreetMap map. Fan-made
 and unofficial, see [Legal](#legal).
 
+## Why this app
+
+Several companion apps for Hide + Seek already exist, and some are very good.
+Most of them are web apps, and not all of them are open source. This one takes a
+different route on three points, and each one matters in a game where everyone
+spends hours walking around with the phone in a pocket.
+
+### Why a native app and not a web app
+
+The game is played with the screen off: you walk to a hiding zone, then you stay
+there while the seekers hunt. A web page is paused as soon as the phone is locked
+or another app comes to the front, and the position updates stop with it. The
+Android app runs a small background service, the one with the ongoing
+notification, that keeps GPS and the live connection alive with the screen off.
+
+It is also careful with the battery: it reads the phone's own GPS without Google
+Play Services, reports only as often as the round needs, and stops tracking
+completely when the round ends. A long game should not drain the phone before the
+round is over.
+
+### Why does a live game need a server at all?
+
+The phones are not on the same network. They are spread across a city, each on its
+own mobile connection, so they have no direct line to each other. Something in the
+middle has to collect each position and hand it to the right people.
+
+Think of the server as a referee and a noticeboard:
+
+- it receives every position and decides who may see it. A seeker never receives
+  the hider's real position, the server holds it back;
+- it answers the game's questions. When a seeker asks "compared to me, are you
+  closer to or further from the nearest museum?", the server does the distance
+  work on OpenStreetMap data and draws the shrinking search area for everyone;
+- it remembers where the game stands. A phone that loses signal, sleeps or dies
+  comes back to a game that did not move, instead of taking the whole game down
+  with it.
+
+That is also why one phone cannot simply host the game: the host's phone would
+have to stay awake and connected for the whole round, and a modified app on that
+phone could read everything.
+
+### Whose server is it?
+
+Every app of this kind needs a server. The question is who runs it and who can see
+the data. Hosted services usually keep everything on the company's machines,
+sometimes on Firebase or a similar platform: everyone playing sends their live
+position, their messages and their photos there, to someone they have never met,
+under rules they cannot read and cannot check.
+
+Here, the server is one machine, run by the person who organises the game: a small
+VPS, a NAS, a home server. It is the same software as in this repository, so you
+can read what it stores, check what it does with it, and delete it when you want.
+The only people who can see your position during a game are the people you are
+playing with.
+
+The trade-off is the one self-hosting always has: the person running the server
+has to be someone you trust. Only connect to a host you know.
+
 ## What it does
 
 - Create a game: name, player count, area, and transit lines from OpenStreetMap
@@ -69,25 +127,6 @@ key the app needs. TLS, a reverse proxy and the full guide are in
 
 Your location goes to the server you connect to and nowhere else. Only
 connect to a host you trust.
-
-## Releases
-
-Tag a version and CI does the rest:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-- The backend is tested and its image pushed to `ghcr.io/gilleshz/hide-and-seek`
-  with the tags `v1.0.0` and `latest`.
-- The Android app is signed and attached to a GitHub Release as
-  `hideandseek_v1.0.0.apk`.
-
-First release checklist: set the four keystore secrets
-(`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) in the
-repository, then after the first build set the ghcr package visibility to
-Public so any host can pull the image.
 
 ## Development
 

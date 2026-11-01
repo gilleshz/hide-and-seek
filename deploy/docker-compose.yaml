@@ -5,35 +5,26 @@ services:
     # Pin a version instead of :latest for production.
     image: ghcr.io/gilleshz/hide-and-seek:latest
     restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     environment:
-      OVERPASS_MIRRORS: ${OVERPASS_MIRRORS:?set OVERPASS_MIRRORS in your stack env (deploy/README.md)}
-      OVERPASS_MIRRORS_RANDOMIZE: ${OVERPASS_MIRRORS_RANDOMIZE:-true}
-      MAX_BOUNDARY_SPAN_DEG: ${MAX_BOUNDARY_SPAN_DEG:-4.0}
-      STADIA_API_KEY: ${STADIA_API_KEY:-}
-      THUNDERFOREST_API_KEY: ${THUNDERFOREST_API_KEY:-}
-      MAPTILER_API_KEY: ${MAPTILER_API_KEY:-}
-      FRANKENPHP_WORKER_MODE: ${FRANKENPHP_WORKER_MODE:-0}
-      FRANKENPHP_WORKER_COUNT: ${FRANKENPHP_WORKER_COUNT:-4}
-      FRANKENPHP_WORKER_THREADS: ${FRANKENPHP_WORKER_THREADS:-2}
-      FRANKENPHP_LOOP_MAX: ${FRANKENPHP_LOOP_MAX:-500}
-      APP_API_KEY: ${APP_API_KEY:-}
-      IDENTITY_LOOKUP_KEY: ${IDENTITY_LOOKUP_KEY:-}
-      PUBLIC_URL: ${PUBLIC_URL:-}
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-jetlag}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your stack env (deploy/README.md)}@db:5432/${POSTGRES_DB:-jetlag}?serverVersion=16&charset=utf8
+      OVERPASS_MIRRORS: https://overpass.osm.ch/api/interpreter,https://overpass-api.de/api/interpreter
+      STADIA_API_KEY: ""
+      THUNDERFOREST_API_KEY: ""
+      MAPTILER_API_KEY: ""
+      PUBLIC_URL: https://play.example.com
+      APP_API_KEY: ""
+      MAX_BOUNDARY_SPAN_DEG: 5.0
+      DATABASE_URL: postgresql://CHANGE_ME:CHANGE_ME@db:5432/jetlag?serverVersion=16&charset=utf8
+      FRANKENPHP_WORKER_MODE: 1
+      FRANKENPHP_WORKER_COUNT: 4
+      FRANKENPHP_WORKER_THREADS: 2
+      FRANKENPHP_LOOP_MAX: 500
     ports:
-      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8080}:80"
+      - 8080:80
     volumes:
-      - uploads:/app/var/uploads
-      - tiles:/app/var/tiles
-      - catalog:/app/var/transit-catalog
+      - /srv/jetlag/uploads:/app/var/uploads
+      - /srv/jetlag/tiles:/app/var/tiles
       - secrets:/app/config/secrets
-      # App logs (Symfony var/log) survive container recreates.
+      - catalog:/app/var/transit-catalog
       - logs:/app/var/log
     healthcheck:
       test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/healthz\") === false ? 1 : 0);'"]
@@ -44,7 +35,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Resource caps, adjust to your hardware; the LOOM transit pipeline is CPU/memory-heavy.
+    # Resource caps, adjust to your hardware; the transit pipeline is CPU/memory-heavy.
     mem_limit: 4g
     cpus: "4.0"
     stop_grace_period: 30s
@@ -59,21 +50,17 @@ services:
         max-file: "3"
     environment:
       POSTGRES_DB: jetlag
-      POSTGRES_USER: jetlag
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your stack env (deploy/README.md)}
+      POSTGRES_USER: CHANGE_ME
+      POSTGRES_PASSWORD: CHANGE_ME
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - /srv/jetlag/database:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jetlag"]
+      test: ["CMD-SHELL", "pg_isready -U CHANGE_ME"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  db_data:
-  uploads:
-  tiles:
-  catalog:
   secrets:
-  # App logs (Symfony var/log) survive container recreates.
   logs:
+  catalog:

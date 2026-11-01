@@ -1,96 +1,64 @@
 # Self-hosting guide
 
-This directory runs the prebuilt image, no source checkout needed. It is the
-stack the release pipeline publishes to and the one Portainer expects.
+This directory runs the prebuilt image, no source checkout needed. The same
+`docker-compose.yaml` works pasted into a Portainer stack or run with
+`docker compose`.
 
 ## Requirements
 
-- Docker with the compose plugin (Docker Desktop, docker-ce, or Portainer)
-- A host with a couple of CPU cores and 2+ GB RAM. The stack caps the app at
-  4 GB / 4 CPU by default; adjust in `docker-compose.yaml` if the transit
-  overlay is not used, it is the heavy step at game creation.
+- Docker with the compose plugin, or Portainer
+- A domain and a reverse proxy that terminates TLS (Caddy, Traefik, Pangolin,
+  nginx). The server refuses to boot with a plain `http://` URL in production.
+- 2 CPU cores and 2 GB RAM. The stack caps the app at 4 GB and 4 CPU; the
+  transit overlay built at game creation is the heavy step.
+- Disk for the database, chat photos and the map tile cache, under `/srv/jetlag`
+  by default.
 
-## Deploy
+## Configure
 
-The compose file ships with `${VAR}` placeholders. Replace them with real
-values directly in the file, or keep them and add a `.env` file next to the
-compose file, compose fills the placeholders from it. The examples below
-edit the YAML directly.
+All values are literal in `docker-compose.yaml`, there is no separate env file.
+Change these:
 
-1. `cd deploy`
-2. Edit `docker-compose.yaml`. In the `app` service, replace these lines:
+| Where | What to set |
+| --- | --- |
+| app | `PUBLIC_URL`: your `https://` domain, for example `https://play.example.com` |
+| app | `DATABASE_URL`: same user and password as the `db` service |
+| db | `POSTGRES_USER` and `POSTGRES_PASSWORD`: a real password, letters and digits only, so no URL encoding is needed |
+| app | `OVERPASS_MIRRORS`: two or three Overpass mirrors that answer for your area, comma separated |
+| both | the `/srv/jetlag/...` host paths, or let Docker create them |
 
-   ```yaml
-   OVERPASS_MIRRORS: https://overpass-api.de/api/interpreter,https://overpass.kumi.systems/api/interpreter
-   PUBLIC_URL: https://play.example.com
-   DATABASE_URL: postgresql://jetlag:CHANGE_ME@db:5432/jetlag?serverVersion=16&charset=utf8
-   ```
+Leave the rest alone unless you have a reason:
 
-   In the `db` service, set `POSTGRES_PASSWORD` to the same `CHANGE_ME`.
-   The `:?` syntax is there so compose stops with a clear error when a
-   value is still missing.
+- `APP_API_KEY` empty: generated on first boot and kept in the `secrets` volume.
+- The map style keys empty: the extra styles stay off, the OpenStreetMap style
+  always works.
+- `FRANKENPHP_WORKER_MODE: 1`: reuses the PHP process between requests. Set it
+  to `0` to turn it off.
+- `MAX_BOUNDARY_SPAN_DEG`: largest allowed game area, in degrees.
 
-3. Start it:
+## Deploy in Portainer
 
-   ```bash
-   docker compose up -d
-   docker compose ps
-   ```
+1. Stacks, then Add stack, then Web editor. Paste `docker-compose.yaml`.
+2. Set the values above in the editor.
+3. Deploy the stack.
 
-First boot runs the database migrations and generates the secrets. It can
-take a minute: the image has to pull and the health check waits 30 seconds.
+## Deploy with docker compose
 
-## Environment
+```bash
+cd deploy
+docker compose up -d
+docker compose ps
+```
 
-All values go in the `environment:` sections of `docker-compose.yaml` (or in
-a `.env` file with the `${VAR}` placeholders left in place).
-
-| Variable | Required | Default | What it does |
-| --- | --- | --- | --- |
-| `OVERPASS_MIRRORS` | yes | none | Comma-separated Overpass API mirrors used at game setup to fetch the area's features. Keep 2 or 3 working mirrors; some public mirrors return empty data silently. |
-| `POSTGRES_PASSWORD` | yes | none | Database password. Use letters and digits only, special characters would need URL-encoding in the connection string. |
-| `PUBLIC_URL` | yes | none | The public `https://` URL of the instance. Prod refuses to boot without it, see TLS below. |
-| `APP_API_KEY` | no | generated at first boot | The key the Android app must present. Leave blank to generate and persist it in the secrets volume. |
-| `IDENTITY_LOOKUP_KEY` | no | generated at first boot | HMAC key for the device identity lookup. Generated and persisted in the secrets volume. Back it up with that volume; losing or changing it makes every identity unreachable. |
-| `OVERPASS_MIRRORS_RANDOMIZE` | no | `true` | Pick mirrors at random instead of in order. |
-| `MAX_BOUNDARY_SPAN_DEG` | no | `4.0` | Largest allowed game area, in degrees. |
-| `STADIA_API_KEY` | no | blank | Map style key; leave blank to disable the style. |
-| `THUNDERFOREST_API_KEY` | no | blank | Map style key; leave blank to disable the style. |
-| `MAPTILER_API_KEY` | no | blank | Map style key; leave blank to disable the style. |
-| `TRUSTED_PROXIES` | no | none | Comma-separated CIDRs of reverse proxies, so the server sees real client IPs. |
-| `POSTGRES_USER`, `POSTGRES_DB` | no | `jetlag` | Database role and name. |
-| `HTTP_BIND`, `HTTP_PORT` | no | `0.0.0.0`, `8080` | Host bind for the container's port 80. |
-
-## Connect the Android app
-
-1. Get the API key:
-
-   ```bash
-   docker compose exec app cat /app/config/secrets/app_api_key
-   ```
-
-2. In the app, connect with:
-   - API URL: your `PUBLIC_URL`, for example `https://play.example.com`
-   - API key: the value above
-   - Display name: how other players see you. It is not a login handle and can
-     be changed in Settings. The identity is bound to this device; a new phone
-     creates a new identity, so leave the old seat from the old phone or ask
-     the host to remove it.
+First boot pulls the image, runs the migrations and generates the secrets. It
+takes about a minute, the app reports healthy after that.
 
 ## TLS and reverse proxy
 
-The container serves plain HTTP on port 80. Terminate TLS at a reverse proxy
-of your choice and tell the server about it:
+The container serves plain HTTP on port 80, published on 8080. Terminate TLS in
+front of it, then set `PUBLIC_URL` to the same `https://` domain.
 
-- `PUBLIC_URL` must start with `https://` in production, the entrypoint
-  refuses to boot otherwise.
-- `TRUSTED_PROXIES` should contain the proxy's subnet or IP so the server
-  sees real client IPs (logs and rate limits). Leave it blank and every
-  request shows up as the proxy's IP.
-
-### Caddy
-
-Easiest: run Caddy on the host, in `/etc/caddy/Caddyfile`:
+Caddy on the host, in `/etc/caddy/Caddyfile`:
 
 ```
 play.example.com {
@@ -98,189 +66,74 @@ play.example.com {
 }
 ```
 
-Caddy fetches the certificate automatically once ports 80 and 443 are
-reachable.
+Traefik or Pangolin: point the route at `http://<host>:8080`.
 
-Or as a sidecar in the same stack. The app container itself runs FrankenPHP
-(Caddy): it serves plain HTTP on port 80, so the sidecar is simply a second
-Caddy in front of it, which is the pattern the stack expects. Remove the
-app's `ports:` mapping and nothing is exposed on the host. Add the service,
-the volumes, and pin the network so `TRUSTED_PROXIES` is deterministic:
-
-```yaml
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-```
-
-```yaml
-volumes:
-  caddy_data:
-  caddy_config:
-
-networks:
-  default:
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-```
-
-A `Caddyfile` next to `docker-compose.yaml`, with
-`TRUSTED_PROXIES: 172.20.0.0/16` in the app environment:
-
-```
-play.example.com {
-    reverse_proxy app:80
-}
-```
-
-### Traefik / Pangolin
-
-Point your existing proxy at the published port. The default bind is
-`0.0.0.0:8080`; set `HTTP_BIND: 127.0.0.1` when the proxy runs on the same
-host.
-
-- Pangolin: create a resource for your domain with origin
-  `http://<host>:8080`
-- Traefik: a router with rule `` Host(`play.example.com`) `` and a service
-  pointing at `http://<host>:8080`
-
-Then set `PUBLIC_URL` to your `https://` domain and `TRUSTED_PROXIES` to the
-proxy's subnet or IP.
-
-### Other proxies (nginx and friends)
-
-A plain `proxy_pass http://127.0.0.1:8080;` works, but real-time updates are
-server-sent events over HTTP, so nginx needs `proxy_buffering off` and a
-long `proxy_read_timeout` or the stream buffers and the app looks dead.
+With nginx, live updates are server-sent events, so set `proxy_buffering off`
+and a long `proxy_read_timeout`, or the stream buffers and the app looks dead.
 Caddy and Traefik stream by default.
+
+When the proxy is a container on another network, add its subnet to the app
+environment so logs and rate limits see the real client IP:
+
+```yaml
+      TRUSTED_PROXIES: 172.20.0.0/16
+```
+
+## Connect the app
+
+1. Read the API key:
+
+   ```bash
+   docker compose exec app cat /app/config/secrets/app_api_key
+   ```
+
+2. In the app, connect with the `PUBLIC_URL`, that key and a display name. The
+   identity is bound to the phone: a new phone is a new identity, so leave the
+   old seat from the old phone or ask the host to remove it.
 
 ## Updates
 
-Releases are built from version tags: the image is pushed as `:latest` plus
-the tagged version. Update with:
-
 ```bash
-cd deploy
 docker compose pull
 docker compose up -d
 ```
 
-For production, pin a version in `docker-compose.yaml`
-(`image: ghcr.io/gilleshz/hide-and-seek:1.2.3`) instead of `:latest`.
+The image is `:latest`. Pin a version (`:v1.9.0`) so an update is deliberate.
+Back up the database before upgrading a stack older than v1.5.0: that migration
+truncates the identities table.
 
-### PostGIS extension on an existing volume
-
-Swapping the image does not upgrade an existing database volume. Back up
-first, then upgrade the extension once per database:
+To upgrade the PostGIS extension after a major database image change:
 
 ```bash
-docker compose exec db psql -U jetlag jetlag -c 'ALTER EXTENSION postgis UPDATE;'
+docker compose exec db psql -U CHANGE_ME jetlag -c 'ALTER EXTENSION postgis UPDATE;'
 ```
-
-If PostgreSQL reports a collation version mismatch, run `REINDEX DATABASE`
-and `ALTER DATABASE ... REFRESH COLLATION VERSION` in the same maintenance
-window.
-
-### Mercure 1.0
-
-The hub now speaks Mercure 1.0. Deploy the new image first, then install the
-updated APK (or restart the app) so it fetches a 1.0 access token. An old APK
-cannot receive live events from the new hub; REST calls keep working.
-
-### Identity refactor (v1.5.0, destructive)
-
-Read this before deploying this image over an older stack.
-
-- **Every existing identity is destroyed.** Migration `Version20261023120000`
-  truncates `identities` `CASCADE`. That deletes every player seat and its
-  dependent rows (round memberships, locations, time traps); games, rounds and
-  chat text may remain with orphaned attribution.
-- **Back up `db_data` first** (see Backups) and run the upgrade in a maintenance
-  window. There is no in-place conversion: pre-refactor rows have no device
-  binding, so every player creates a new identity on their next join.
-- **The new secret is `IDENTITY_LOOKUP_KEY`.** It is generated and persisted in
-  the secrets volume when omitted. Back it up with that volume: losing or
-  changing it makes every identity unreachable.
-- **API compatibility.** Old APKs keep sending the `name` wire field on join; the
-  server accepts it and ignores it for an existing device identity. Profile calls
-  that still send `?name=` have the query ignored and act on the `X-Device-Key`
-  identity. Real-time behavior is unchanged, but ship the new APK so Settings
-  shows and edits the display name.
-
-### GTFS catalog (v1.6.0)
-
-The setup screen can pick a public GTFS network from the Mobility Database
-catalog, or keep using a pasted URL or an uploaded file. The compose file adds a
-`catalog` volume for the snapshot; compose creates it on the next
-`docker compose up -d`. There is no migration and no data loss. The app still
-works if the catalog host is unreachable: it serves the last snapshot and the
-manual URL and file paths stay available.
-
-### Worker mode (optional)
-
-Worker mode is off by default. Set `FRANKENPHP_WORKER_MODE=1` in the stack env
-(optionally `FRANKENPHP_WORKER_COUNT`, default 4, `FRANKENPHP_WORKER_THREADS`,
-default 2, `FRANKENPHP_LOOP_MAX`, default 500) and redeploy the app service.
-It reuses the PHP process, Symfony container and Doctrine connection. Roll
-back with `FRANKENPHP_WORKER_MODE=0` and a restart. A database restart can
-leave stale connections until the worker recycles; session advisory locks
-live with the connection; keep 4 to 8 workers and watch memory. Do not enable
-it in dev, where bind mounts need hot reload.
 
 ## Backups
 
-- Database (essential):
+- Database:
 
   ```bash
-  docker compose exec db pg_dump -U jetlag jetlag > backup.sql
-  docker compose exec -T db psql -U jetlag jetlag < backup.sql
+  docker compose exec db pg_dump -U CHANGE_ME jetlag > backup.sql
   ```
 
-  Adjust the role and database name if you changed `POSTGRES_USER` or
-  `POSTGRES_DB`.
-
-- `secrets` volume: keep a copy. Losing it rotates the app API key and every
-  phone has to reconnect with the new key. It also holds `IDENTITY_LOOKUP_KEY`;
-  losing or changing that value makes every identity unreachable:
+- `secrets` volume, keep a copy. It holds the API key the phones use, and the
+  identity key: losing or changing that one makes every existing identity
+  unreachable.
 
   ```bash
   docker compose exec app tar cf - /app/config/secrets > secrets.tar
   ```
 
-- `uploads` (chat photos) and `tiles` (map tile cache) volumes: back them up
-  or accept the loss, the tile cache regenerates on demand.
-
-- `catalog` (the public GTFS network catalog): a cache. Losing it only forces a
-  re-download, and the app still accepts a feed URL or file if the catalog is
-  unreachable. It is refreshed at boot and lazily after 24 hours.
-
-## Portainer
-
-Use the stack editor: paste `docker-compose.yaml` and set the same values in
-the stack's environment section (this fills the `${VAR}` placeholders), or
-edit the file inline. Everything else is identical.
+- `/srv/jetlag/uploads` (chat photos): back it up with the database if you care
+  about old messages.
+- `/srv/jetlag/tiles` and the `catalog` volume: caches, safe to lose.
 
 ## Troubleshooting
 
-- `docker compose ps` shows the app not healthy: read the logs, migrations
-  and secret generation happen at boot.
-
-  ```bash
-  docker compose logs -f app
-  ```
-
-- The health check probes `http://127.0.0.1/healthz` inside the container;
-  the same endpoint answers from the host on the published port.
-- The app says the API key is wrong: the secrets volume was recreated, or
-  the key was typed wrong. Read it again with the exec command above.
-- The port is taken: change `HTTP_PORT` and the proxy target.
+- Not healthy: `docker compose logs -f app`. Migrations and secret generation
+  happen at boot.
+- API key rejected: read it again with the command above. A recreated `secrets`
+  volume means a new key.
+- Port taken: change the published port in `ports:` and point the proxy at it.
+- Live map does not update: the proxy is buffering the event stream, see TLS
+  above.
