@@ -217,6 +217,19 @@ class TokenRefresherTest {
     }
 
     @Test
+    fun `a forced refreshNow bypasses the cooldown`() = runTest(dispatcher) {
+        sessionRepository.seed(session())
+        roundRepository.refreshSubscriberTokenResult =
+            Result.success(TokenRefresh("fresh-token", listOf("roster")))
+
+        refresher.refreshNow(force = true)
+        refresher.refreshNow(force = true)
+        advanceUntilIdle()
+
+        assertEquals(2, roundRepository.refreshSubscriberTokenCalls.size)
+    }
+
+    @Test
     fun `refreshNow on a session-expired rejection emits the session expired request`() = runTest(dispatcher) {
         sessionRepository.seed(session())
         roundRepository.refreshSubscriberTokenResult =

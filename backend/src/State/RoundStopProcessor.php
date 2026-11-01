@@ -12,6 +12,7 @@ use App\Dto\ScoreBonus;
 use App\Entity\Player;
 use App\Entity\Round;
 use App\Enum\Side;
+use App\ErrorKey;
 use App\Exception\EntityNotFoundException;
 use App\Exception\FunctionalException;
 use App\Repository\RoundMembershipRepository;
@@ -43,6 +44,13 @@ final readonly class RoundStopProcessor implements ProcessorInterface
         $this->assertSameGame($round, $player);
 
         $stop = $data instanceof RoundStopInput ? $data : new RoundStopInput();
+        if ($this->memberships->findOneByRoundAndPlayer($round, $player)?->getSide() === Side::Spectator) {
+            throw new FunctionalException(
+                message: 'A spectator cannot stop a round.',
+                errorKey: ErrorKey::ROUND_SPECTATOR_READ_ONLY,
+            );
+        }
+
         // A declared find scores the hiders' bonuses: only a hider may press it (SCORE-6).
         if ($stop->caught) {
             $this->assertHider($round, $player);

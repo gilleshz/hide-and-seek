@@ -53,10 +53,7 @@ final class LeaveServiceTest extends TestCase
         $players->expects(self::once())->method('save');
         $players->expects(self::never())->method('remove');
 
-        $memberships = $this->createMock(RoundMembershipRepository::class);
-        $memberships->expects(self::once())->method('removeByPlayer')->with($player);
-
-        $this->serviceFor($game, $players, $messages, $memberships)->leave('game-uuid', 'player-uuid');
+        $this->serviceFor($game, $players, $messages)->leave('game-uuid', 'player-uuid');
 
         self::assertTrue($player->hasLeft());
         self::assertInstanceOf(ChatMessage::class, $posted);
@@ -131,7 +128,6 @@ final class LeaveServiceTest extends TestCase
         Game $game,
         PlayerRepository $players,
         ChatMessageRepository $messages,
-        ?RoundMembershipRepository $memberships = null,
     ): LeaveService {
         $games = $this->createStub(GameRepository::class);
         $games->method('findOneByUuid')->willReturn($game);
@@ -148,7 +144,6 @@ final class LeaveServiceTest extends TestCase
             $players,
             new RosterNotifier($hub, $mercure, $this->emptyRosterService()),
             new ChatService($messages, $mercure, $hub, $this->createStub(ImageStorageInterface::class)),
-            $memberships ?? $this->createStub(RoundMembershipRepository::class),
             $entityManager,
         );
     }

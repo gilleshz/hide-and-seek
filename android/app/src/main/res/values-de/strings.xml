@@ -96,13 +96,17 @@
     <string name="lobby_show_qr">QR-Code anzeigen</string>
     <string name="lobby_hide_qr">QR-Code ausblenden</string>
     <string name="lobby_roster_title">Mitspielende</string>
-    <string name="lobby_pick_side_title">Wähle deine Seite</string>
+    <string name="lobby_pick_side_title">Wähle deine Rolle</string>
     <string name="lobby_location_disclosure_title">Standort teilen?</string>
     <string name="lobby_location_disclosure_body">Während einer Runde sendet diese App deinen Live-Standort an den Spielserver, damit die anderen Spieler dich auf der Karte sehen. Das gilt auch, wenn die App im Hintergrund läuft oder dein Telefon gesperrt ist. Der Standort wird nur für das Spiel verwendet.</string>
     <string name="lobby_location_disclosure_continue">Weiter</string>
     <string name="lobby_location_disclosure_later">Nicht jetzt</string>
     <string name="lobby_side_hider">Versteckende</string>
     <string name="lobby_side_seeker">Suchende</string>
+    <string name="lobby_side_spectator">Zuschauende</string>
+    <string name="lobby_spectate_helper">Die Partie verfolgen, ohne den eigenen Standort zu teilen.</string>
+    <string name="lobby_spectate_helper_selected">Du siehst alle Spielenden und alle Kartenebenen. Die Rollen bleiben bis zur nächsten Runde gesperrt.</string>
+    <string name="lobby_roles_locked">Die Rollen bleiben bis zur nächsten Runde gesperrt.</string>
     <string name="lobby_side_unassigned">Nicht zugewiesen</string>
     <string name="lobby_start_sharing_location">Standort teilen</string>
     <string name="lobby_stop_sharing_location">Teilen beenden</string>
@@ -136,6 +140,7 @@
     <string name="lobby_delete_game_confirm_body">Dies löscht das Spiel dauerhaft und entfernt alle Spielenden. Dies kann nicht rückgängig gemacht werden.</string>
     <string name="lobby_delete_game_confirm">Löschen</string>
 
+    <string name="map_spectator">Zuschauende</string>
     <string name="map_open_questions">Fragen</string>
     <string name="map_recenter_button">Auf meinen Standort zentrieren</string>
     <string name="map_style_button">Kartenstil</string>
@@ -270,6 +275,9 @@
     <string name="location_notification_leave_hint">Verlasse das Spiel, um die Freigabe zu beenden.</string>
     <string name="location_notification_title_paused">Standortfreigabe pausiert</string>
     <string name="location_notification_paused_hint">Runde beendet. Verlasse das Spiel, um diese Benachrichtigung zu schließen.</string>
+    <string name="spectator_notification_channel_name">Zuschauermodus</string>
+    <string name="spectator_notification_title">Zuschauen bei %1$s</string>
+    <string name="spectator_notification_text">Du verfolgst die Partie. Dein Standort wird nicht geteilt.</string>
 
     <string name="endgame_notification_channel_name">Endspiel-Alarme</string>
     <string name="endgame_notification_title">Suchende Person in der Nähe!</string>
@@ -743,6 +751,8 @@
     <string name="error_not_hider">Nur die Versteckenden können das tun.</string>
     <string name="error_not_seeker">Nur die suchende Person kann das tun.</string>
     <string name="error_cannot_end_round">Die Runde kann gerade nicht beendet werden.</string>
+    <string name="error_spectator_read_only">Zuschauende können das Spiel nicht verändern.</string>
+    <string name="error_round_not_started">Die Runde hat noch nicht begonnen.</string>
     <string name="error_game_full">Dieses Spiel ist voll.</string>
     <string name="error_game_already_started">Das Spiel hat bereits begonnen.</string>
     <string name="error_name_taken">Der Name <xliff:g>%1$s</xliff:g> ist in diesem Spiel bereits vergeben.</string>

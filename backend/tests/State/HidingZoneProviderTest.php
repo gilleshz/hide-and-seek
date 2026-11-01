@@ -12,6 +12,7 @@ use App\Entity\Round;
 use App\Entity\RoundMembership;
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RoundStatus;
 use App\Enum\Side;
 use App\Exception\FunctionalException;
 use App\Exception\IdentityRequiredException;
@@ -60,6 +61,7 @@ final class HidingZoneProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
 
@@ -76,10 +78,51 @@ final class HidingZoneProviderTest extends TestCase
     }
 
     #[Test]
+    public function itReturnsTheZoneToASpectatorWhoseTokenIsPresented(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
+        $spectator = new Player($game, IdentityFactory::create('Eve', 'test-password'));
+        $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
+
+        $zones = $this->createStub(HidingZoneRepository::class);
+        $zones->method('findOneByRound')->willReturn($zone);
+
+        $resource = $this->provider($round, $spectator, Side::Spectator, $zones)
+            ->provide(new Get(), ['roundUuid' => $round->getUuid()]);
+
+        self::assertNotNull($resource);
+        self::assertSame(52.52, $resource->lat);
+        self::assertSame(13.405, $resource->lng);
+    }
+
+    #[Test]
+    public function itWithholdsTheZoneWhileTheRoundIsInTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $spectator = new Player($game, IdentityFactory::create('Eve', 'test-password'));
+        $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
+
+        $zones = $this->createStub(HidingZoneRepository::class);
+        $zones->method('findOneByRound')->willReturn($zone);
+
+        try {
+            $this->provider($round, $spectator, Side::Spectator, $zones)
+                ->provide(new Get(), ['roundUuid' => $round->getUuid()]);
+            self::fail('Expected a FunctionalException.');
+        } catch (FunctionalException $e) {
+            self::assertSame('round.not_started', $e->getErrorKey());
+        }
+    }
+
+    #[Test]
     public function itRefusesASeekerTokenWithTheHiderOnlyErrorKey(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         try {

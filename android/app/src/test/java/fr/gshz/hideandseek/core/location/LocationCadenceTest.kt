@@ -60,6 +60,18 @@ class LocationCadenceTest {
     }
 
     @Test
+    fun `a spectator never gets a tracking cadence`() {
+        assertEquals(
+            LocationCadence.DEFAULT_INTERVAL_MS,
+            LocationCadence.selectInterval(Side.Spectator, RoundStatus.Seeking),
+        )
+        assertEquals(
+            LocationCadence.DEFAULT_INTERVAL_MS,
+            LocationCadence.selectInterval(Side.Spectator, RoundStatus.Hiding),
+        )
+    }
+
+    @Test
     fun `unknown side or phase falls back to the default cadence`() {
         assertEquals(
             LocationCadence.DEFAULT_INTERVAL_MS,

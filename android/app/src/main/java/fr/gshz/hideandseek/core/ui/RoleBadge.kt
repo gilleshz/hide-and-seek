@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
@@ -34,11 +35,13 @@ fun RoleBadge(side: Side?, modifier: Modifier = Modifier) {
     val container = when (side) {
         Side.Hider -> BrandColors.hiderContainer
         Side.Seeker -> BrandColors.seekerContainer
+        Side.Spectator -> MaterialTheme.colorScheme.surfaceContainerHigh
         null -> MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val content = when (side) {
         Side.Hider -> BrandColors.onHiderContainer
         Side.Seeker -> BrandColors.onSeekerContainer
+        Side.Spectator -> MaterialTheme.colorScheme.onSurfaceVariant
         null -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
@@ -61,12 +64,14 @@ fun RoleBadge(side: Side?, modifier: Modifier = Modifier) {
 private fun Side?.icon(): ImageVector = when (this) {
     Side.Hider -> Icons.Filled.VisibilityOff
     Side.Seeker -> Icons.Filled.Visibility
+    Side.Spectator -> Icons.Filled.RemoveRedEye
     null -> Icons.AutoMirrored.Filled.HelpOutline
 }
 
 private fun Side?.labelRes(): Int = when (this) {
     Side.Hider -> R.string.lobby_side_hider
     Side.Seeker -> R.string.lobby_side_seeker
+    Side.Spectator -> R.string.lobby_side_spectator
     null -> R.string.lobby_side_unassigned
 }
 
@@ -80,6 +85,7 @@ private fun RoleBadgePreview() {
         ) {
             RoleBadge(Side.Hider)
             RoleBadge(Side.Seeker)
+            RoleBadge(Side.Spectator)
             RoleBadge(null)
         }
     }

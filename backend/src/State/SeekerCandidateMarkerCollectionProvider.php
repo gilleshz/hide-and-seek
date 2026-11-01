@@ -41,10 +41,10 @@ final readonly class SeekerCandidateMarkerCollectionProvider implements Provider
         }
 
         $player = $this->identity->requirePlayer();
-        $membership = $this->memberships->findOneByRoundAndPlayer($round, $player);
-        if ($membership === null || $membership->getSide() !== Side::Seeker) {
+        $side = $this->memberships->findOneByRoundAndPlayer($round, $player)?->getSide();
+        if ($side !== Side::Seeker && $side !== Side::Spectator) {
             throw new FunctionalException(
-                message: 'Only a seeker may read the candidate markers.',
+                message: 'Only a seeker or spectator may read the candidate markers.',
                 errorKey: 'seeker_candidate.not_seeker',
             );
         }

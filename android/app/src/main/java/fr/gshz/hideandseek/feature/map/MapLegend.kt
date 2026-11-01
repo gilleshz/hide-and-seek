@@ -91,13 +91,13 @@ internal fun legendEntries(state: MapUiState): List<LegendEntry> = buildList {
         )
     }
     add(LegendEntry(R.string.map_legend_excluded, LegendSwatch.Excluded))
-    if (state.side == Side.Seeker && state.manualConstraints.isNotEmpty()) {
+    if (state.manualConstraints.isNotEmpty()) {
         add(LegendEntry(R.string.map_legend_search_area, LegendSwatch.SearchArea))
     }
-    if (state.side == Side.Seeker && state.seekerMarkers.isNotEmpty()) {
+    if (state.seekerMarkers.isNotEmpty()) {
         add(LegendEntry(R.string.map_legend_suspected_station, LegendSwatch.SuspectedStation))
     }
-    if (state.side == Side.Hider && state.submittedZone != null) {
+    if (state.submittedZone != null) {
         add(LegendEntry(R.string.map_legend_hiding_zone, LegendSwatch.HidingZone))
     }
     add(LegendEntry(R.string.map_legend_players, LegendSwatch.Players))

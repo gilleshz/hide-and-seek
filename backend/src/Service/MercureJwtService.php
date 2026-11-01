@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Game;
 use App\Entity\Round;
+use App\Enum\RoundStatus;
 use App\Enum\Side;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
@@ -100,8 +101,12 @@ final readonly class MercureJwtService
             $this->timeTrapTopic($game, $round),
         ];
 
-        // The possible-area overlay is shared with hiders unless the host opted out (SETUP-8).
-        if ($side === null || $side === Side::Seeker || $game->isPossibleAreaSharedWithHiders()) {
+        // The possible-area overlay is shared with hiders unless the host opted out (SETUP-8);
+        // a spectator sees every layer regardless.
+        $readsOverlay = $side === Side::Seeker
+            || $side === Side::Spectator
+            || $game->isPossibleAreaSharedWithHiders();
+        if ($side === null || $readsOverlay) {
             $topics[] = $this->possibleAreaTopic($game, $round);
         }
 
@@ -130,8 +135,9 @@ final readonly class MercureJwtService
     }
 
     /**
-     * Seekers' locations are visible to everyone (hiders need them to evade);
-     * hider-locations is only added for the hiding side.
+     * Seekers' locations are visible to everyone (hiders need them to evade); the hider-locations
+     * topic waits for the round to leave the lobby, because a role change there is still allowed and
+     * a stateless hub cannot revoke the old grant.
      *
      * @return list<string>
      */
@@ -139,7 +145,10 @@ final readonly class MercureJwtService
     {
         $topics = [$this->seekerLocationsTopic($game, $round)];
 
-        if ($side === Side::Hider) {
+        if (
+            ($side === Side::Hider || $side === Side::Spectator)
+            && $round->getStatus() !== RoundStatus::Lobby
+        ) {
             $topics[] = $this->hiderLocationsTopic($game, $round);
         }
 
@@ -147,14 +156,14 @@ final readonly class MercureJwtService
     }
 
     /**
-     * Candidate markers and the zone radius are seeker-only aids; the hider gets the whole zone
-     * on its own private topic, so sending these to both sides would just duplicate it.
+     * Candidate markers and the zone radius are seeker aids; a spectator watches them too. The
+     * hider gets the whole zone on its own private topic, so these would just duplicate it.
      *
      * @return list<string>
      */
     public function seekerOnlyTopics(Game $game, Round $round, Side $side): array
     {
-        return $side === Side::Seeker
+        return $side === Side::Seeker || $side === Side::Spectator
             ? [$this->seekerCandidatesTopic($game, $round), $this->seekerZoneTopic($game, $round)]
             : [];
     }

@@ -48,6 +48,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
@@ -85,6 +86,37 @@ final class LocationServiceTest extends TestCase
 
         self::assertSame($player, $result->location->getPlayer());
         self::assertFalse($result->endgame);
+    }
+
+    #[Test]
+    public function itKeepsAHiderPingOffTheWireWhileTheRoundIsInTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $membership = new RoundMembership($round, $player, Side::Hider);
+
+        $locations = $this->createMock(PlayerLocationRepository::class);
+        $locations->expects(self::once())->method('save');
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);
+
+        $hub = $this->createMock(HubInterface::class);
+        $hub->expects(self::never())->method('publish');
+
+        $service = new LocationService(
+            $locations,
+            $memberships,
+            new MercureJwtService(self::SECRET, 'https://jetlag.test'),
+            $hub,
+            $this->createStub(EndgameService::class),
+            new RoundClock(),
+            $this->timeTraps(),
+        );
+        $result = $service->record($round, $player, new Point(13.4, 52.5));
+
+        self::assertSame($player, $result->location->getPlayer());
     }
 
     #[Test]
@@ -199,6 +231,7 @@ final class LocationServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setEndgameStartedAt(new \DateTimeImmutable());
         $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $hider, Side::Hider);
@@ -314,6 +347,39 @@ final class LocationServiceTest extends TestCase
             new RoundClock(),
             $this->timeTraps(),
         )->record($round, $player, new Point(13.4, 52.5));
+    }
+
+    #[Test]
+    public function itRejectsASpectatorPingAndPublishesNothing(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $player = new Player($game, IdentityFactory::create('Eve', 'test-password'));
+        $membership = new RoundMembership($round, $player, Side::Spectator);
+
+        $locations = $this->createMock(PlayerLocationRepository::class);
+        $locations->expects(self::never())->method('save');
+
+        $memberships = $this->createStub(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($membership);
+
+        $hub = $this->createMock(HubInterface::class);
+        $hub->expects(self::never())->method('publish');
+
+        try {
+            new LocationService(
+                $locations,
+                $memberships,
+                new MercureJwtService(self::SECRET, 'https://jetlag.test'),
+                $hub,
+                $this->createStub(EndgameService::class),
+                new RoundClock(),
+                $this->timeTraps(),
+            )->record($round, $player, new Point(13.4, 52.5));
+            self::fail('Expected a FunctionalException.');
+        } catch (FunctionalException $e) {
+            self::assertSame('location.spectator', $e->getErrorKey());
+        }
     }
 
     #[Test]

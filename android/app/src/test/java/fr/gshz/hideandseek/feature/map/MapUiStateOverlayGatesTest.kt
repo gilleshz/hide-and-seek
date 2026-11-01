@@ -2,10 +2,12 @@ package fr.gshz.hideandseek.feature.map
 
 import fr.gshz.hideandseek.domain.model.AskedQuestion
 import fr.gshz.hideandseek.domain.model.HidingZone
+import fr.gshz.hideandseek.domain.model.LocationUpdate
 import fr.gshz.hideandseek.domain.model.PhotoTarget
 import fr.gshz.hideandseek.domain.model.QuestionCategory
 import fr.gshz.hideandseek.domain.model.RoundStatus
 import fr.gshz.hideandseek.domain.model.Side
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -84,6 +86,54 @@ class MapUiStateOverlayGatesTest {
         assertFalse(hunting.copy(roundStatus = RoundStatus.Hiding).canPlaceTimeTraps)
     }
 
+    @Test
+    fun `a seeker never sees the hider on the map`() {
+        val markers = buildMarkers(ROSTER, selfUuid = null, LOCATIONS, selfGps = null, viewerSide = Side.Seeker)
+
+        assertEquals(listOf("seeker-1"), markers.map { it.playerUuid })
+    }
+
+    @Test
+    fun `a spectator sees the hider and the seekers`() {
+        val markers = buildMarkers(ROSTER, selfUuid = null, LOCATIONS, selfGps = null, viewerSide = Side.Spectator)
+
+        assertEquals(setOf("hider-1", "seeker-1"), markers.map { it.playerUuid }.toSet())
+    }
+
+    @Test
+    fun `a spectator recenter targets the hider`() {
+        val markers = buildMarkers(ROSTER, selfUuid = null, LOCATIONS, selfGps = null, viewerSide = Side.Spectator)
+
+        assertEquals("hider-1", recenterTarget(markers)?.playerUuid)
+    }
+
+    @Test
+    fun `a spectator has every game action gated off`() {
+        val state = MapUiState(
+            side = Side.Spectator,
+            roundStatus = RoundStatus.Seeking,
+            hasHidingZone = true,
+            outstandingQuestion = question(),
+        )
+
+        assertFalse(state.canEndRound)
+        assertFalse(state.canPlayZoneCards)
+        assertFalse(state.canPlaceTimeTraps)
+        assertFalse(state.showHiderQuestionChip)
+        assertFalse(state.showSeekersFrozenBanner)
+        assertTrue(state.canViewSeekerMarkers)
+        assertFalse(state.canPlaceZone)
+    }
+
+    @Test
+    fun `a hider can only place a zone after the round starts`() {
+        val lobby = MapUiState(side = Side.Hider, roundStatus = RoundStatus.Lobby)
+
+        assertFalse(lobby.canPlaceZone)
+        assertTrue(lobby.copy(roundStatus = RoundStatus.Hiding).canPlaceZone)
+        assertTrue(lobby.copy(roundStatus = RoundStatus.Seeking).canPlaceZone)
+    }
+
     private fun hiderState() = MapUiState(side = Side.Hider, outstandingQuestion = question())
 
     private fun question(deadline: String? = "2026-07-28T15:00:00Z") = AskedQuestion(
@@ -105,5 +155,14 @@ class MapUiStateOverlayGatesTest {
 
         // One degree of latitude is about 111 km, so this lands well outside a 500 m zone.
         const val FAR_DEGREES = 0.02
+
+        val ROSTER = mapOf(
+            "hider-1" to RosterPlayer("Alice", side = Side.Hider),
+            "seeker-1" to RosterPlayer("Bob", side = Side.Seeker),
+        )
+        val LOCATIONS = mapOf(
+            "hider-1" to LocationUpdate("hider-1", 46.52, 6.63, "2026-07-28T14:00:00Z"),
+            "seeker-1" to LocationUpdate("seeker-1", 46.53, 6.64, "2026-07-28T14:00:00Z"),
+        )
     }
 }

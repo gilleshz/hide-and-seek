@@ -96,13 +96,17 @@
     <string name="lobby_show_qr">Show QR code</string>
     <string name="lobby_hide_qr">Hide QR code</string>
     <string name="lobby_roster_title">Players</string>
-    <string name="lobby_pick_side_title">Pick your side</string>
+    <string name="lobby_pick_side_title">Pick your role</string>
     <string name="lobby_location_disclosure_title">Share your location?</string>
     <string name="lobby_location_disclosure_body">During a round, this app sends your live location to the game server so the other players can see you on the map. This includes while the app is in the background or your phone is locked. Location is only used for the game.</string>
     <string name="lobby_location_disclosure_continue">Continue</string>
     <string name="lobby_location_disclosure_later">Not now</string>
     <string name="lobby_side_hider">Hider</string>
     <string name="lobby_side_seeker">Seeker</string>
+    <string name="lobby_side_spectator">Spectator</string>
+    <string name="lobby_spectate_helper">Follow the game without sharing your location.</string>
+    <string name="lobby_spectate_helper_selected">You see every player and every map layer. Roles are locked until the next round.</string>
+    <string name="lobby_roles_locked">Roles are locked until the next round.</string>
     <string name="lobby_side_unassigned">Unassigned</string>
     <string name="lobby_start_sharing_location">Start sharing location</string>
     <string name="lobby_stop_sharing_location">Stop sharing location</string>
@@ -136,6 +140,7 @@
     <string name="lobby_delete_game_confirm_body">This permanently deletes the game and removes all players. This cannot be undone.</string>
     <string name="lobby_delete_game_confirm">Delete</string>
 
+    <string name="map_spectator">Spectator</string>
     <string name="map_open_questions">Questions</string>
     <string name="map_recenter_button">Recenter on my location</string>
     <string name="map_style_button">Map style</string>
@@ -270,6 +275,9 @@
     <string name="location_notification_leave_hint">Leave the game to stop sharing.</string>
     <string name="location_notification_title_paused">Location sharing paused</string>
     <string name="location_notification_paused_hint">Round over. Leave the game to close this notification.</string>
+    <string name="spectator_notification_channel_name">Spectator mode</string>
+    <string name="spectator_notification_title">Spectating %1$s</string>
+    <string name="spectator_notification_text">Following the game. Your location is not shared.</string>
 
     <string name="endgame_notification_channel_name">Endgame alerts</string>
     <string name="endgame_notification_title">Seeker nearby!</string>
@@ -746,6 +754,8 @@
     <string name="error_not_hider">Only the hiders can do this.</string>
     <string name="error_not_seeker">Only the seeker can do this.</string>
     <string name="error_cannot_end_round">The round cannot be ended right now.</string>
+    <string name="error_spectator_read_only">A spectator cannot change the game.</string>
+    <string name="error_round_not_started">The round has not started yet.</string>
     <string name="error_game_full">This game is full.</string>
     <string name="error_game_already_started">The game has already started.</string>
     <string name="error_name_taken">The name <xliff:g>%1$s</xliff:g> is already taken in this game.</string>

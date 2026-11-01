@@ -144,7 +144,6 @@ final class LeaveProcessorTest extends TestCase
             $players,
             new RosterNotifier($hub, $mercure, new RosterService($rosterPlayers, $rounds, $memberships)),
             $chat,
-            $memberships,
             $entityManager,
         );
 

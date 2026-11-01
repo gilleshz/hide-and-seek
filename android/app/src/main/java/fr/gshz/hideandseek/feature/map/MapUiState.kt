@@ -154,6 +154,11 @@ data class MapUiState(
     val timeTrapErrorKey: String? = null,
     val timeTrapErrorArgs: Map<String, String>? = null,
 ) {
+    val isSpectator: Boolean get() = side == Side.Spectator
+
+    /** Spectators read the seekers' candidate markers; only seekers may change them. */
+    val canViewSeekerMarkers: Boolean get() = side == Side.Seeker || side == Side.Spectator
+
     /** Ending the round declares the hiders' bonus cards, so it is theirs to press. */
     val canEndRound: Boolean get() = roundStatus == RoundStatus.Seeking && side == Side.Hider
 
@@ -163,6 +168,9 @@ data class MapUiState(
      */
     val canPlayZoneCards: Boolean
         get() = side == Side.Hider && hasHidingZone && roundStatus == RoundStatus.Seeking
+
+    val canPlaceZone: Boolean
+        get() = side == Side.Hider && roundStatus != null && roundStatus != RoundStatus.Lobby
 
     /**
      * The zone panel wins z-order over the trace panel, so a hider who left placement mode open would
@@ -213,6 +221,7 @@ data class PlayerMarker(
     val longitude: Double,
     val isSelf: Boolean,
     val avatarUrl: String? = null,
+    val side: Side? = null,
 )
 
 internal data class RosterPlayer(
@@ -488,6 +497,7 @@ private fun playerMarker(
         longitude = longitude,
         isSelf = isSelf,
         avatarUrl = entry?.avatarUrl,
+        side = entry?.side,
     )
 }
 

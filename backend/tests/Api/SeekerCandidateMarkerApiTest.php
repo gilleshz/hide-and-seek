@@ -95,6 +95,35 @@ final class SeekerCandidateMarkerApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function spectatorsCanListButNotPlaceOrDeleteCandidateMarkers(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $seeker = $this->newPlayer($game, 'Sam', 'seeker');
+        $spectator = $this->newPlayer($game, 'Eve', 'spectator');
+        $markers = "/api/rounds/{$game['roundUuid']}/seeker-candidate-markers";
+
+        $marker = $client->request('POST', $markers, $this->headersWithToken($seeker['token']) + [
+            'json' => ['lat' => 52.52, 'lng' => 13.405],
+        ])->toArray();
+        self::assertIsString($marker['uuid']);
+
+        $listed = $client->request('GET', $markers, $this->headersWithToken($spectator['token']))->toArray();
+        self::assertIsArray($listed['member']);
+        self::assertCount(1, $listed['member']);
+
+        $client->request('POST', $markers, $this->headersWithToken($spectator['token']) + [
+            'json' => ['lat' => 52.52, 'lng' => 13.405],
+        ]);
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'seeker_candidate.not_seeker']);
+
+        $client->request('DELETE', "{$markers}/{$marker['uuid']}", $this->headersWithToken($spectator['token']));
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'seeker_candidate.not_seeker']);
+    }
+
+    #[Test]
     public function readingCandidateMarkersRequiresASubscriberToken(): void
     {
         $client = static::createClient();

@@ -8,7 +8,6 @@ use App\Entity\Player;
 use App\Exception\EntityNotFoundException;
 use App\Repository\GameRepository;
 use App\Repository\PlayerRepository;
-use App\Repository\RoundMembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class LeaveService
@@ -18,7 +17,6 @@ final readonly class LeaveService
         private PlayerRepository $players,
         private RosterNotifier $roster,
         private ChatService $chatService,
-        private RoundMembershipRepository $memberships,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -44,8 +42,7 @@ final readonly class LeaveService
                 bodyKey: 'system.player_left',
                 bodyArgs: ['name' => $displayName],
             );
-            // Marked, not deleted: their messages and read receipts wait for them to come back.
-            $this->memberships->removeByPlayer($player);
+            // Marked, not deleted: the round membership keeps its side so a rejoin cannot reset the role.
             $this->players->save($player->markLeft(new \DateTimeImmutable()));
         });
         $this->roster->publishChanged($game);
@@ -75,7 +72,6 @@ final readonly class LeaveService
                 bodyKey: $removedByHost ? 'system.player_removed' : 'system.player_left',
                 bodyArgs: ['name' => $displayName],
             );
-            $this->memberships->removeByPlayer($player);
             $this->players->save($player->markLeft(new \DateTimeImmutable()));
         });
         $this->roster->publishChanged($game);

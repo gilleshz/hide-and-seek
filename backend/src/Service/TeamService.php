@@ -66,9 +66,9 @@ final readonly class TeamService
             throw new FunctionalException(message: 'Cannot choose a side for an ended round.', errorKey: 'team.round_ended');
         }
 
-        // First choice stays possible mid-round, but seeker-only: a mid-round hider leaks pings.
+        // First choice stays possible mid-round except hider: a mid-round hider leaks pings.
         if ($round->getStatus() !== RoundStatus::Lobby && $side === Side::Hider) {
-            throw new FunctionalException(message: 'Only the seeker side can be joined once the round has left the lobby.', errorKey: 'team.only_seeker_mid_round');
+            throw new FunctionalException(message: 'Only the seeker or spectator side can be joined once the round has left the lobby.', errorKey: 'team.only_seeker_mid_round');
         }
 
         $membership = new RoundMembership($round, $player, $side);

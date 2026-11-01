@@ -11,6 +11,7 @@ use App\Entity\PlayerLocation;
 use App\Entity\Round;
 use App\Enum\RoundStatus;
 use App\Enum\Side;
+use App\ErrorKey;
 use App\Exception\FunctionalException;
 use App\Repository\PlayerLocationRepository;
 use App\Repository\RoundMembershipRepository;
@@ -46,10 +47,21 @@ final readonly class LocationService
             throw new FunctionalException(message: 'Player has not chosen a side for this round.', errorKey: 'location.no_side_chosen');
         }
 
+        // A spectator has no position; the publish fallback would otherwise put it on the seeker topic.
+        if ($membership->getSide() === Side::Spectator) {
+            throw new FunctionalException(
+                message: 'A spectator does not share a location.',
+                errorKey: ErrorKey::LOCATION_SPECTATOR,
+            );
+        }
+
         $location = new PlayerLocation($round, $player, $point, $altitude);
         $this->locations->save($location);
 
-        $this->publish($round, $membership->getSide(), $location);
+        // A hider's lobby ping stays off the wire: roles are still freely switchable.
+        if ($membership->getSide() !== Side::Hider || $round->getStatus() !== RoundStatus::Lobby) {
+            $this->publish($round, $membership->getSide(), $location);
+        }
 
         // A frozen seeker cannot capture: during a move window the stored zone is the one being abandoned.
         if (

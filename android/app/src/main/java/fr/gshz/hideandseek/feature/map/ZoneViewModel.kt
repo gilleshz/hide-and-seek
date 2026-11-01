@@ -9,6 +9,7 @@ import fr.gshz.hideandseek.core.util.serverErrorArgs
 import fr.gshz.hideandseek.core.util.serverErrorKey
 import fr.gshz.hideandseek.core.util.toErrorType
 import fr.gshz.hideandseek.domain.model.HidingZone
+import fr.gshz.hideandseek.domain.model.RoundStatus
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.ZoneCard
 import fr.gshz.hideandseek.domain.model.ZonePlacement
@@ -77,6 +78,7 @@ class ZoneViewModel @Inject constructor(
         observeZoneEvents()
         observeSelfLocation()
         observeSessionChanges()
+        observeRoundPhaseChanges()
         observeTraceRequestCancellations()
     }
 
@@ -87,7 +89,8 @@ class ZoneViewModel @Inject constructor(
     private fun loadHidingZone() {
         viewModelScope.launch {
             val session = sessionEvents.sessionRepository.currentSession() ?: return@launch
-            if (session.side != Side.Hider.wireValue) return@launch
+            val side = Side.fromWireValueOrNull(session.side)
+            if (side != Side.Hider && side != Side.Spectator) return@launch
             try {
                 val zone = zoneRepository.currentHidingZone(session.roundUuid)
                     ?: return@launch
@@ -97,6 +100,17 @@ class ZoneViewModel @Inject constructor(
             } catch (e: HttpException) {
                 sessionEvents.handleSessionExpiry(e)
                 Log.w(TAG, "Failed to load the hiding zone", e)
+            }
+        }
+    }
+
+    private fun observeRoundPhaseChanges() {
+        viewModelScope.launch {
+            var lastPhase: RoundStatus? = null
+            sessionEvents.gameEventRepository.timerEvents.collect { event ->
+                val phase = RoundStatus.fromWireValueOrNull(event.status) ?: return@collect
+                if (lastPhase == RoundStatus.Lobby && phase != RoundStatus.Lobby) loadHidingZone()
+                lastPhase = phase
             }
         }
     }

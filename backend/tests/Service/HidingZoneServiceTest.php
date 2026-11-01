@@ -133,6 +133,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
@@ -158,6 +159,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Large, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
@@ -182,6 +184,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
         $existing = new HidingZone($round, new Point(0.0, 0.0), 500.0);
@@ -210,6 +213,7 @@ final class HidingZoneServiceTest extends TestCase
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $game->setBoundaryGeoJson('{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}');
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 
@@ -238,6 +242,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Seeker);
 
@@ -261,6 +266,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         $rounds = $this->createStub(RoundRepository::class);
@@ -299,6 +305,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
 
         $rounds = $this->createStub(RoundRepository::class);
         $rounds->method('findOneByUuid')->willReturn($round);
@@ -320,6 +327,8 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
+        $round->setStatus(RoundStatus::Hiding);
         $hub = new FakeMercureHub();
         $mercure = new MercureJwtService(self::SECRET, 'https://jetlag.test');
 
@@ -350,10 +359,29 @@ final class HidingZoneServiceTest extends TestCase
     }
 
     #[Test]
+    public function itRefusesToSetAZoneWhileTheRoundIsInTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = (new Round($game))->setStatus(RoundStatus::Lobby);
+        $hub = new FakeMercureHub();
+
+        try {
+            $this->hiderService($round, $hub)
+                ->setZone($round->getUuid(), 'player-uuid', new ZonePlacement(new Point(13.405, 52.52), 750.0));
+            self::fail('Expected a FunctionalException.');
+        } catch (FunctionalException $e) {
+            self::assertSame('round.not_started', $e->getErrorKey());
+        }
+
+        self::assertCount(0, $hub->published());
+    }
+
+    #[Test]
     public function itPublishesTheBareRadiusOnTheSeekerOnlyTopic(): void
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $hub = new FakeMercureHub();
 
         $this->hiderService($round, $hub)
@@ -376,6 +404,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -400,6 +429,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Imperial);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -420,6 +450,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Hiding)->setHidingPeriodEndsAt(new \DateTimeImmutable('-1 minute'));
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -435,6 +466,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
         $existing = new HidingZone($round, new Point(13.0, 52.0), 750.0);
 
@@ -453,6 +485,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
         $existing = new HidingZone($round, new Point(13.405, 52.52), 750.0);
 
@@ -467,6 +500,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Hiding)->setHidingPeriodEndsAt(new \DateTimeImmutable('+30 minutes'));
         $existing = new HidingZone($round, new Point(13.0, 52.0), 750.0);
 
@@ -482,6 +516,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $existing = new HidingZone($round, new Point(13.0, 52.0), 750.0);
 
         $messages = $this->createMock(ChatMessageRepository::class);
@@ -496,6 +531,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Hiding)->setHidingPeriodEndsAt(new \DateTimeImmutable('+30 minutes'));
         $existing = new HidingZone($round, new Point(13.405, 52.52), 750.0);
 
@@ -511,6 +547,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
         $existing = new HidingZone($round, new Point(13.405, 52.52), 500.0);
 
@@ -535,6 +572,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
         $existing = new HidingZone($round, new Point(13.405, 52.52), 500.0);
 
@@ -549,6 +587,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Hiding)->setHidingPeriodEndsAt(new \DateTimeImmutable('+10 minutes'));
         $existing = new HidingZone($round, new Point(13.405, 52.52), 500.0);
         $service = $this->hiderService($round, new FakeMercureHub(), $existing);
@@ -562,6 +601,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking)->setEndgameStartedAt(new \DateTimeImmutable());
         $existing = new HidingZone($round, new Point(13.405, 52.52), 500.0);
 
@@ -579,6 +619,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking);
         $service = $this->hiderService($round, new FakeMercureHub());
 
@@ -591,6 +632,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $round->setStatus(RoundStatus::Seeking)
             ->setHidingPeriodEndsAt(new \DateTimeImmutable('-12 minutes'));
         $existing = new HidingZone($round, new Point(13.405, 52.52), 500.0);
@@ -620,6 +662,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $existing = new HidingZone($round, new Point(13.0, 52.0), 500.0);
         $existing->setStationName('Hauptbahnhof');
 
@@ -637,6 +680,7 @@ final class HidingZoneServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $existing = new HidingZone($round, new Point(13.405, 52.52), 500.0);
         $existing->setStationName('Alexanderplatz');
 

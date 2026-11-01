@@ -9,6 +9,7 @@ use App\Entity\Game;
 use App\Entity\HidingZone;
 use App\Entity\Player;
 use App\Entity\Round;
+use App\Enum\RoundStatus;
 use App\Enum\Side;
 use App\Enum\ZoneCard;
 use App\ErrorKey;
@@ -88,8 +89,8 @@ final readonly class HidingZoneService
 
     /**
      * The zone only reaches hiders live on their own Mercure topic, so a hider whose app restarts has no
-     * way back to it. This hands it over once, to a caller the token proves is a hider on this round: the
-     * API key is shared and player UUIDs are public, so neither can gate a seeker-proof coordinate.
+     * way back to it. This hands it over once, to a caller the token proves is a hider or spectator on this
+     * round: the API key is shared and player UUIDs are public, so neither can gate a seeker-proof coordinate.
      */
     public function currentZoneForSubscriber(string $roundUuid): ?HidingZone
     {
@@ -98,7 +99,7 @@ final readonly class HidingZoneService
             throw new EntityNotFoundException(message: 'Round not found.', errorKey: 'round.not_found');
         }
 
-        $this->hiderGuard->assertHider($round, 'hiding_zone.not_hider');
+        $this->hiderGuard->assertHiderOrSpectator($round, 'hiding_zone.not_hider');
 
         return $this->zones->findOneByRound($round);
     }
@@ -165,6 +166,13 @@ final readonly class HidingZoneService
      */
     private function assertFreeToPlace(Round $round, ?HidingZone $existing): void
     {
+        if ($round->getStatus() === RoundStatus::Lobby) {
+            throw new FunctionalException(
+                message: 'The hiding zone can be set once the round starts.',
+                errorKey: ErrorKey::ROUND_NOT_STARTED,
+            );
+        }
+
         if ($existing !== null && $this->clock->isSeeking($round)) {
             throw new FunctionalException(
                 message: 'Once the seekers are hunting, the hiding zone only changes by playing a card.',

@@ -56,6 +56,94 @@ final class RoundApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function itLetsAHostSpectatorStartAndCreateRoundsAndSeedsTheRole(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $alice = $this->newPlayer($game, 'Alice', 'spectator');
+        $bob = $this->newPlayer($game, 'Bob', 'seeker');
+
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->headersWithToken($alice['token']) + [
+            'json' => [],
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/stop", $this->headersWithToken($alice['token']) + [
+            'json' => [],
+        ]);
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'round.spectator_read_only']);
+
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/stop", $this->headersWithToken($bob['token']) + [
+            'json' => [],
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $created = $client->request(
+            'POST',
+            "/api/games/{$game['uuid']}/rounds",
+            $this->headersWithToken($alice['token']),
+        )->toArray();
+        self::assertResponseStatusCodeSame(201);
+        self::assertIsString($created['roundUuid']);
+
+        $roster = $client->request('GET', "/api/games/{$game['uuid']}/players", self::AUTH)->toArray();
+        $members = $roster['member'];
+        self::assertIsArray($members);
+        $sides = [];
+        foreach ($members as $member) {
+            self::assertIsArray($member);
+            self::assertIsString($member['uuid']);
+            $sides[$member['uuid']] = $member['side'];
+        }
+        self::assertSame('spectator', $sides[$alice['playerUuid']]);
+        self::assertSame('hider', $sides[$bob['playerUuid']]);
+    }
+
+    #[Test]
+    public function itRejectsANonHostSpectatorStartingOrCreatingRounds(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $alice = $this->newPlayer($game, 'Alice', 'seeker');
+        $bob = $this->newPlayer($game, 'Bob', 'spectator');
+
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->headersWithToken($bob['token']) + [
+            'json' => [],
+        ]);
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'round.spectator_read_only']);
+
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->headersWithToken($alice['token']) + [
+            'json' => [],
+        ]);
+        self::assertResponseIsSuccessful();
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/stop", $this->headersWithToken($alice['token']) + [
+            'json' => [],
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $client->request('POST', "/api/games/{$game['uuid']}/rounds", $this->headersWithToken($bob['token']));
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'round.spectator_read_only']);
+    }
+
+    #[Test]
+    public function itStillLetsANonHostPlayerStartARound(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $this->newPlayer($game, 'Alice', 'seeker');
+        $bob = $this->newPlayer($game, 'Bob', 'seeker');
+
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->headersWithToken($bob['token']) + [
+            'json' => [],
+        ]);
+
+        self::assertResponseIsSuccessful();
+    }
+
+    #[Test]
     public function itStopsARoundMidHidingWithoutPostingAHidingTime(): void
     {
         $client = static::createClient();

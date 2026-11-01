@@ -96,13 +96,17 @@
     <string name="lobby_show_qr">Afficher le QR code</string>
     <string name="lobby_hide_qr">Masquer le QR code</string>
     <string name="lobby_roster_title">Membres</string>
-    <string name="lobby_pick_side_title">Choisissez votre camp</string>
+    <string name="lobby_pick_side_title">Choisissez votre rôle</string>
     <string name="lobby_location_disclosure_title">Partager votre position ?</string>
     <string name="lobby_location_disclosure_body">Pendant une manche, cette application envoie votre position en direct au serveur de jeu pour que les autres joueurs puissent vous voir sur la carte. Cela inclut lorsque l\'application est en arrière-plan ou que votre téléphone est verrouillé. La position sert uniquement au jeu.</string>
     <string name="lobby_location_disclosure_continue">Continuer</string>
     <string name="lobby_location_disclosure_later">Plus tard</string>
     <string name="lobby_side_hider">Cachette</string>
     <string name="lobby_side_seeker">Recherche</string>
+    <string name="lobby_side_spectator">Observation</string>
+    <string name="lobby_spectate_helper">Suivre la partie sans partager sa position.</string>
+    <string name="lobby_spectate_helper_selected">Vous voyez chaque personne et chaque couche de la carte. Les rôles sont verrouillés jusqu\'à la prochaine manche.</string>
+    <string name="lobby_roles_locked">Les rôles sont verrouillés jusqu\'à la prochaine manche.</string>
     <string name="lobby_side_unassigned">Sans équipe</string>
     <string name="lobby_start_sharing_location">Partager la position</string>
     <string name="lobby_stop_sharing_location">Arrêter le partage</string>
@@ -136,6 +140,7 @@
     <string name="lobby_delete_game_confirm_body">Cela supprime définitivement la partie et en retire tout le monde. Cette action est irréversible.</string>
     <string name="lobby_delete_game_confirm">Supprimer</string>
 
+    <string name="map_spectator">Observation</string>
     <string name="map_open_questions">Questions</string>
     <string name="map_recenter_button">Recentrer sur ma position</string>
     <string name="map_style_button">Style de carte</string>
@@ -270,6 +275,9 @@
     <string name="location_notification_leave_hint">Quittez la partie pour arrêter le partage.</string>
     <string name="location_notification_title_paused">Partage de position en pause</string>
     <string name="location_notification_paused_hint">Manche terminée. Quittez la partie pour fermer cette notification.</string>
+    <string name="spectator_notification_channel_name">Mode observation</string>
+    <string name="spectator_notification_title">Observation : %1$s</string>
+    <string name="spectator_notification_text">Vous suivez la partie. Votre position n\'est pas partagée.</string>
 
     <string name="endgame_notification_channel_name">Alertes de fin de partie</string>
     <string name="endgame_notification_title">Quelqu\'un vous cherche à proximité !</string>
@@ -743,6 +751,8 @@
     <string name="error_not_hider">Seule l\'équipe qui se cache peut faire ceci.</string>
     <string name="error_not_seeker">Seule l\'équipe qui cherche peut faire ceci.</string>
     <string name="error_cannot_end_round">La manche ne peut pas être terminée pour le moment.</string>
+    <string name="error_spectator_read_only">Le mode observation ne permet pas de modifier la partie.</string>
+    <string name="error_round_not_started">La manche n\'a pas encore commencé.</string>
     <string name="error_game_full">Cette partie est complète.</string>
     <string name="error_game_already_started">La partie a déjà commencé.</string>
     <string name="error_name_taken">Le nom <xliff:g>%1$s</xliff:g> est déjà pris dans cette partie.</string>

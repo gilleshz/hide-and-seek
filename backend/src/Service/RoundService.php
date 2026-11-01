@@ -234,13 +234,14 @@ final readonly class RoundService
             return;
         }
         foreach ($this->memberships->findByRound($previous) as $m) {
-            // Leaving already drops memberships; this keeps a stale one from seeding an absent side.
+            // Memberships are kept on leave, so a departed player must be skipped explicitly.
             if ($m->getPlayer()->hasLeft()) {
                 continue;
             }
             $swapped = match ($m->getSide()) {
                 Side::Hider => Side::Seeker,
                 Side::Seeker => Side::Hider,
+                Side::Spectator => Side::Spectator,
             };
             $this->memberships->save(new RoundMembership($next, $m->getPlayer(), $swapped), flush: false);
         }

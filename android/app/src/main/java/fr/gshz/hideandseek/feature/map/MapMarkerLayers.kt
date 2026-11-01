@@ -10,6 +10,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import androidx.compose.runtime.MutableState
+import fr.gshz.hideandseek.domain.model.Side
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -276,13 +277,18 @@ private fun seekerMarkersGeoJson(circles: List<ZonePin>, radiusMeters: Double): 
     return """{"type":"FeatureCollection","features":[$features]}"""
 }
 
+internal fun recenterTarget(markers: List<PlayerMarker>): PlayerMarker? =
+    markers.firstOrNull { it.isSelf }
+        ?: markers.firstOrNull { it.side == Side.Hider }
+        ?: markers.firstOrNull()
+
 internal fun MapLibreMap.animateRecenter(
     markers: List<PlayerMarker>,
     hasCenteredOnSelf: MutableState<Boolean>,
 ) {
-    val self = markers.firstOrNull { it.isSelf } ?: return
+    val target = recenterTarget(markers) ?: return
     animateCamera(
-        CameraUpdateFactory.newLatLngZoom(LatLng(self.latitude, self.longitude), MapConstants.DEFAULT_ZOOM),
+        CameraUpdateFactory.newLatLngZoom(LatLng(target.latitude, target.longitude), MapConstants.DEFAULT_ZOOM),
     )
     hasCenteredOnSelf.value = true
 }

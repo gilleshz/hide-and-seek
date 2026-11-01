@@ -46,7 +46,8 @@ class SeekerMarkersViewModel @Inject constructor(
     private fun loadSeekerMarkers() {
         viewModelScope.launch {
             val session = sessionEvents.sessionRepository.currentSession() ?: return@launch
-            if (session.side != Side.Seeker.wireValue) return@launch
+            val side = Side.fromWireValueOrNull(session.side)
+            if (side != Side.Seeker && side != Side.Spectator) return@launch
             try {
                 seekerMarkers.value = seekerMarkerRepository.listMarkers(session.roundUuid)
             } catch (e: IOException) {
@@ -61,7 +62,7 @@ class SeekerMarkersViewModel @Inject constructor(
     private fun observeSeekerCandidateEvents() {
         viewModelScope.launch {
             sessionEvents.gameEventRepository.seekerCandidateAdded.collect { event ->
-                if (!isSeeker()) return@collect
+                if (!canViewMarkers()) return@collect
                 seekerMarkers.update { current ->
                     if (current.any { it.uuid == event.uuid }) {
                         current
@@ -136,6 +137,8 @@ class SeekerMarkersViewModel @Inject constructor(
             }
         }
     }
+
+    private fun canViewMarkers(): Boolean = side.value == Side.Seeker || side.value == Side.Spectator
 
     private fun isSeeker(): Boolean = side.value == Side.Seeker
 

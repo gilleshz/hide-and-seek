@@ -13,6 +13,7 @@ use App\Entity\Round;
 use App\Entity\RoundMembership;
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RoundStatus;
 use App\Enum\Side;
 use App\Exception\EntityNotFoundException;
 use App\Exception\IdentityRequiredException;
@@ -67,6 +68,7 @@ final class TeamProcessorTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $membership = new RoundMembership($round, $player, Side::Hider);
 

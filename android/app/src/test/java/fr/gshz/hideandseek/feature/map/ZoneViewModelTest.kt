@@ -5,6 +5,7 @@ import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.domain.model.HidingZone
 import fr.gshz.hideandseek.domain.model.LocationUpdate
 import fr.gshz.hideandseek.domain.model.ZoneCard
+import fr.gshz.hideandseek.domain.repository.TimerEvent
 import fr.gshz.hideandseek.domain.repository.ZoneChanged
 import fr.gshz.hideandseek.domain.repository.ZoneRadiusChanged
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,12 @@ class ZoneViewModelTest {
     private fun seedHider() {
         fixture.sessionRepository.seed(
             PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "hider"),
+        )
+    }
+
+    private fun seedSpectator() {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "spectator"),
         )
     }
 
@@ -261,6 +268,55 @@ class ZoneViewModelTest {
             while (state.isPlacingZone) state = awaitItem()
 
             assertEquals(0, fixture.zoneRepository.currentZoneCalls)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a spectator loads the hiding zone on entry`() = runTest(testDispatcher) {
+        seedSpectator()
+        fixture.zoneRepository.currentZone = HidingZone(
+            roundUuid = "round-1",
+            lat = 52.52,
+            lng = 13.405,
+            radiusMeters = 750.0,
+        )
+        val viewModel = fixture.createZoneViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.submittedZone == null) state = awaitItem()
+
+            assertEquals(52.52, state.submittedZone?.lat)
+            assertEquals(1, fixture.zoneRepository.currentZoneCalls)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a spectator reloads the hiding zone when the round leaves the lobby`() = runTest(testDispatcher) {
+        seedSpectator()
+        val viewModel = fixture.createZoneViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            fixture.gameEventRepository.emitTimerEvent(
+                TimerEvent(status = "lobby", hidingPeriodEndsAt = null, seekingEndedAt = null),
+            )
+            fixture.zoneRepository.currentZone = HidingZone(
+                roundUuid = "round-1",
+                lat = 52.52,
+                lng = 13.405,
+                radiusMeters = 750.0,
+            )
+            fixture.gameEventRepository.emitTimerEvent(
+                TimerEvent(status = "hiding", hidingPeriodEndsAt = null, seekingEndedAt = null),
+            )
+
+            while (state.submittedZone == null) state = awaitItem()
+
+            assertEquals(52.52, state.submittedZone?.lat)
+            assertEquals(2, fixture.zoneRepository.currentZoneCalls)
             cancelAndIgnoreRemainingEvents()
         }
     }

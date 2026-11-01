@@ -181,7 +181,7 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
     }
 
     #[Test]
-    public function leavingDropsEverySideThePlayerHeld(): void
+    public function leavingKeepsTheSideForTheRound(): void
     {
         [$game, $round] = $this->persistGameWithRound();
         $seekerAccount = IdentityFactory::create('Seeker ' . uniqid());
@@ -191,14 +191,15 @@ final class DepartedPlayerQueriesTest extends KernelTestCase
         $this->em->persist(new RoundMembership($round, $seeker, Side::Seeker));
         $this->em->flush();
 
-        self::assertNotNull($this->memberships->findOneByRoundAndPlayer($round, $seeker));
-
-        $this->memberships->removeByPlayer($seeker);
+        $seeker->markLeft(new \DateTimeImmutable());
+        $this->em->flush();
         $this->em->clear();
 
-        $reloadedPlayer = $this->players->findOneByUuid($seeker->getUuid());
+        $reloadedPlayer = $this->players->findOneByUuidIncludingLeft($seeker->getUuid());
         self::assertNotNull($reloadedPlayer);
-        self::assertNull($this->memberships->findOneByRoundAndPlayer($this->reload($round), $reloadedPlayer));
+        $membership = $this->memberships->findOneByRoundAndPlayer($this->reload($round), $reloadedPlayer);
+        self::assertNotNull($membership, 'A rejoin must not be able to reset the role.');
+        self::assertSame(Side::Seeker, $membership->getSide());
     }
 
     #[Test]

@@ -47,6 +47,9 @@ final class StreetNetworkApiTest extends ApiTestCase
         $this->joinWithSide($client, $game, 'Alice', 'hider');
         $seekerToken = $this->joinWithSide($client, $game, 'Bob', 'seeker');
 
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->authWith($this->hiderToken) + ['json' => []]);
+        self::assertResponseIsSuccessful();
+
         $client->request('GET', $this->url($game['roundUuid']), $this->authWith($seekerToken));
         self::assertResponseStatusCodeSame(400);
         self::assertJsonContains(['detail' => 'Only a hider on this round may read that.']);
@@ -66,6 +69,8 @@ final class StreetNetworkApiTest extends ApiTestCase
         $client = static::createClient();
         $game = $this->game($client);
         $this->joinWithSide($client, $game, 'Alice', 'hider');
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->authWith($this->hiderToken) + ['json' => []]);
+        self::assertResponseIsSuccessful();
 
         $body = $client->request('GET', $this->url($game['roundUuid']), $this->authWith($this->hiderToken))->toArray();
 
@@ -113,6 +118,8 @@ final class StreetNetworkApiTest extends ApiTestCase
         $client = static::createClient();
         $game = $this->game($client);
         $this->joinWithSide($client, $game, 'Alice', 'hider');
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->authWith($this->hiderToken) + ['json' => []]);
+        self::assertResponseIsSuccessful();
         $this->placeZone($client, $game['roundUuid']);
         $fetchedAt = $this->storeWarmedNetwork($game['roundUuid']);
 
@@ -153,6 +160,8 @@ final class StreetNetworkApiTest extends ApiTestCase
         $client = static::createClient();
         $game = $this->game($client);
         $this->joinWithSide($client, $game, 'Alice', 'hider');
+        $client->request('POST', "/api/rounds/{$game['roundUuid']}/start", $this->authWith($this->hiderToken) + ['json' => []]);
+        self::assertResponseIsSuccessful();
         $this->placeZone($client, $game['roundUuid']);
         $this->storeExhaustedNetwork($game['roundUuid']);
 
@@ -181,7 +190,7 @@ final class StreetNetworkApiTest extends ApiTestCase
 
     private function storeExhaustedNetwork(string $roundUuid): void
     {
-        $network = $this->newNetwork($roundUuid)
+        $network = $this->networkFor($roundUuid)
             ->setAttempts(StreetNetworkRules::MAX_WARM_ATTEMPTS)
             ->setStatus(StreetNetworkStatus::Unavailable);
 
@@ -190,19 +199,20 @@ final class StreetNetworkApiTest extends ApiTestCase
         $networks->save($network);
     }
 
-    private function newNetwork(string $roundUuid): RoundStreetNetwork
+    private function networkFor(string $roundUuid): RoundStreetNetwork
     {
-        return new RoundStreetNetwork(
-            $this->storedRound($roundUuid),
-            new Point(self::ZONE_LNG, self::ZONE_LAT),
-            self::ZONE_RADIUS,
-        );
+        $round = $this->storedRound($roundUuid);
+        /** @var RoundStreetNetworkRepository $networks */
+        $networks = self::getContainer()->get(RoundStreetNetworkRepository::class);
+
+        return $networks->findOneByRound($round)
+            ?? new RoundStreetNetwork($round, new Point(self::ZONE_LNG, self::ZONE_LAT), self::ZONE_RADIUS);
     }
 
     private function storeWarmedNetwork(string $roundUuid): \DateTimeImmutable
     {
         $fetchedAt = new \DateTimeImmutable('2026-08-01 12:00:00');
-        $network = $this->newNetwork($roundUuid);
+        $network = $this->networkFor($roundUuid);
         $network
             ->setPayload([
                 [

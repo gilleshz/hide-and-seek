@@ -24,6 +24,9 @@ final class LocationApiTest extends ApiTestCase
 
         [$playerUuid, $token] = $this->joinAndPickSide($client, $gameUuid, $roundUuid, 'Alice', 'hider');
 
+        $client->request('POST', "/api/rounds/{$roundUuid}/start", $this->headersWithToken($token) + ['json' => []]);
+        self::assertResponseIsSuccessful();
+
         $location = $client->request('POST', "/api/rounds/{$roundUuid}/location", $this->headersWithToken($token) + [
             'json' => ['lat' => 52.52, 'lng' => 13.405],
         ])->toArray();
@@ -35,10 +38,14 @@ final class LocationApiTest extends ApiTestCase
 
         /** @var FakeMercureHub $hub */
         $hub = self::getContainer()->get(FakeMercureHub::class);
-        $published = $hub->published();
+        $hiderTopic = "game/{$gameUuid}/round/{$roundUuid}/hider-locations";
+        $published = array_values(array_filter(
+            $hub->published(),
+            static fn ($update): bool => in_array($hiderTopic, $update->getTopics(), true),
+        ));
 
         self::assertCount(1, $published);
-        self::assertSame(["game/{$gameUuid}/round/{$roundUuid}/hider-locations"], $published[0]->getTopics());
+        self::assertSame([$hiderTopic], $published[0]->getTopics());
         self::assertTrue($published[0]->isPrivate());
         self::assertStringContainsString($playerUuid, $published[0]->getData());
     }
@@ -67,6 +74,28 @@ final class LocationApiTest extends ApiTestCase
         ]);
 
         self::assertResponseStatusCodeSame(400);
+    }
+
+    #[Test]
+    public function itRejectsASpectatorPingAndPublishesNothing(): void
+    {
+        $client = static::createClient();
+        $game = $this->createGame();
+        $session = $this->joinAndPickSide($client, $game['uuid'], $game['roundUuid'], 'Eve', 'spectator');
+
+        /** @var FakeMercureHub $hub */
+        $hub = self::getContainer()->get(FakeMercureHub::class);
+        $publishedBefore = count($hub->published());
+
+        $client->request(
+            'POST',
+            "/api/rounds/{$game['roundUuid']}/location",
+            $this->headersWithToken($session['token']) + ['json' => ['lat' => 52.52, 'lng' => 13.405]],
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'location.spectator']);
+        self::assertCount($publishedBefore, $hub->published());
     }
 
     #[Test]

@@ -14,6 +14,7 @@ use App\Exception\FunctionalException;
 use App\Repository\RoundRepository;
 use App\Service\IdentityResolver;
 use App\Service\RoundService;
+use App\Service\SpectatorGuard;
 
 /**
  * @implements ProcessorInterface<RoundStartInput, RoundResource>
@@ -25,6 +26,7 @@ final readonly class RoundStartProcessor implements ProcessorInterface
         private RoundService $roundService,
         private RoundRepository $rounds,
         private IdentityResolver $identity,
+        private SpectatorGuard $spectatorGuard,
     ) {
     }
 
@@ -49,6 +51,8 @@ final readonly class RoundStartProcessor implements ProcessorInterface
                 errorKey: 'round.player_wrong_game',
             );
         }
+
+        $this->spectatorGuard->assertMayManageRounds($round->getGame(), $round, $player);
 
         return RoundResource::fromEntity($this->roundService->start($roundUuid, $data->hidingPeriodMinutes));
     }

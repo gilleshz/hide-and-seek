@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\HidingZone;
 use App\Entity\Round;
+use App\Enum\RoundStatus;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
 
@@ -26,17 +27,14 @@ final readonly class HidingZonePublisher
      */
     public function publishZone(Round $round, HidingZone $zone): void
     {
-        $this->hub->publish(new Update(
-            $this->mercure->hiderLocationsTopic($round->getGame(), $round),
-            json_encode([
-                'type' => 'zone',
-                'roundUuid' => $round->getUuid(),
-                'lat' => $zone->getStationPoint()->getLatitude(),
-                'lng' => $zone->getStationPoint()->getLongitude(),
-                'radiusMeters' => $zone->getRadiusMeters(),
-            ], JSON_THROW_ON_ERROR),
-            private: true,
-        ));
+        // The zone point waits for the start: lobby roles are freely switchable.
+        if ($round->getStatus() !== RoundStatus::Lobby) {
+            $this->hub->publish(new Update(
+                $this->mercure->hiderLocationsTopic($round->getGame(), $round),
+                self::zonePayload($round, $zone),
+                private: true,
+            ));
+        }
 
         $this->hub->publish(new Update(
             $this->mercure->seekerZoneTopic($round->getGame(), $round),
@@ -45,5 +43,16 @@ final readonly class HidingZonePublisher
         ));
 
         $this->streetNetworks->enqueueForZone($round, $zone);
+    }
+
+    public static function zonePayload(Round $round, HidingZone $zone): string
+    {
+        return json_encode([
+            'type' => 'zone',
+            'roundUuid' => $round->getUuid(),
+            'lat' => $zone->getStationPoint()->getLatitude(),
+            'lng' => $zone->getStationPoint()->getLongitude(),
+            'radiusMeters' => $zone->getRadiusMeters(),
+        ], JSON_THROW_ON_ERROR);
     }
 }

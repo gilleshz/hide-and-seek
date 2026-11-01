@@ -24,6 +24,8 @@ private val ERROR_KEY_MAP: Map<String, Int> = mapOf(
     "round.not_hider" to R.string.error_not_hider,
     "round.not_seeker" to R.string.error_not_seeker,
     "round.cannot_end" to R.string.error_cannot_end_round,
+    "round.spectator_read_only" to R.string.error_spectator_read_only,
+    "round.not_started" to R.string.error_round_not_started,
     "game.not_found" to R.string.error_not_found,
     "game.full" to R.string.error_game_full,
     "game.already_started" to R.string.error_game_already_started,

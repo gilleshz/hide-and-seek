@@ -200,6 +200,56 @@ final class RoundServiceTest extends TestCase
     }
 
     #[Test]
+    public function itSeedsSpectatorsAsSpectatorsAndSkipsDepartedPlayersInTheNextRound(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $previous = new Round($game);
+        $spectator = new Player($game, IdentityFactory::create('Eve', 'test-password'));
+        $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
+        $departed = new Player($game, IdentityFactory::create('Gone', 'test-password'))
+            ->markLeft(new \DateTimeImmutable());
+
+        $memberships = $this->createMock(RoundMembershipRepository::class);
+        $memberships->method('findByRound')->willReturn([
+            new RoundMembership($previous, $spectator, Side::Spectator),
+            new RoundMembership($previous, $hider, Side::Hider),
+            new RoundMembership($previous, $seeker, Side::Seeker),
+            new RoundMembership($previous, $departed, Side::Spectator),
+        ]);
+        /** @var list<RoundMembership> $saved */
+        $saved = [];
+        $memberships->expects(self::exactly(3))->method('save')->willReturnCallback(
+            static function (RoundMembership $membership) use (&$saved): void {
+                $saved[] = $membership;
+            },
+        );
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findActiveByGame')->willReturn(null);
+        $rounds->method('findLatestByGame')->willReturn($previous);
+        $games = $this->createStub(GameRepository::class);
+        $games->method('findOneByUuid')->willReturn($game);
+
+        $next = $this->service(
+            $rounds,
+            $this->createStub(HubInterface::class),
+            games: $games,
+            memberships: $memberships,
+        )->createNextRound('game-uuid');
+
+        $sides = [];
+        foreach ($saved as $membership) {
+            self::assertSame($next, $membership->getRound());
+            $sides[$membership->getPlayer()->getUuid()] = $membership->getSide();
+        }
+        self::assertSame(Side::Spectator, $sides[$spectator->getUuid()]);
+        self::assertSame(Side::Seeker, $sides[$hider->getUuid()]);
+        self::assertSame(Side::Hider, $sides[$seeker->getUuid()]);
+        self::assertArrayNotHasKey($departed->getUuid(), $sides);
+    }
+
+    #[Test]
     public function itWarnsOnStartWhenAPlayerHasNotChosenASide(): void
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);

@@ -44,10 +44,22 @@ data class LobbyUiState(
     val locationDisclosureAccepted: Boolean = false,
     val hasUnreadChat: Boolean = false,
 ) {
-    val canStartRound: Boolean get() = roundStatus == RoundStatus.Lobby && !isStartingRound
+    val isSpectator: Boolean get() = mySide == Side.Spectator
+    val canStartRound: Boolean
+        get() = roundStatus == RoundStatus.Lobby && !isStartingRound && (!isSpectator || isHost)
     val allPlayersChoseSide: Boolean get() = roster.isNotEmpty() && roster.all { it.side != null }
-    val canCreateNewRound: Boolean get() = roundStatus == RoundStatus.Ended
-    val canStopRound: Boolean get() = roundStatus == RoundStatus.Hiding || roundStatus == RoundStatus.Seeking
+    val canCreateNewRound: Boolean get() = roundStatus == RoundStatus.Ended && (!isSpectator || isHost)
+    val canStopRound: Boolean
+        get() = (roundStatus == RoundStatus.Hiding || roundStatus == RoundStatus.Seeking) && !isSpectator
+    val showRolesLocked: Boolean get() = roundStatus != null && roundStatus != RoundStatus.Lobby
     val hidingTimeMinutes: Int? get() = hidingTimeMinutesInput.toIntOrNull()
     val hasLeaderboard: Boolean get() = leaderboard.isNotEmpty()
+
+    fun canChoose(role: Side): Boolean = when {
+        roundStatus == RoundStatus.Lobby -> true
+        mySide == role -> true
+        mySide != null -> false
+        roundStatus == RoundStatus.Hiding || roundStatus == RoundStatus.Seeking -> role != Side.Hider
+        else -> false
+    }
 }

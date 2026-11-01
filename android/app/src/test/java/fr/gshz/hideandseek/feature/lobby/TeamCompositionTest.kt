@@ -22,6 +22,18 @@ class TeamCompositionTest {
     }
 
     @Test
+    fun `spectators never appear in the hider or seeker team lines`() {
+        val roster = listOf(
+            Player("1", "Alice", Side.Seeker),
+            Player("2", "Bob", Side.Hider),
+            Player("3", "Carol", Side.Spectator),
+        )
+
+        assertEquals("Bob", teamNames(roster, Side.Hider))
+        assertEquals("Alice", teamNames(roster, Side.Seeker))
+    }
+
+    @Test
     fun `returns null for a side without players`() {
         assertNull(teamNames(emptyList(), Side.Hider))
         assertNull(teamNames(listOf(Player("1", "Alice", Side.Seeker)), Side.Hider))

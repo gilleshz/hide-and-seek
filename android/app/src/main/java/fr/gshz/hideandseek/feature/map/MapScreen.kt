@@ -143,6 +143,7 @@ internal data class SeekerMarkerOverlay(
     val markers: List<SeekerMarker> = emptyList(),
     val radiusMeters: Double? = null,
     val isSeeker: Boolean = false,
+    val canViewMarkers: Boolean = isSeeker,
     val edition: Edition = Edition.Metric,
     val onMark: (Double, Double) -> Unit = { _, _ -> },
     val onUnmark: (String) -> Unit = {},
@@ -496,7 +497,11 @@ internal fun MapContent(
         modifier = modifier,
         topBar = {
             Column {
-                MapStatusBar(uiState.roundStatus, uiState.roundTimerSeconds)
+                MapStatusBar(
+                    uiState.roundStatus,
+                    uiState.roundTimerSeconds,
+                    spectator = uiState.isSpectator,
+                )
                 if (frozenHidingSeconds.value == null) {
                     ErrorText(uiState.roundError, errorKey = uiState.roundErrorKey, errorArgs = uiState.roundErrorArgs)
                 }
@@ -555,6 +560,7 @@ internal fun MapContent(
                     markers = uiState.seekerMarkers,
                     radiusMeters = uiState.currentZoneRadiusMeters,
                     isSeeker = uiState.side == Side.Seeker,
+                    canViewMarkers = uiState.canViewSeekerMarkers,
                     edition = uiState.edition,
                     onMark = onMarkSuspectedStation,
                     onUnmark = onUnmarkStation,
@@ -966,7 +972,7 @@ private fun HiderFabs(uiState: MapUiState, actions: ZoneActions, onEnterTimeTrap
             onEnterTimeTrapPlacement = onEnterTimeTrapPlacement,
         )
     }
-    if (!uiState.canPlayZoneCards && uiState.side == Side.Hider) {
+    if (!uiState.canPlayZoneCards && uiState.canPlaceZone) {
         FloatingActionButton(onClick = actions.onEnterZonePlacement) {
             Icon(
                 Icons.Filled.Place,
@@ -1303,7 +1309,7 @@ private fun MapLibreMapView(
     val avatars = rememberAvatarBitmaps(markers)
     val stationTooltip = remember { mutableStateOf<StationTooltipData?>(null) }
     val seekerAction = remember { mutableStateOf<SeekerActionData?>(null) }
-    val seekerCircles = if (seekerOverlay.isSeeker) {
+    val seekerCircles = if (seekerOverlay.canViewMarkers) {
         seekerOverlay.markers.map { ZonePin(it.lat, it.lng) }
     } else {
         emptyList()

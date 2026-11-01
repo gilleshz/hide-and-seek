@@ -25,14 +25,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -45,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -58,7 +52,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -82,7 +75,6 @@ import fr.gshz.hideandseek.core.ui.QrCode
 import fr.gshz.hideandseek.core.ui.RoleBadge
 import fr.gshz.hideandseek.core.ui.SectionHeader
 import fr.gshz.hideandseek.core.ui.theme.AppTheme
-import fr.gshz.hideandseek.core.ui.theme.BrandColors
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
@@ -121,13 +113,17 @@ fun LobbyScreen(
         )
     }
     var backgroundLocationMissing by rememberSaveable { mutableStateOf(false) }
-    var trackingStarted by rememberSaveable { mutableStateOf(false) }
+    var playerTrackingStarted by rememberSaveable { mutableStateOf(false) }
+    var spectatorTrackingStarted by rememberSaveable { mutableStateOf(false) }
     var showLocationDisclosure by rememberSaveable { mutableStateOf(false) }
     var preciseLocationMissing by rememberSaveable { mutableStateOf(false) }
 
-    fun startTracking() {
-        ContextCompat.startForegroundService(context, Intent(context, LocationTrackingService::class.java))
-        trackingStarted = true
+    fun startTracking(spectator: Boolean) {
+        ContextCompat.startForegroundService(
+            context,
+            LocationTrackingService.startIntent(context, spectator, uiState.gameName),
+        )
+        if (spectator) spectatorTrackingStarted = true else playerTrackingStarted = true
         preciseLocationMissing = false
     }
 
@@ -135,7 +131,7 @@ fun LobbyScreen(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         backgroundLocationMissing = !granted
-        startTracking()
+        startTracking(spectator = false)
     }
 
     fun requestBackgroundOrStart() {
@@ -145,7 +141,7 @@ fun LobbyScreen(
                 Manifest.permission.ACCESS_BACKGROUND_LOCATION,
             ) == PackageManager.PERMISSION_GRANTED
         if (backgroundGranted) {
-            startTracking()
+            startTracking(spectator = false)
         } else {
             backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
@@ -183,7 +179,13 @@ fun LobbyScreen(
     }
 
     LaunchedEffect(uiState.mySide, uiState.locationDisclosureAccepted) {
-        if (uiState.mySide == null || trackingStarted) return@LaunchedEffect
+        val side = uiState.mySide ?: return@LaunchedEffect
+        if (side == Side.Spectator) {
+            playerTrackingStarted = false
+            if (!spectatorTrackingStarted) startTracking(spectator = true)
+            return@LaunchedEffect
+        }
+        if (playerTrackingStarted) return@LaunchedEffect
         if (uiState.locationDisclosureAccepted) {
             requestLocation()
         } else {
@@ -264,8 +266,9 @@ fun LobbyScreen(
             onConfirmRemovePlayerClick = viewModel::confirmRemovePlayer,
             onDismissRemovePlayerConfirm = viewModel::dismissRemovePlayerConfirm,
         ),
-        showBackgroundLocationHint = backgroundLocationMissing,
-        showLocationOffHint = uiState.mySide != null && !trackingStarted && !preciseLocationMissing,
+        showBackgroundLocationHint = backgroundLocationMissing && uiState.mySide?.isPlayer() == true,
+        showLocationOffHint = uiState.mySide?.isPlayer() == true && !playerTrackingStarted &&
+            !preciseLocationMissing,
         onEnableLocation = {
             if (uiState.locationDisclosureAccepted) requestLocation() else showLocationDisclosure = true
         },
@@ -441,7 +444,14 @@ internal fun LobbyContent(
             }
 
             SectionHeader(text = stringResource(R.string.lobby_pick_side_title), icon = Icons.Filled.Route)
-            SidePicker(selected = uiState.mySide, onSideClick = actions.onSideClick)
+            SidePicker(
+                selected = uiState.mySide,
+                canChoose = uiState::canChoose,
+                onSideClick = actions.onSideClick,
+            )
+            if (uiState.showRolesLocked) {
+                RolesLockedHint()
+            }
 
             if (uiState.mySide != null) {
                 OpenMapButton(onOpenMapClick = actions.onOpenMapClick, showHint = showBackgroundLocationHint)
@@ -606,62 +616,6 @@ private fun CustomRulesDisclosure(
         )
     }
 }
-
-@Composable
-private fun SidePicker(selected: Side?, onSideClick: (Side) -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        Side.entries.forEach { side ->
-            SideChoiceCard(
-                side = side,
-                selected = selected == side,
-                onClick = { onSideClick(side) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SideChoiceCard(side: Side, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val accent = if (side == Side.Hider) BrandColors.hider else BrandColors.seeker
-    val onAccent = if (side == Side.Hider) BrandColors.onHider else BrandColors.onSeeker
-    val container = if (selected) accent else MaterialTheme.colorScheme.surfaceContainerHigh
-    val content = if (selected) onAccent else MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = container,
-        contentColor = content,
-        border = if (selected) null else BorderStroke(1.dp, accent),
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = Spacing.md, horizontal = Spacing.sm),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-        ) {
-            Icon(imageVector = side.icon(), contentDescription = null, modifier = Modifier.size(28.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Text(text = stringResource(side.labelRes()), style = MaterialTheme.typography.titleMedium)
-                if (selected) {
-                    Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                }
-            }
-        }
-    }
-}
-
-
-private fun Side.labelRes() = if (this == Side.Hider) R.string.lobby_side_hider else R.string.lobby_side_seeker
-
-private fun Side.icon(): ImageVector =
-    if (this == Side.Hider) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
 
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true)
 @Composable

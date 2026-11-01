@@ -71,14 +71,14 @@ class TokenRefresher @Inject constructor(
      * refresh may be hours away. The cooldown stops a stream that keeps rejecting from turning every
      * reconnect into a refresh call.
      */
-    suspend fun refreshNow() {
+    suspend fun refreshNow(force: Boolean = false) {
         val session = sessionRepository.currentSession()
         // start() already spent the one immediate attempt a legacy token gets.
         val legacyAlreadyAttempted =
             session != null && !session.mercureToken.isMercureV1AccessToken() && immediateLegacyRefreshAttempted
         val now = System.currentTimeMillis()
         synchronized(this) {
-            if (legacyAlreadyAttempted || now - lastForcedRefreshMillis < REFRESH_NOW_COOLDOWN_MS) return
+            if (legacyAlreadyAttempted || (!force && now - lastForcedRefreshMillis < REFRESH_NOW_COOLDOWN_MS)) return
             lastForcedRefreshMillis = now
         }
         session?.let { attemptOnce(it) }

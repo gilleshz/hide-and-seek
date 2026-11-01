@@ -138,10 +138,129 @@ final class TeamServiceTest extends TestCase
         $memberships->expects(self::never())->method('save');
 
         $this->expectException(FunctionalException::class);
-        $this->expectExceptionMessage('Only the seeker side can be joined once the round has left the lobby.');
+        $this->expectExceptionMessage(
+            'Only the seeker or spectator side can be joined once the round has left the lobby.',
+        );
 
         new TeamService($rounds, $players, $memberships, $this->silentRoster())
             ->choose($round->getUuid(), $player->getUuid(), Side::Hider);
+    }
+
+    #[Test]
+    public function itLetsASpectatorJoinAfterTheRoundHasLeftTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setStatus(RoundStatus::Seeking);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findOneByUuid')->willReturn($round);
+        $players = $this->createStub(PlayerRepository::class);
+        $players->method('findOneByUuidIncludingLeft')->willReturn($player);
+        $memberships = $this->createMock(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn(null);
+        $memberships->expects(self::once())->method('save');
+
+        $membership = new TeamService($rounds, $players, $memberships, $this->silentRoster())
+            ->choose($round->getUuid(), $player->getUuid(), Side::Spectator);
+
+        self::assertSame(Side::Spectator, $membership->getSide());
+    }
+
+    #[Test]
+    public function itRejectsASpectatorSwitchingToSeekerAfterTheRoundHasLeftTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setStatus(RoundStatus::Seeking);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $existing = new RoundMembership($round, $player, Side::Spectator);
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findOneByUuid')->willReturn($round);
+        $players = $this->createStub(PlayerRepository::class);
+        $players->method('findOneByUuidIncludingLeft')->willReturn($player);
+        $memberships = $this->createMock(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($existing);
+        $memberships->expects(self::never())->method('save');
+
+        $this->expectException(FunctionalException::class);
+        $this->expectExceptionMessage('Teams can only be changed while the round is in the lobby.');
+
+        new TeamService($rounds, $players, $memberships, $this->silentRoster())
+            ->choose($round->getUuid(), $player->getUuid(), Side::Seeker);
+    }
+
+    #[Test]
+    public function itRejectsASeekerSwitchingToSpectatorAfterTheRoundHasLeftTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setStatus(RoundStatus::Seeking);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $existing = new RoundMembership($round, $player, Side::Seeker);
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findOneByUuid')->willReturn($round);
+        $players = $this->createStub(PlayerRepository::class);
+        $players->method('findOneByUuidIncludingLeft')->willReturn($player);
+        $memberships = $this->createMock(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($existing);
+        $memberships->expects(self::never())->method('save');
+
+        $this->expectException(FunctionalException::class);
+        $this->expectExceptionMessage('Teams can only be changed while the round is in the lobby.');
+
+        new TeamService($rounds, $players, $memberships, $this->silentRoster())
+            ->choose($round->getUuid(), $player->getUuid(), Side::Spectator);
+    }
+
+    #[Test]
+    public function itLetsASpectatorChangeRolesInTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $existing = new RoundMembership($round, $player, Side::Spectator);
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findOneByUuid')->willReturn($round);
+        $players = $this->createStub(PlayerRepository::class);
+        $players->method('findOneByUuidIncludingLeft')->willReturn($player);
+        $memberships = $this->createMock(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($existing);
+        $memberships->expects(self::once())->method('save')->with($existing);
+
+        $membership = new TeamService($rounds, $players, $memberships, $this->silentRoster())
+            ->choose($round->getUuid(), $player->getUuid(), Side::Seeker);
+
+        self::assertSame($existing, $membership);
+        self::assertSame(Side::Seeker, $membership->getSide());
+    }
+
+    #[Test]
+    public function itAllowsReconfirmingTheSpectatorSideAfterTheRoundHasLeftTheLobby(): void
+    {
+        $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
+        $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
+        $player = new Player($game, IdentityFactory::create('Alice', 'test-password'));
+        $existing = new RoundMembership($round, $player, Side::Spectator);
+
+        $rounds = $this->createStub(RoundRepository::class);
+        $rounds->method('findOneByUuid')->willReturn($round);
+        $players = $this->createStub(PlayerRepository::class);
+        $players->method('findOneByUuidIncludingLeft')->willReturn($player);
+        $memberships = $this->createMock(RoundMembershipRepository::class);
+        $memberships->method('findOneByRoundAndPlayer')->willReturn($existing);
+        $memberships->expects(self::never())->method('save');
+
+        $membership = new TeamService($rounds, $players, $memberships, $this->silentRoster())
+            ->choose($round->getUuid(), $player->getUuid(), Side::Spectator);
+
+        self::assertSame($existing, $membership);
+        self::assertSame(Side::Spectator, $membership->getSide());
     }
 
     #[Test]

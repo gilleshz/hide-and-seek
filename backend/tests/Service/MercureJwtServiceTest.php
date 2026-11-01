@@ -8,6 +8,7 @@ use App\Entity\Game;
 use App\Entity\Round;
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RoundStatus;
 use App\Enum\Side;
 use App\Service\MercureJwtService;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -127,12 +128,73 @@ final class MercureJwtServiceTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Small, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
 
         $topics = $service->locationTopics($game, $round, Side::Hider);
 
         self::assertContains('game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/seeker-locations', $topics);
         self::assertContains('game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/hider-locations', $topics);
+    }
+
+    #[Test]
+    public function spectatorTopicsIncludeBothLocationTopicsAndTheSeekerAids(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
+
+        $locations = $service->locationTopics($game, $round, Side::Spectator);
+        $seekerAids = $service->seekerOnlyTopics($game, $round, Side::Spectator);
+
+        self::assertContains(
+            'game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/seeker-locations',
+            $locations,
+        );
+        self::assertContains(
+            'game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/hider-locations',
+            $locations,
+        );
+        self::assertContains(
+            'game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/seeker-candidates',
+            $seekerAids,
+        );
+        self::assertContains('game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/seeker-zone', $seekerAids);
+    }
+
+    #[Test]
+    public function lobbyLocationTopicsWithholdTheHiderTopicForHidersAndSpectators(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $round = new Round($game);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
+        $hiderTopic = 'game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/hider-locations';
+
+        foreach ([Side::Hider, Side::Spectator] as $side) {
+            $locations = $service->locationTopics($game, $round, $side);
+            self::assertNotContains($hiderTopic, $locations);
+            self::assertContains(
+                'game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/seeker-locations',
+                $locations,
+            );
+        }
+    }
+
+    #[Test]
+    public function spectatorBaselineIncludesThePossibleAreaEvenWhenTheGameOptsOut(): void
+    {
+        $game = new Game('Berlin', GameSize::Small, Edition::Metric);
+        $game->setPossibleAreaSharedWithHiders(false);
+        $round = new Round($game);
+        $service = new MercureJwtService(self::SECRET, self::PUBLIC_URL);
+
+        $topics = $service->baselineTopics($game, $round, Side::Spectator);
+
+        self::assertContains(
+            'game/' . $game->getUuid() . '/round/' . $round->getUuid() . '/possible-area',
+            $topics,
+        );
     }
 
     #[Test]

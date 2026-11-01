@@ -105,6 +105,44 @@ final class PossibleAreaConstraintApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function spectatorsCanListButNotDrawOrDeleteConstraints(): void
+    {
+        $client = static::createClient();
+        [$roundUuid, , $seekerToken, $gameUuid] = $this->createRoundWithSeekerAndGame($client, 'Alice');
+        $spectator = $this->joinAndPickSide($client, $gameUuid, $roundUuid, 'Eve', 'spectator');
+        $base = "/api/rounds/{$roundUuid}/possible-area-constraints";
+
+        $created = $client->request('POST', $base, $this->headersWithToken($seekerToken) + [
+            'json' => ['geoJson' => self::INCLUDE_RING, 'mode' => 'include'],
+        ])->toArray();
+        self::assertIsString($created['uuid']);
+
+        $listed = $client->request('GET', $base, $this->headersWithToken($spectator['token']))->toArray();
+        self::assertIsArray($listed['member']);
+        self::assertCount(1, $listed['member']);
+
+        /** @var GameRepository $games */
+        $games = self::getContainer()->get(GameRepository::class);
+        $stored = $games->findOneByUuid($gameUuid);
+        self::assertNotNull($stored);
+        $stored->setPossibleAreaSharedWithHiders(false);
+        $games->save($stored);
+
+        $client->request('GET', $base, $this->headersWithToken($spectator['token']));
+        self::assertResponseIsSuccessful();
+
+        $client->request('POST', $base, $this->headersWithToken($spectator['token']) + [
+            'json' => ['geoJson' => self::INCLUDE_RING, 'mode' => 'include'],
+        ]);
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'possible_area_constraint.not_seeker']);
+
+        $client->request('DELETE', "{$base}/{$created['uuid']}", $this->headersWithToken($spectator['token']));
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'possible_area_constraint.not_seeker']);
+    }
+
+    #[Test]
     public function provenConstraintsCannotBeDeleted(): void
     {
         $client = static::createClient();

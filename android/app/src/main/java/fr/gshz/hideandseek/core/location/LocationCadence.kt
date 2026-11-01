@@ -35,6 +35,8 @@ object LocationCadence {
     // The endgame signal is hider-only (a seeker signal would leak the zone), so only the hider ramps.
     fun selectInterval(side: Side?, phase: RoundStatus?, endgameProximity: Boolean = false): Long = when {
         phase == RoundStatus.Ended -> ENDED_INTERVAL_MS
+        // A spectator never tracks; the service stays on the dataSync path and never arms GPS.
+        side == Side.Spectator -> DEFAULT_INTERVAL_MS
         endgameProximity && side == Side.Hider -> Hider.ENDGAME_MS
         side == Side.Hider -> hiderInterval(phase)
         side == Side.Seeker -> seekerInterval(phase)

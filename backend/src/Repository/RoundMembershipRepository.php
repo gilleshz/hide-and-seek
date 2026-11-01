@@ -48,20 +48,6 @@ class RoundMembershipRepository extends ServiceEntityRepository
     }
 
     /**
-     * Leaving drops the player's sides: a departed hider must not stay the round's hider, nor be
-     * seeded into the next round, nor have a side to hand back on a rejoin.
-     */
-    public function removeByPlayer(Player $player): void
-    {
-        $this->createQueryBuilder('m')
-            ->delete()
-            ->andWhere('m.player = :player')
-            ->setParameter('player', $player)
-            ->getQuery()
-            ->execute();
-    }
-
-    /**
      * @return list<RoundMembership>
      */
     public function findByRound(Round $round): array

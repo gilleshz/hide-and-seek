@@ -13,6 +13,7 @@ use App\Entity\RoundMembership;
 use App\Entity\RoundStreetNetwork;
 use App\Enum\Edition;
 use App\Enum\GameSize;
+use App\Enum\RoundStatus;
 use App\Enum\Side;
 use App\Enum\StreetNetworkStatus;
 use App\Exception\FunctionalException;
@@ -48,6 +49,7 @@ final class StreetNetworkProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
         $zone = new HidingZone($round, new Point(13.405, 52.52), 500.0);
         $network = new RoundStreetNetwork($round, $zone->getStationPoint(), 500.0);
@@ -73,6 +75,7 @@ final class StreetNetworkProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $seeker = new Player($game, IdentityFactory::create('Bob', 'test-password'));
 
         try {
@@ -94,6 +97,7 @@ final class StreetNetworkProviderTest extends TestCase
     {
         $game = new Game('Berlin', GameSize::Medium, Edition::Metric);
         $round = new Round($game);
+        $round->setStatus(RoundStatus::Hiding);
         $hider = new Player($game, IdentityFactory::create('Alice', 'test-password'));
 
         $zones = $this->createStub(HidingZoneRepository::class);

@@ -8,4 +8,5 @@ enum Side: string
 {
     case Hider = 'hider';
     case Seeker = 'seeker';
+    case Spectator = 'spectator';
 }

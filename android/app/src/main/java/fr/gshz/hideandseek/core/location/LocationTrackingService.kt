@@ -3,10 +3,12 @@ package fr.gshz.hideandseek.core.location
 import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Build
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -125,6 +127,13 @@ class LocationTrackingService : Service() {
     @Volatile
     private var currentSide: Side? = null
 
+    /** SSE-only mode: no GPS, dataSync foreground type. Set before the first startForeground. */
+    @Volatile
+    private var dataSyncMode = true
+
+    @Volatile
+    private var spectatorGameName: String? = null
+
     @Volatile
     private var endgameProximity = false
 
@@ -164,12 +173,13 @@ class LocationTrackingService : Service() {
     override fun onCreate() {
         super.onCreate()
         locationManager = getSystemService(LocationManager::class.java)
+        createChannel(CHANNEL_ID, R.string.location_notification_channel_name)
+        createChannel(SPECTATOR_CHANNEL_ID, R.string.spectator_notification_channel_name)
+    }
+
+    private fun createChannel(id: String, nameRes: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.location_notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            )
+            val channel = NotificationChannel(id, getString(nameRes), NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
@@ -182,15 +192,29 @@ class LocationTrackingService : Service() {
             return START_NOT_STICKY
         }
 
+        // A null intent (system restart) starts SSE-only: a location type without permission crashes.
+        dataSyncMode = intent == null ||
+            intent.getBooleanExtra(EXTRA_SPECTATOR, false) ||
+            !hasLocationPermission()
+        intent?.getStringExtra(EXTRA_GAME_NAME)?.takeIf { it.isNotBlank() }?.let { spectatorGameName = it }
         refreshNotification(searching = false)
         startEventCollectors()
         serviceScope.launch { armGpsForPersistedRound() }
         return START_STICKY
     }
 
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
     private suspend fun armGpsForPersistedRound() {
         val session = sessionRepository.currentSession() ?: return
-        currentSide = session.side?.let(Side::fromWireValue)
+        val side = session.side?.let(Side::fromWireValue)
+        currentSide = side
+        if (side != null) {
+            dataSyncMode = trackingModeFor(side) == TrackingMode.DataSync || !hasLocationPermission()
+        }
+        if (side == Side.Spectator) loadSpectatorGameName(session.gameUuid)
         var armable = true
         var fetchedPhase: RoundStatus? = null
         var sessionExpired = false
@@ -214,12 +238,13 @@ class LocationTrackingService : Service() {
                 }
             }
         }
+        refreshHiderGrantsIfMissing(fetchedPhase, side, session)
+
         // The probe races live timer events; one that lost the race must not re-arm an ended round.
-        synchronized(this) {
-            if (timerEventSeen || sessionExpired) return
+        synchronized(this) {            if (timerEventSeen || sessionExpired) return
             currentPhase = fetchedPhase
             gpsAllowed = armable
-            if (armable) {
+            if (armable && !dataSyncMode) {
                 cadenceSelector.reset()
                 startLocationUpdates(LocationCadence.selectInterval(currentSide, currentPhase, endgameProximity))
             }
@@ -231,10 +256,8 @@ class LocationTrackingService : Service() {
     @Synchronized
     private fun startLocationUpdates(intervalMs: Long) {
         // An endgame re-arm racing the Ended handler must lose; the flag is settled before stopLocationUpdates.
-        if (!gpsAllowed) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!gpsAllowed || dataSyncMode) return
+        if (!hasLocationPermission()) {
             stopSelf()
             return
         }
@@ -328,6 +351,7 @@ class LocationTrackingService : Service() {
             .launchIn(serviceScope)
         gameEventRepository.endgameEvents
             .onEach {
+                if (dataSyncMode) return@onEach
                 // Endgame is mid-round, not game end; keep the service and SSE alive.
                 showEndgameNotification()
                 endgameProximity = true
@@ -379,10 +403,59 @@ class LocationTrackingService : Service() {
             }
         }
         val side = session.side?.let(Side::fromWireValue)
-        if (side != currentSide) {
+        val sideChanged = side != currentSide
+        if (sideChanged) {
             currentSide = side
             cadenceSelector.reset()
-            reconfigureLocationUpdates(LocationCadence.selectInterval(currentSide, currentPhase, endgameProximity))
+        }
+        if (side != null) applyTrackingMode(side)
+        if (side == Side.Spectator) loadSpectatorGameName(session.gameUuid)
+        if (sideChanged) reconfigureForSide(side)
+    }
+
+    private fun applyTrackingMode(side: Side) {
+        val target = trackingModeFor(side) == TrackingMode.DataSync || !hasLocationPermission()
+        if (target == dataSyncMode) return
+        dataSyncMode = target
+        if (target) stopLocationUpdates()
+        refreshNotification()
+    }
+
+    private fun reconfigureForSide(side: Side?) {
+        if (dataSyncMode || !gpsAllowed) {
+            stopLocationUpdates()
+            return
+        }
+        val interval = LocationCadence.selectInterval(side, currentPhase, endgameProximity)
+        if (locationListener == null) {
+            startLocationUpdates(interval)
+        } else {
+            reconfigureLocationUpdates(interval)
+        }
+    }
+
+    private suspend fun loadSpectatorGameName(gameUuid: String) {
+        if (!spectatorGameName.isNullOrBlank()) return
+        spectatorGameName = try {
+            gameStateCache.getGameSummary(gameUuid).name.takeIf { it.isNotBlank() }
+        } catch (e: IOException) {
+            Log.w(TAG, "Spectator game name unavailable", e)
+            null
+        } catch (e: HttpException) {
+            Log.w(TAG, "Spectator game name unavailable", e)
+            null
+        }
+    }
+
+    private suspend fun refreshHiderGrantsIfMissing(
+        phase: RoundStatus?,
+        side: Side?,
+        session: PlayerSession,
+    ) {
+        val maySeeHider = phase != null && phase != RoundStatus.Lobby &&
+            (side == Side.Hider || side == Side.Spectator)
+        if (maySeeHider && session.topics.none { it.endsWith("/hider-locations") }) {
+            tokenRefresher.refreshNow(force = true)
         }
     }
 
@@ -394,6 +467,13 @@ class LocationTrackingService : Service() {
         }
         timerEventSeen = true
         event.roundUuid?.let { rekeySession(it) }
+        sessionRepository.currentSession()?.let { session ->
+            refreshHiderGrantsIfMissing(
+                newPhase,
+                Side.fromWireValueOrNull(session.side),
+                session,
+            )
+        }
         if (newPhase != RoundStatus.Seeking) {
             endgameProximity = false
         }
@@ -405,7 +485,9 @@ class LocationTrackingService : Service() {
             stopLocationUpdates()
         } else {
             gpsAllowed = true
-            startLocationUpdates(LocationCadence.selectInterval(currentSide, newPhase, endgameProximity))
+            if (!dataSyncMode) {
+                startLocationUpdates(LocationCadence.selectInterval(currentSide, newPhase, endgameProximity))
+            }
         }
         refreshNotification()
     }
@@ -503,7 +585,8 @@ class LocationTrackingService : Service() {
     ) {
         serviceScope.launch {
             val session = sessionRepository.currentSession() ?: return@launch
-            if (session.side == null || pingBackoff.active) return@launch
+            // Spectators have no position; the server rejects them, but the client must never try.
+            if (Side.fromWireValueOrNull(session.side)?.isPlayer() != true || pingBackoff.active) return@launch
             if (!force) {
                 val lastLat = lastPostedLat
                 val lastLng = lastPostedLng
@@ -601,20 +684,36 @@ class LocationTrackingService : Service() {
         searching: Boolean = locationListener != null &&
             SystemClock.elapsedRealtime() - lastFixAt > currentIntervalMs + SEARCHING_FIX_MARGIN_MS,
     ) {
+        // ponytail: Android 15 caps dataSync at 6 h per 24 h; specialUse if all-day spectating is needed.
+        val type = if (dataSyncMode) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        }
+        val notification = if (dataSyncMode) spectatorNotification() else locationNotification(searching)
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
+    }
+
+    private fun locationNotification(searching: Boolean): Notification {
         val content = locationNotificationContent(currentPhase, searching)
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(content.titleRes))
             .setContentText(getString(content.textRes))
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .setContentIntent(openAppPendingIntent())
             .build()
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
-        )
+    }
+
+    private fun spectatorNotification(): Notification {
+        val game = spectatorGameName ?: getString(R.string.app_name)
+        return NotificationCompat.Builder(this, SPECTATOR_CHANNEL_ID)
+            .setContentTitle(getString(R.string.spectator_notification_title, game))
+            .setContentText(getString(R.string.spectator_notification_text))
+            .setSmallIcon(android.R.drawable.ic_menu_view)
+            .setOngoing(true)
+            .setContentIntent(openAppPendingIntent())
+            .build()
     }
 
     private fun openAppPendingIntent(): PendingIntent {
@@ -632,7 +731,10 @@ class LocationTrackingService : Service() {
     companion object {
         private const val TAG = "LocationTrackingService"
         private const val CHANNEL_ID = "location_tracking"
+        private const val SPECTATOR_CHANNEL_ID = "spectator_tracking"
         private const val ENDGAME_CHANNEL_ID = "endgame"
+        private const val EXTRA_SPECTATOR = "fr.gshz.hideandseek.extra.SPECTATOR"
+        private const val EXTRA_GAME_NAME = "fr.gshz.hideandseek.extra.GAME_NAME"
         private const val NOTIFICATION_ID = 1001
         private const val ENDGAME_NOTIFICATION_ID = 1002
         private const val FIX_STATUS_POLL_MS = 10_000L
@@ -641,5 +743,11 @@ class LocationTrackingService : Service() {
         private const val HTTP_NOT_FOUND = 404
         private val CLIENT_ERROR_RANGE = 400..499
         const val ACTION_STOP = "fr.gshz.hideandseek.action.STOP_LOCATION_TRACKING"
+
+        fun startIntent(context: Context, spectator: Boolean, gameName: String? = null): Intent =
+            Intent(context, LocationTrackingService::class.java).apply {
+                putExtra(EXTRA_SPECTATOR, spectator)
+                if (gameName != null) putExtra(EXTRA_GAME_NAME, gameName)
+            }
     }
 }

@@ -180,7 +180,6 @@ final class GameDeleteProcessorTest extends TestCase
                 ),
             ),
             new ChatService($this->createStub(ChatMessageRepository::class), $mercure, $hub, $this->createStub(ImageStorageInterface::class)),
-            $this->createStub(RoundMembershipRepository::class),
             $entityManager,
         );
         $gtfsService = new GtfsService(

@@ -112,6 +112,29 @@ class SeekerMarkersViewModelTest {
     }
 
     @Test
+    fun `a spectator loads markers and live candidate events but cannot mark`() = runTest(testDispatcher) {
+        fixture.sessionRepository.seed(
+            PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "spectator"),
+        )
+        fixture.seekerMarkerRepository.markers = mutableListOf(SeekerMarker("m-1", "player-2", 1.0, 2.0))
+        val viewModel = fixture.createSeekerMarkersViewModel()
+
+        viewModel.uiState.test {
+            var state = awaitItem()
+            while (state.isEmpty()) state = awaitItem()
+            assertEquals("m-1", state.single().uuid)
+
+            fixture.gameEventRepository.emitSeekerCandidateAdded(SeekerCandidateAdded("m-2", "player-2", 5.0, 6.0))
+            while (state.none { it.uuid == "m-2" }) state = awaitItem()
+
+            viewModel.markSuspectedStation(48.85, 2.35)
+            advanceTimeBy(1_000)
+            assertTrue(fixture.seekerMarkerRepository.addCalls.isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `a hider never loads suspected-station markers and marking is inert`() = runTest(testDispatcher) {
         fixture.sessionRepository.seed(
             PlayerSession("game-1", "round-1", "player-1", "Alice", "token", side = "hider"),

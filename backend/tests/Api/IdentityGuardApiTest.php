@@ -7,6 +7,7 @@ namespace App\Tests\Api;
 use ApiPlatform\Test\Client;
 use App\Enum\RoundStatus;
 use App\Repository\GameRepository;
+use App\Repository\PlayerRepository;
 use App\Repository\RoundRepository;
 use App\Tests\Fake\FakeMercureHub;
 use PHPUnit\Framework\Attributes\Test;
@@ -56,6 +57,13 @@ final class IdentityGuardApiTest extends ApiTestCase
         $client = static::createClient();
         [$gameUuid, $roundUuid, $alice] = $this->gameWithJoinedPlayer($client, 'Alice');
 
+        $client->request(
+            'POST',
+            "/api/rounds/{$roundUuid}/start",
+            $this->headersWithToken($alice['token']) + ['json' => []],
+        );
+        self::assertResponseIsSuccessful();
+
         $location = $client->request('POST', "/api/rounds/{$roundUuid}/location", $this->headersWithToken($alice['token']) + [
             'json' => ['playerUuid' => '00000000-0000-4000-8000-000000000000', 'lat' => 52.52, 'lng' => 13.405],
         ])->toArray();
@@ -65,7 +73,11 @@ final class IdentityGuardApiTest extends ApiTestCase
 
         /** @var FakeMercureHub $hub */
         $hub = self::getContainer()->get(FakeMercureHub::class);
-        $published = $hub->published();
+        $hiderTopic = "game/{$gameUuid}/round/{$roundUuid}/hider-locations";
+        $published = array_values(array_filter(
+            $hub->published(),
+            static fn ($update): bool => in_array($hiderTopic, $update->getTopics(), true),
+        ));
         self::assertCount(1, $published);
         self::assertStringContainsString($alice['playerUuid'], $published[0]->getData());
     }
@@ -412,10 +424,11 @@ final class IdentityGuardApiTest extends ApiTestCase
         $alice = $this->joinAndPickSide($client, $game['uuid'], $game['roundUuid'], 'Alice', 'hider');
 
         $roundN = $game['roundUuid'];
+        $client->request('POST', "/api/rounds/{$roundN}/start", $this->headersWithToken($alice['token']) + ['json' => []]);
+        self::assertResponseIsSuccessful();
         $topicsN = $this->refreshTopics($client, $alice['token'], $roundN);
         self::assertContains("game/{$game['uuid']}/round/{$roundN}/hider-locations", $topicsN);
 
-        $client->request('POST', "/api/rounds/{$roundN}/start", $this->headersWithToken($alice['token']) + ['json' => []]);
         $client->request('POST', "/api/rounds/{$roundN}/stop", $this->headersWithToken($alice['token']) + ['json' => []]);
 
         $next = $client->request('POST', "/api/games/{$game['uuid']}/rounds", $this->headersWithToken($alice['token']))->toArray();
@@ -528,6 +541,7 @@ final class IdentityGuardApiTest extends ApiTestCase
         $game = $this->createGame();
         $hider = $this->joinAndPickSide($client, $game['uuid'], $game['roundUuid'], 'Hank', 'hider');
         $seeker = $this->joinAndPickSide($client, $game['uuid'], $game['roundUuid'], 'Sam', 'seeker');
+        $spectator = $this->joinAndPickSide($client, $game['uuid'], $game['roundUuid'], 'Eve', 'spectator');
         $roundUuid = $game['roundUuid'];
 
         $client->request('GET', "/api/rounds/{$roundUuid}/possible-area", self::AUTH);
@@ -551,6 +565,10 @@ final class IdentityGuardApiTest extends ApiTestCase
         $client->request('GET', "/api/rounds/{$roundUuid}/possible-area", $this->headersWithToken($hider['token']));
         self::assertResponseStatusCodeSame(400);
         self::assertJsonContains(['errorKey' => 'possible_area.seekers_only']);
+
+        // A spectator sees the overlay regardless of the shared-with-hiders flag.
+        $client->request('GET', "/api/rounds/{$roundUuid}/possible-area", $this->headersWithToken($spectator['token']));
+        self::assertResponseIsSuccessful();
     }
 
     #[Test]
@@ -604,15 +622,28 @@ final class IdentityGuardApiTest extends ApiTestCase
         self::assertContains("game/{$game['uuid']}/round/{$roundUuid}/seeker-candidates", (array) $scoped['topics']);
         self::assertNotContains("game/{$game['uuid']}/round/{$roundUuid}/hider-locations", (array) $scoped['topics']);
 
-        // A round of Eve's own game where she has no membership: baseline only, no location topics.
-        // The new round auto-seeds swapped memberships, so Eve's row is removed first to build the state.
+        // The membership survives a leave, so the refresh reaches identity resolution and dies there.
         $bareRoundUuid = $this->nextRoundOf($game['uuid']);
-        $this->dropMembershipOf($outsider['playerUuid'], $bareRoundUuid);
-        $bare = $client->request('POST', "/api/rounds/{$bareRoundUuid}/subscriber-token", $this->headersWithToken($outsider['token']))->toArray();
+        $this->markLeftOf($outsider['playerUuid']);
+        $client->request(
+            'POST',
+            "/api/rounds/{$bareRoundUuid}/subscriber-token",
+            $this->headersWithToken($outsider['token']),
+        );
+        self::assertResponseStatusCodeSame(401);
+        self::assertJsonContains(['errorKey' => 'identity.player_left']);
+
+        // A player with no membership in this round: baseline only, no location topics.
+        $pending = $this->joinGame($game, 'Frank');
+        $bare = $client->request(
+            'POST',
+            "/api/rounds/{$roundUuid}/subscriber-token",
+            $this->headersWithToken($pending['mercureToken']),
+        )->toArray();
         self::assertResponseIsSuccessful();
-        self::assertNotContains("game/{$game['uuid']}/round/{$bareRoundUuid}/seeker-locations", (array) $bare['topics']);
-        self::assertNotContains("game/{$game['uuid']}/round/{$bareRoundUuid}/hider-locations", (array) $bare['topics']);
-        self::assertContains("game/{$game['uuid']}/round/{$bareRoundUuid}/possible-area", (array) $bare['topics']);
+        self::assertNotContains("game/{$game['uuid']}/round/{$roundUuid}/seeker-locations", (array) $bare['topics']);
+        self::assertNotContains("game/{$game['uuid']}/round/{$roundUuid}/hider-locations", (array) $bare['topics']);
+        self::assertContains("game/{$game['uuid']}/round/{$roundUuid}/possible-area", (array) $bare['topics']);
     }
 
     #[Test]
@@ -693,15 +724,13 @@ final class IdentityGuardApiTest extends ApiTestCase
         return $rounds;
     }
 
-    private function dropMembershipOf(string $playerUuid, string $roundUuid): void
+    private function markLeftOf(string $playerUuid): void
     {
-        /** @var \App\Repository\PlayerRepository $players */
-        $players = self::getContainer()->get(\App\Repository\PlayerRepository::class);
+        $players = self::getContainer()->get(PlayerRepository::class);
+        self::assertInstanceOf(PlayerRepository::class, $players);
         $player = $players->findOneByUuid($playerUuid);
         self::assertNotNull($player);
-        /** @var \App\Repository\RoundMembershipRepository $memberships */
-        $memberships = self::getContainer()->get(\App\Repository\RoundMembershipRepository::class);
-        $memberships->removeByPlayer($player);
+        $players->save($player->markLeft(new \DateTimeImmutable()));
     }
 
     private function nextRoundOf(string $gameUuid): string

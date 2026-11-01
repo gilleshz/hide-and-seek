@@ -29,6 +29,9 @@ final class HidingZoneApiTest extends ApiTestCase
         $session = $this->joinAndPickSide($client, $gameUuid, $roundUuid, 'Alice', 'hider');
         $token = $session['token'];
 
+        $client->request('POST', "/api/rounds/{$roundUuid}/start", $this->headersWithToken($token) + ['json' => []]);
+        self::assertResponseIsSuccessful();
+
         $zone = $client->request('POST', "/api/rounds/{$roundUuid}/zone", $this->headersWithToken($token) + [
             'json' => ['lat' => 52.52, 'lng' => 13.405],
         ])->toArray();
@@ -138,6 +141,21 @@ final class HidingZoneApiTest extends ApiTestCase
         $hiderToken = $hider['token'];
         $seeker = $this->joinAndPickSide($client, $game['uuid'], $roundUuid, 'Bob', 'seeker');
         $seekerToken = $seeker['token'];
+        $spectator = $this->joinAndPickSide($client, $game['uuid'], $roundUuid, 'Eve', 'spectator');
+        $spectatorToken = $spectator['token'];
+
+        $client->request('GET', "/api/rounds/{$roundUuid}/zone", $this->authWith($hiderToken));
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'round.not_started']);
+
+        $client->request('POST', "/api/rounds/{$roundUuid}/zone", $this->authWith($hiderToken) + [
+            'json' => ['lat' => 52.52, 'lng' => 13.405, 'radiusMeters' => 500.0],
+        ]);
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'round.not_started']);
+
+        $client->request('POST', "/api/rounds/{$roundUuid}/start", $this->authWith($hiderToken) + ['json' => []]);
+        self::assertResponseIsSuccessful();
 
         $client->request('GET', "/api/rounds/{$roundUuid}/zone", $this->authWith($hiderToken));
         self::assertResponseStatusCodeSame(404);
@@ -160,7 +178,15 @@ final class HidingZoneApiTest extends ApiTestCase
 
         $client->request('GET', "/api/rounds/{$roundUuid}/zone", $this->authWith($seekerToken));
         self::assertResponseStatusCodeSame(400);
-        self::assertJsonContains(['detail' => 'Only a hider on this round may read that.']);
+        self::assertJsonContains(['detail' => 'Only a hider or spectator on this round may read that.']);
+
+        $spectatorView = $client->request(
+            'GET',
+            "/api/rounds/{$roundUuid}/zone",
+            $this->authWith($spectatorToken),
+        )->toArray();
+        self::assertSame(52.52, $spectatorView['lat']);
+        self::assertSame(13.405, $spectatorView['lng']);
 
         $client->request('GET', "/api/rounds/{$roundUuid}/zone", self::AUTH);
         self::assertResponseStatusCodeSame(401);
@@ -242,6 +268,9 @@ final class HidingZoneApiTest extends ApiTestCase
         $token = $session['token'];
         $playerUuid = $session['playerUuid'];
 
+        $client->request('POST', "/api/rounds/{$roundUuid}/start", $this->authWith($token) + ['json' => []]);
+        self::assertResponseIsSuccessful();
+
         $client->request('POST', "/api/rounds/{$roundUuid}/zone", $this->authWith($token) + [
             'json' => [
                 'lat' => 52.52,
@@ -250,7 +279,7 @@ final class HidingZoneApiTest extends ApiTestCase
                 'stationName' => 'Alexanderplatz',
             ],
         ]);
-        $client->request('POST', "/api/rounds/{$roundUuid}/start", $this->authWith($token) + ['json' => []]);
+        self::assertResponseIsSuccessful();
 
         /** @var RoundRepository $rounds */
         $rounds = self::getContainer()->get(RoundRepository::class);

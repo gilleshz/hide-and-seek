@@ -2,15 +2,18 @@ package fr.gshz.hideandseek.feature.map
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -36,7 +39,12 @@ private data class StatusStyle(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MapStatusBar(status: RoundStatus?, timerSeconds: Long?, modifier: Modifier = Modifier) {
+internal fun MapStatusBar(
+    status: RoundStatus?,
+    timerSeconds: Long?,
+    spectator: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
     if (status == null) return
     val style = statusStyle(status)
     TopAppBar(
@@ -56,7 +64,28 @@ internal fun MapStatusBar(status: RoundStatus?, timerSeconds: Long?, modifier: M
                 }
             }
         },
+        actions = {
+            if (spectator) SpectatorChip()
+        },
     )
+}
+
+@Composable
+private fun SpectatorChip() {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Icon(Icons.Filled.RemoveRedEye, contentDescription = null, modifier = Modifier.size(16.dp))
+            Text(stringResource(R.string.map_spectator), style = MaterialTheme.typography.labelMedium)
+        }
+    }
 }
 
 @Composable

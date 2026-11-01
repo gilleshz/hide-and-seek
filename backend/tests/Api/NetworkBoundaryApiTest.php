@@ -298,6 +298,13 @@ final class NetworkBoundaryApiTest extends ApiTestCase
 
         $session = $this->joinAndPickSide($client, (string) $game['uuid'], (string) $game['roundUuid'], 'Alice', 'hider');
 
+        $client->request(
+            'POST',
+            "/api/rounds/{$game['roundUuid']}/start",
+            $this->headersWithToken($session['token']) + ['json' => []],
+        );
+        self::assertResponseIsSuccessful();
+
         $client->request('POST', "/api/rounds/{$game['roundUuid']}/zone", $this->headersWithToken($session['token']) + [
             'json' => ['lat' => 46.525, 'lng' => 6.625],
         ]);

@@ -42,9 +42,9 @@ final readonly class PossibleAreaConstraintProvider implements ProviderInterface
 
         $player = $this->identity->requirePlayer();
         $membership = $this->memberships->findOneByRoundAndPlayer($round, $player);
-        $sharedWithHiders = $membership?->getSide() === Side::Hider
-            && $round->getGame()->isPossibleAreaSharedWithHiders();
-        if ($membership?->getSide() !== Side::Seeker && !$sharedWithHiders) {
+        $side = $membership?->getSide();
+        $sharedWithHiders = $side === Side::Hider && $round->getGame()->isPossibleAreaSharedWithHiders();
+        if ($side !== Side::Seeker && $side !== Side::Spectator && !$sharedWithHiders) {
             throw new FunctionalException(
                 message: 'Only the seeker side may read the possible area in this game.',
                 errorKey: ErrorKey::POSSIBLE_AREA_SEEKERS_ONLY,

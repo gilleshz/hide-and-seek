@@ -16,6 +16,9 @@ final class ErrorKey
     public const string IDENTITY_PLAYER_LEFT = 'identity.player_left';
     public const string PROFILE_CREDENTIAL_INVALID = 'profile.credential_invalid';
     public const string PLAYER_REMOVE_NOT_HOST = 'player.remove_not_host';
+    public const string LOCATION_SPECTATOR = 'location.spectator';
+    public const string ROUND_SPECTATOR_READ_ONLY = 'round.spectator_read_only';
+    public const string ROUND_NOT_STARTED = 'round.not_started';
     public const string RATE_LIMIT_EXCEEDED = 'rate_limit.exceeded';
     public const string POSSIBLE_AREA_SEEKERS_ONLY = 'possible_area.seekers_only';
     public const string QUESTION_SEEKER_POSITION_REQUIRED = 'question.seeker_position_required';
