@@ -7,13 +7,13 @@ internal object MapOverlayStyle {
     val band = 0xFF1A1C2E.toInt()
     const val BAND_BACKDROP_OPACITY = 0.25f
     const val BAND_STRIPE = 0x521A1C2E
-    const val BAND_HATCH_TILE_DP = 20f
-    const val BAND_HATCH_STRIPE_DP = 1.5f
+    const val BAND_HATCH_TILE_DP = 8f
+    const val BAND_HATCH_STRIPE_DP = 0.6f
     const val BAND_BORDER_OPACITY = 0.32f
-    const val BAND_BORDER_WIDTH_DP = 1.2f
 
     val possibleArea = 0xFF3B82F6.toInt()
     const val POSSIBLE_AREA_WIDTH = 2f
+    const val BAND_BORDER_WIDTH = POSSIBLE_AREA_WIDTH
 
     val manualConstraint = 0xFFDC2626.toInt()
     val hidingZone = 0xFFF4C04C.toInt()

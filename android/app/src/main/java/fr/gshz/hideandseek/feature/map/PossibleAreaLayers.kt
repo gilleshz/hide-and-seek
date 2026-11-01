@@ -75,7 +75,7 @@ internal fun Style.ensureStationBandLayer(density: Float, densityDpi: Int) {
     addLayer(
         LineLayer(STATION_BAND_BORDER_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
             PropertyFactory.lineColor(MapOverlayStyle.hex(MapOverlayStyle.band)),
-            PropertyFactory.lineWidth(MapOverlayStyle.BAND_BORDER_WIDTH_DP * density),
+            PropertyFactory.lineWidth(MapOverlayStyle.BAND_BORDER_WIDTH),
             PropertyFactory.lineOpacity(MapOverlayStyle.BAND_BORDER_OPACITY),
         ),
     )
