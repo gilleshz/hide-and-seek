@@ -104,7 +104,6 @@
     <string name="lobby_side_hider">Cachette</string>
     <string name="lobby_side_seeker">Recherche</string>
     <string name="lobby_side_spectator">Observation</string>
-    <string name="lobby_spectate_helper">Suivre la partie sans partager sa position.</string>
     <string name="lobby_spectate_helper_selected">Vous voyez chaque personne et chaque couche de la carte. Les rôles sont verrouillés jusqu\'à la prochaine manche.</string>
     <string name="lobby_roles_locked">Les rôles sont verrouillés jusqu\'à la prochaine manche.</string>
     <string name="lobby_side_unassigned">Sans équipe</string>

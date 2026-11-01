@@ -104,7 +104,6 @@
     <string name="lobby_side_hider">Versteckende</string>
     <string name="lobby_side_seeker">Suchende</string>
     <string name="lobby_side_spectator">Zuschauende</string>
-    <string name="lobby_spectate_helper">Die Partie verfolgen, ohne den eigenen Standort zu teilen.</string>
     <string name="lobby_spectate_helper_selected">Du siehst alle Spielenden und alle Kartenebenen. Die Rollen bleiben bis zur nächsten Runde gesperrt.</string>
     <string name="lobby_roles_locked">Die Rollen bleiben bis zur nächsten Runde gesperrt.</string>
     <string name="lobby_side_unassigned">Nicht zugewiesen</string>

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -132,19 +133,16 @@ private fun SpectatorChoiceCard(
             BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         },
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        Column(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
-            Icon(imageVector = Side.Spectator.icon(), contentDescription = null, modifier = Modifier.size(28.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                SpectatorCardTitle(selected)
+            SpectatorHeader(selected)
+            if (selected) {
                 Text(
-                    text = stringResource(
-                        if (selected) R.string.lobby_spectate_helper_selected else R.string.lobby_spectate_helper,
-                    ),
+                    text = stringResource(R.string.lobby_spectate_helper_selected),
                     style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 28.dp),
                 )
             }
         }
@@ -152,12 +150,18 @@ private fun SpectatorChoiceCard(
 }
 
 @Composable
-private fun SpectatorCardTitle(selected: Boolean) {
+private fun SpectatorHeader(selected: Boolean) {
     Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        Text(text = stringResource(Side.Spectator.labelRes()), style = MaterialTheme.typography.titleMedium)
+        Icon(imageVector = Side.Spectator.icon(), contentDescription = null, modifier = Modifier.size(20.dp))
+        Text(
+            text = stringResource(Side.Spectator.labelRes()),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
         if (selected) {
             Icon(imageVector = Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
         }

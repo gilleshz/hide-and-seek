@@ -104,7 +104,6 @@
     <string name="lobby_side_hider">Hider</string>
     <string name="lobby_side_seeker">Seeker</string>
     <string name="lobby_side_spectator">Spectator</string>
-    <string name="lobby_spectate_helper">Follow the game without sharing your location.</string>
     <string name="lobby_spectate_helper_selected">You see every player and every map layer. Roles are locked until the next round.</string>
     <string name="lobby_roles_locked">Roles are locked until the next round.</string>
     <string name="lobby_side_unassigned">Unassigned</string>
