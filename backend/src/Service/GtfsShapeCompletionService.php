@@ -775,12 +775,10 @@ final readonly class GtfsShapeCompletionService
             );
         }
         if ($ways === []) {
-            $this->logger->warning('Overpass returned no usable geometry for a relation chunk.');
+            // A route mapped as a stop list has no ways to stitch; skip it and complete the rest.
+            $this->logger->warning('Overpass returned no usable geometry for a relation chunk; skipping it.');
 
-            throw new FunctionalException(
-                message: 'The OpenStreetMap geometry service returned no usable route geometry; retry the import.',
-                errorKey: ErrorKey::GTFS_SHAPES_MISSING,
-            );
+            return [];
         }
 
         return $ways;

@@ -541,13 +541,12 @@ final class GtfsShapeCompletionServiceTest extends TestCase
             new MockResponse(self::GEOMETRY_NO_WAYS),
         ]);
 
-        try {
-            $this->createService($client)->completeIfNeeded($path);
-            self::fail('Expected the empty geometry response to fail completion.');
-        } catch (FunctionalException $e) {
-            self::assertSame(ErrorKey::GTFS_SHAPES_MISSING, $e->getErrorKey());
-        }
+        $result = $this->createService($client)->completeIfNeeded($path);
 
+        self::assertSame(
+            ['completed' => false, 'shapes' => 0, 'routes' => 0, 'unmatched' => ['A', 'B']],
+            $result,
+        );
         self::assertSame($before, hash_file('sha256', $path));
         self::assertSame([], glob($path . '.*') ?: []);
     }
