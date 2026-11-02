@@ -4,8 +4,8 @@ internal object MapOverlayStyle {
     val exclusion = 0xFF1A1C2E.toInt()
     const val EXCLUSION_OPACITY = 0.45f
 
-    val band = 0xFF001A52.toInt()
-    const val BAND_OPACITY = 0.40f
+    val band = 0xFF3B82F6.toInt()
+    const val BAND_OPACITY = 0.35f
 
     val possibleArea = 0xFF3B82F6.toInt()
     const val POSSIBLE_AREA_WIDTH = 2f
