@@ -9,6 +9,10 @@ enum class MapStyle(val styleKey: String) {
     IgnPlan("ign_plan"),
     IgnOrtho("ign_ortho");
 
+    /** True for bases that read dark, so translucent overlays wash out against them. */
+    val isDarkBase: Boolean
+        get() = this == Dark || this == Satellite || this == IgnOrtho
+
     fun resolveSource(
         stadiaApiKey: String?,
         thunderforestApiKey: String?,

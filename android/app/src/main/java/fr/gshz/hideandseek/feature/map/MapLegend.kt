@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -105,12 +106,13 @@ internal fun legendEntries(state: MapUiState): List<LegendEntry> = buildList {
 internal fun MapLegend(
     entries: List<LegendEntry>,
     modifier: Modifier = Modifier,
+    darkBase: Boolean = false,
     initiallyExpanded: Boolean = false,
 ) {
     var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         if (expanded) {
-            LegendCard(entries)
+            LegendCard(entries, darkBase)
         }
         Row(
             modifier = Modifier
@@ -145,9 +147,9 @@ internal fun MapLegend(
 }
 
 @Composable
-private fun LegendCard(entries: List<LegendEntry>) {
+private fun LegendCard(entries: List<LegendEntry>, darkBase: Boolean) {
     Surface(
-        modifier = Modifier.widthIn(max = 240.dp),
+        modifier = Modifier.widthIn(max = 240.dp).padding(start = Spacing.sm),
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 3.dp,
         shadowElevation = 3.dp,
@@ -160,21 +162,21 @@ private fun LegendCard(entries: List<LegendEntry>) {
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             entries.forEach { entry ->
-                LegendRow(entry)
+                LegendRow(entry, darkBase)
             }
         }
     }
 }
 
 @Composable
-private fun LegendRow(entry: LegendEntry) {
+private fun LegendRow(entry: LegendEntry, darkBase: Boolean) {
     var showInfo by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier = Modifier.heightIn(min = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LegendSwatch(entry.swatch)
+        LegendSwatch(entry.swatch, darkBase)
         Text(
             text = stringResource(entry.label),
             modifier = Modifier.weight(1f),
@@ -218,7 +220,7 @@ private fun InfoButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun LegendSwatch(swatch: LegendSwatch) {
+private fun LegendSwatch(swatch: LegendSwatch, darkBase: Boolean) {
     Canvas(modifier = Modifier.size(18.dp)) {
         val stroke = 1.5.dp.toPx()
         val corner = CornerRadius(3.dp.toPx())
@@ -229,10 +231,13 @@ private fun LegendSwatch(swatch: LegendSwatch) {
                 style = Stroke(width = MapOverlayStyle.POSSIBLE_AREA_WIDTH.dp.toPx()),
             )
             LegendSwatch.Excluded -> drawRoundRect(
-                color = Color(MapOverlayStyle.exclusion).copy(alpha = MapOverlayStyle.EXCLUSION_OPACITY),
+                color = overlaySwatch(MapOverlayStyle.exclusion, MapOverlayStyle.EXCLUSION_OPACITY, darkBase),
                 cornerRadius = corner,
             )
-            LegendSwatch.HidingZoneBand -> drawHidingZoneBandSwatch()
+            LegendSwatch.HidingZoneBand -> drawRoundRect(
+                color = overlaySwatch(MapOverlayStyle.band, MapOverlayStyle.BAND_OPACITY, darkBase),
+                cornerRadius = corner,
+            )
             LegendSwatch.SearchArea -> drawRoundRect(
                 color = Color(MapOverlayStyle.manualConstraint),
                 cornerRadius = corner,
@@ -276,12 +281,12 @@ private fun DrawScope.drawPlayersSwatch() {
 private fun DrawScope.dashed(): PathEffect =
     PathEffect.dashPathEffect(floatArrayOf(DASH_ON.toPx(), DASH_OFF.toPx()))
 
-private fun DrawScope.drawHidingZoneBandSwatch() {
-    drawRoundRect(
-        color = Color(MapOverlayStyle.band).copy(alpha = MapOverlayStyle.BAND_OPACITY),
-        cornerRadius = CornerRadius(3.dp.toPx()),
-    )
-}
+private val MAP_PLATE_LIGHT = Color(0xFFEDE9E1)
+private val MAP_PLATE_DARK = Color(0xFF31363E)
+
+/** Translucent overlays are composited over a map plate so the swatch matches the base map. */
+private fun overlaySwatch(argb: Int, alpha: Float, darkBase: Boolean): Color =
+    Color(argb).copy(alpha = alpha).compositeOver(if (darkBase) MAP_PLATE_DARK else MAP_PLATE_LIGHT)
 
 @Preview(showBackground = true)
 @Composable

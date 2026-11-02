@@ -742,6 +742,7 @@ private fun BoxScope.MapLegendOverlay(uiState: MapUiState, timetable: TimetableU
     if (legendVisible(uiState, timetable)) {
         MapLegend(
             entries = legendEntries(uiState),
+            darkBase = uiState.selectedMapStyle.isDarkBase,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(bottom = LEGEND_BOTTOM_CLEARANCE),
