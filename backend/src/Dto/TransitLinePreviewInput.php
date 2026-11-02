@@ -16,7 +16,21 @@ final class TransitLinePreviewInput
      *
      * @var list<string>
      */
-    #[Assert\Count(min: 1, max: 250)]
+    #[Assert\Count(max: 250)]
     #[Groups([Group::TRANSIT_LINE_PREVIEW_WRITE])]
     public array $osmIds = [];
+
+    /** @var list<array{gtfsSourceUuid: string, routeId: string}> */
+    #[Assert\Count(max: 100)]
+    #[Assert\All([
+        new Assert\Collection(
+            fields: [
+                'gtfsSourceUuid' => new Assert\Uuid(),
+                'routeId' => new Assert\Length(max: 200),
+            ],
+            allowExtraFields: true,
+        ),
+    ])]
+    #[Groups([Group::TRANSIT_LINE_PREVIEW_WRITE])]
+    public array $gtfsLines = [];
 }

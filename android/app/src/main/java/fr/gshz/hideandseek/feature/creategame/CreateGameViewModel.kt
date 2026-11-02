@@ -79,6 +79,13 @@ class CreateGameViewModel @Inject constructor(
      */
     private val previewedLineFeatures = mutableMapOf<String, String>()
 
+    /**
+     * GTFS shapes carry no route identity, so the whole selection is one blob: refetched when the
+     * selected routes change, kept as-is when only OSM lines are ticked.
+     */
+    private var gtfsPreviewFeatures: List<String> = emptyList()
+    private var previewedGtfsLines: List<GtfsLineSelection> = emptyList()
+
     init {
         observeBoundaryInput()
         observeSelectedTransitLines()
@@ -104,14 +111,18 @@ class CreateGameViewModel @Inject constructor(
     private fun observeSelectedTransitLines() {
         viewModelScope.launch {
             combine(
-                _uiState.map { it.selectedTransitLines }.distinctUntilChanged(),
-                _uiState.map { it.transitLines }.distinctUntilChanged(),
+                _uiState.map { previewSelection(it) }.distinctUntilChanged(),
                 transitPreviewRetries,
-            ) { selected, lines, _ -> expandSelectedLineIds(lines, selected) }
+            ) { selection, _ -> selection }
                 .debounce(PREVIEW_DEBOUNCE_MS)
                 .collectLatest { loadTransitPreview(it) }
         }
     }
+
+    private fun previewSelection(state: CreateGameUiState) = TransitPreviewSelection(
+        osmIds = expandSelectedLineIds(state.transitLines, state.selectedTransitLines),
+        gtfsLines = resolveGtfsSelections(state).orEmpty(),
+    )
 
     private fun observeRealtimeProbe() {
         viewModelScope.launch {
@@ -430,38 +441,55 @@ class CreateGameViewModel @Inject constructor(
     }
 
     fun retryTransitPreview() {
+        previewedLineFeatures.clear()
+        previewedGtfsLines = emptyList()
         transitPreviewRetries.update { it + 1 }
     }
 
-    private suspend fun loadTransitPreview(osmIds: Set<String>) {
-        previewedLineFeatures.keys.retainAll(osmIds)
-        if (osmIds.isEmpty()) {
+    private suspend fun loadTransitPreview(selection: TransitPreviewSelection) {
+        previewedLineFeatures.keys.retainAll(selection.osmIds)
+        if (selection.isEmpty) {
+            previewedGtfsLines = emptyList()
+            gtfsPreviewFeatures = emptyList()
             _uiState.update {
                 it.copy(isLoadingTransitPreview = false, transitPreviewGeoJson = null, transitPreviewError = null)
             }
             return
         }
+        if (selection.gtfsLines.isEmpty()) {
+            gtfsPreviewFeatures = emptyList()
+            previewedGtfsLines = emptyList()
+        }
 
-        val missing = osmIds - previewedLineFeatures.keys
-        if (missing.isEmpty()) {
+        val missing = selection.osmIds - previewedLineFeatures.keys
+        val gtfsStale = selection.gtfsLines != previewedGtfsLines
+        if (missing.isEmpty() && !gtfsStale) {
             publishTransitPreview()
             return
         }
 
         _uiState.update { it.copy(isLoadingTransitPreview = true, transitPreviewError = null) }
-        fetchLineFeatures(missing)
+        fetchLineFeatures(missing, if (gtfsStale) selection.gtfsLines else emptyList())
     }
 
-    private suspend fun fetchLineFeatures(missing: Set<String>) {
+    private suspend fun fetchLineFeatures(missing: Set<String>, gtfsLines: List<GtfsLineSelection>) {
         try {
-            previewedLineFeatures.putAll(featuresByOsmId(gameRepository.transitLinePreview(missing), missing))
+            val parsed = parsePreviewFeatures(
+                gameRepository.transitLinePreview(missing, gtfsLines),
+                missing,
+            )
+            previewedLineFeatures.putAll(parsed.byOsmId)
+            if (gtfsLines.isNotEmpty()) {
+                gtfsPreviewFeatures = parsed.gtfs
+                previewedGtfsLines = gtfsLines
+            }
             publishTransitPreview()
         } catch (e: IOException) {
             Log.w(TAG, "Transit line preview failed", e)
-            failTransitPreview(UiText.fromResource(R.string.transit_preview_network_error))
+            failTransitPreview(UiText.fromResource(R.string.transit_preview_network_error), gtfsLines)
         } catch (e: IllegalArgumentException) {
             Log.w(TAG, "Transit line preview returned a body we cannot read", e)
-            failTransitPreview(UiText.fromResource(R.string.transit_preview_failed))
+            failTransitPreview(UiText.fromResource(R.string.transit_preview_failed), gtfsLines)
         } catch (e: HttpException) {
             Log.w(TAG, "Transit line preview failed", e)
             val errorKey = e.serverErrorKey()
@@ -469,12 +497,12 @@ class CreateGameViewModel @Inject constructor(
             if (errorKey == ERROR_KEY_NO_GEOMETRY) {
                 missing.forEach { previewedLineFeatures[it] = "" }
             }
-            failTransitPreview(UiText.fromResource(previewErrorResource(errorKey)))
+            failTransitPreview(UiText.fromResource(previewErrorResource(errorKey)), gtfsLines)
         }
     }
 
     private fun publishTransitPreview() {
-        val features = previewedLineFeatures.values.filter { it.isNotEmpty() }
+        val features = previewedLineFeatures.values.filter { it.isNotEmpty() } + gtfsPreviewFeatures
         val geoJson = if (features.isEmpty()) {
             null
         } else {
@@ -485,24 +513,37 @@ class CreateGameViewModel @Inject constructor(
         }
     }
 
-    private suspend fun failTransitPreview(message: UiText) {
+    private suspend fun failTransitPreview(message: UiText, gtfsLines: List<GtfsLineSelection>) {
         currentCoroutineContext().ensureActive()
+        if (gtfsLines.isNotEmpty()) {
+            // Stale shapes cannot be trimmed to the new routes, so drop them and refetch next time.
+            gtfsPreviewFeatures = emptyList()
+            previewedGtfsLines = emptyList()
+        }
         _uiState.update { it.copy(isLoadingTransitPreview = false, transitPreviewError = message) }
     }
 
-    /** Every requested id gets an entry, blank when it came back without geometry, so it is not refetched. */
-    private suspend fun featuresByOsmId(geoJson: String, requested: Set<String>): Map<String, String> =
+    private data class ParsedPreview(val byOsmId: Map<String, String>, val gtfs: List<String>)
+
+    /**
+     * OSM features echo their osmId and are cached per line; GTFS shapes carry no id, so they are
+     * kept as one list.
+     */
+    private suspend fun parsePreviewFeatures(geoJson: String, requested: Set<String>): ParsedPreview =
         withContext(parsingDispatcher) {
             val byId = requested.associateWith { "" }.toMutableMap()
+            val gtfs = mutableListOf<String>()
             val features = Json.parseToJsonElement(geoJson).jsonObject["features"]?.jsonArray.orEmpty()
             for (feature in features) {
                 val osmId = feature.jsonObject["properties"]?.jsonObject?.get("osmId")
                     ?.jsonPrimitive?.contentOrNull.orEmpty()
-                if (osmId.isNotEmpty()) {
+                if (osmId.isEmpty()) {
+                    gtfs.add(feature.toString())
+                } else {
                     byId[osmId] = feature.toString()
                 }
             }
-            byId
+            ParsedPreview(byId, gtfs)
         }
 
     @StringRes
@@ -879,6 +920,13 @@ class CreateGameViewModel @Inject constructor(
                 discoveryError = null,
             )
         }
+
+    private data class TransitPreviewSelection(
+        val osmIds: Set<String>,
+        val gtfsLines: List<GtfsLineSelection>,
+    ) {
+        val isEmpty: Boolean get() = osmIds.isEmpty() && gtfsLines.isEmpty()
+    }
 
     private data class BoundaryInput(
         val useLineBoundary: Boolean,

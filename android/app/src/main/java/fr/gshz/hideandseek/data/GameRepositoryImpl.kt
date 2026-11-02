@@ -232,11 +232,18 @@ class GameRepositoryImpl @Inject constructor(
         ),
     ).geoJson
 
-    override suspend fun transitLinePreview(osmIds: Set<String>): String =
-        api.transitLinePreview(
-            url = urlFor("/api/transit-line-preview"),
-            body = TransitLinePreviewRequest(osmIds = osmIds.toList()),
-        ).geoJson
+    override suspend fun transitLinePreview(
+        osmIds: Set<String>,
+        gtfsLines: List<GtfsLineSelection>,
+    ): String = api.transitLinePreview(
+        url = urlFor("/api/transit-line-preview"),
+        body = TransitLinePreviewRequest(
+            osmIds = osmIds.toList(),
+            gtfsLines = gtfsLines.map {
+                BoundaryGtfsLine(gtfsSourceUuid = it.sourceUuid, routeId = it.route.routeId)
+            }.ifEmpty { null },
+        ),
+    ).geoJson
 
     override suspend fun getGame(gameUuid: String): GameSummary =
         api.getGame(url = urlFor("/api/games/$gameUuid")).toDomain()

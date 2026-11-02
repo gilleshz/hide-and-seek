@@ -119,10 +119,15 @@ class FakeGameRepository : GameRepository {
     }
 
     var transitLinePreviewOsmIds: Set<String>? = null
+    var transitLinePreviewGtfsLines: List<GtfsLineSelection> = emptyList()
     var transitLinePreviewCalls = 0
 
-    override suspend fun transitLinePreview(osmIds: Set<String>): String {
+    override suspend fun transitLinePreview(
+        osmIds: Set<String>,
+        gtfsLines: List<GtfsLineSelection>,
+    ): String {
         transitLinePreviewOsmIds = osmIds
+        transitLinePreviewGtfsLines = gtfsLines
         transitLinePreviewCalls++
         return transitLinePreviewResult.getOrThrow()
     }

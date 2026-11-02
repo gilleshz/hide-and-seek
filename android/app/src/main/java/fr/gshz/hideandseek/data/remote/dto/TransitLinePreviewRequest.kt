@@ -4,5 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TransitLinePreviewRequest(
-    val osmIds: List<String>,
+    val osmIds: List<String> = emptyList(),
+    val gtfsLines: List<BoundaryGtfsLine>? = null,
 )

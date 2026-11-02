@@ -153,10 +153,13 @@ final readonly class NetworkBoundaryService
     }
 
     /**
+     * Shapes and stops of the selected GTFS routes, shared with the setup-time preview so it draws
+     * the same geometry the boundary is fitted from.
+     *
      * @param list<array<string, mixed>> $gtfsLines
      * @return array{lines: list<list<array{0: float, 1: float}>>, points: list<array{0: float, 1: float}>}
      */
-    private function gtfsGeometry(array $gtfsLines): array
+    public function gtfsGeometry(array $gtfsLines): array
     {
         /** @var array<string, list<string>> $routeIdsBySource */
         $routeIdsBySource = [];

@@ -8,11 +8,13 @@ import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
+import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
 import fr.gshz.hideandseek.fake.FakeGameRepository
 import fr.gshz.hideandseek.fake.FakeSessionRepository
 import fr.gshz.hideandseek.fake.httpException
@@ -194,6 +196,29 @@ class CreateGameViewModelTest {
     private fun feature(osmId: String) =
         """{"type":"Feature","properties":{"osmId":"$osmId"},"geometry":{"type":"MultiLineString"}}"""
 
+    private val gtfsFeature =
+        """{"type":"Feature","properties":{},"geometry":""" +
+            """{"type":"LineString","coordinates":[[6.6,46.5],[6.61,46.51]]}}"""
+
+    private fun gtfsCollection() = """{"type":"FeatureCollection","features":[$gtfsFeature]}"""
+
+    private fun gtfsRoute(routeId: String, ref: String) = GtfsRoute(
+        sourceUuid = "src-1",
+        sourceName = "TCL",
+        routeId = routeId,
+        shortName = ref,
+        longName = "Line $ref",
+        routeType = 0,
+        color = "#FF0000",
+        textColor = "#FFFFFF",
+    )
+
+    private fun uploadGtfs(viewModel: CreateGameViewModel, vararg routes: GtfsRoute) {
+        gameRepository.uploadGtfsFromFileResult =
+            Result.success(GtfsSourceState("src-1", "TCL", routes.toList()))
+        viewModel.uploadGtfsFromFile(ByteArray(0), "feed.zip")
+    }
+
     private fun collection(vararg osmIds: String) =
         osmIds.joinToString(",", """{"type":"FeatureCollection","features":[""", "]}") { feature(it) }
 
@@ -343,6 +368,58 @@ class CreateGameViewModelTest {
 
         assertNull(viewModel.uiState.value.transitPreviewError)
         assertEquals(collection("1"), viewModel.uiState.value.transitPreviewGeoJson)
+    }
+
+    @Test
+    fun `ticking a gtfs route draws its shapes`() = runTest(dispatcher) {
+        val route = gtfsRoute("route-1", "M1")
+        val viewModel = createViewModel()
+        uploadGtfs(viewModel, route)
+        advanceUntilIdle()
+
+        gameRepository.transitLinePreviewResult = Result.success(gtfsCollection())
+        viewModel.toggleGtfsRoute("src-1", "route-1")
+        advanceUntilIdle()
+
+        assertEquals(listOf(GtfsLineSelection("src-1", route)), gameRepository.transitLinePreviewGtfsLines)
+        assertTrue(viewModel.uiState.value.transitPreviewGeoJson!!.contains(gtfsFeature))
+    }
+
+    @Test
+    fun `ticking an osm line after a gtfs route keeps the shapes without refetching them`() = runTest(dispatcher) {
+        val viewModel = selectableViewModel("1" to "A")
+        uploadGtfs(viewModel, gtfsRoute("route-1", "M1"))
+        advanceUntilIdle()
+        gameRepository.transitLinePreviewResult = Result.success(gtfsCollection())
+        viewModel.toggleGtfsRoute("src-1", "route-1")
+        advanceUntilIdle()
+
+        gameRepository.transitLinePreviewResult = Result.success(collection("1"))
+        viewModel.toggleTransitLineGroup(group("A", "1"))
+        advanceUntilIdle()
+
+        assertEquals(setOf("1"), gameRepository.transitLinePreviewOsmIds)
+        assertTrue(gameRepository.transitLinePreviewGtfsLines.isEmpty())
+        val drawn = viewModel.uiState.value.transitPreviewGeoJson!!
+        assertTrue(drawn.contains(feature("1")))
+        assertTrue(drawn.contains(gtfsFeature))
+    }
+
+    @Test
+    fun `unticking the last gtfs route clears its shapes without a request`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        uploadGtfs(viewModel, gtfsRoute("route-1", "M1"))
+        advanceUntilIdle()
+        gameRepository.transitLinePreviewResult = Result.success(gtfsCollection())
+        viewModel.toggleGtfsRoute("src-1", "route-1")
+        advanceUntilIdle()
+        val callsAfterDraw = gameRepository.transitLinePreviewCalls
+
+        viewModel.toggleGtfsRoute("src-1", "route-1")
+        advanceUntilIdle()
+
+        assertEquals(callsAfterDraw, gameRepository.transitLinePreviewCalls)
+        assertNull(viewModel.uiState.value.transitPreviewGeoJson)
     }
 
     @Test

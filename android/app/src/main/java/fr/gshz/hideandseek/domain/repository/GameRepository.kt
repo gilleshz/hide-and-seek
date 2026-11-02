@@ -63,7 +63,10 @@ interface GameRepository {
         size: GameSize,
         edition: Edition,
     ): String
-    suspend fun transitLinePreview(osmIds: Set<String>): String
+    suspend fun transitLinePreview(
+        osmIds: Set<String>,
+        gtfsLines: List<GtfsLineSelection> = emptyList(),
+    ): String
     suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,
