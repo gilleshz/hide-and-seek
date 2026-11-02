@@ -92,7 +92,8 @@ final readonly class TransitLinePreviewProcessor implements ProcessorInterface
     }
 
     /**
-     * GTFS shapes carry no colour property, so they draw in the layer's fallback colour.
+     * A shape is painted in its route's colour when the feed declares one; without it the layer's
+     * fallback colour applies.
      *
      * @param list<array<string, mixed>> $gtfsLines
      * @return list<array<string, mixed>>
@@ -104,11 +105,11 @@ final readonly class TransitLinePreviewProcessor implements ProcessorInterface
         }
 
         $features = [];
-        foreach ($this->networkBoundary->gtfsGeometry($gtfsLines)['lines'] as $line) {
+        foreach ($this->networkBoundary->gtfsShapes($gtfsLines) as $shape) {
             $features[] = [
                 'type' => 'Feature',
-                'geometry' => ['type' => 'LineString', 'coordinates' => self::simplify($line)],
-                'properties' => new \stdClass(),
+                'geometry' => ['type' => 'LineString', 'coordinates' => self::simplify($shape['coordinates'])],
+                'properties' => $shape['colour'] === '' ? new \stdClass() : ['colour' => $shape['colour']],
             ];
         }
 

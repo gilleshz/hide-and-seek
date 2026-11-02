@@ -86,6 +86,9 @@ final class TransitLinePreviewApiTest extends ApiTestCase
         self::assertIsArray($geometry);
         self::assertSame('LineString', $geometry['type'] ?? null);
         self::assertSame([[6.6, 46.5], [6.61, 46.51]], $geometry['coordinates'] ?? null);
+        $properties = $features[0]['properties'] ?? null;
+        self::assertIsArray($properties);
+        self::assertSame('#1A6FB5', $properties['colour'] ?? null);
     }
 
     #[Test]
@@ -130,6 +133,9 @@ final class TransitLinePreviewApiTest extends ApiTestCase
         self::assertEqualsWithDelta(46.5, $first[1], 1e-9);
         self::assertEqualsWithDelta(6.6299, $last[0], 1e-9);
         self::assertEqualsWithDelta(46.5299, $last[1], 1e-9);
+        $properties = $this->features($response)[0]['properties'] ?? null;
+        self::assertIsArray($properties);
+        self::assertArrayNotHasKey('colour', $properties);
     }
 
     #[Test]
@@ -177,7 +183,8 @@ final class TransitLinePreviewApiTest extends ApiTestCase
         foreach (
             [
             'agency.txt' => "agency_id,agency_name\nA1,Agency",
-            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3\nR2,2,Two,3",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type,route_color\n"
+                . "R1,1,One,3,1a6fb5\nR2,2,Two,3,",
             'trips.txt' => "route_id,service_id,trip_id,shape_id\nR1,S1,T1,SH1\nR2,S1,T2,SH2",
             'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
                 . "SH1,46.5,6.6,1\nSH1,46.51,6.61,2\n" . self::longShape(),

@@ -161,19 +161,9 @@ final readonly class NetworkBoundaryService
      */
     public function gtfsGeometry(array $gtfsLines): array
     {
-        /** @var array<string, list<string>> $routeIdsBySource */
-        $routeIdsBySource = [];
-        foreach ($gtfsLines as $line) {
-            $uuid = $line['gtfsSourceUuid'] ?? null;
-            $routeId = $line['routeId'] ?? null;
-            if (is_string($uuid) && $uuid !== '' && is_string($routeId) && $routeId !== '') {
-                $routeIdsBySource[$uuid][] = $routeId;
-            }
-        }
-
         $lines = [];
         $points = [];
-        foreach ($routeIdsBySource as $uuid => $routeIds) {
+        foreach ($this->routeIdsBySource($gtfsLines) as $uuid => $routeIds) {
             $source = $this->gtfsSources->findByUuid($uuid);
             if ($source === null) {
                 continue;
@@ -190,6 +180,56 @@ final readonly class NetworkBoundaryService
         }
 
         return ['lines' => $lines, 'points' => $points];
+    }
+
+    /**
+     * Shapes tagged with their shape_id and route colour, for the setup preview: it colours each
+     * line by its route instead of drawing the whole selection in one colour.
+     *
+     * @param list<array<string, mixed>> $gtfsLines
+     * @return list<array{shapeId: int|string, colour: string, coordinates: list<array{0: float, 1: float}>}>
+     */
+    public function gtfsShapes(array $gtfsLines): array
+    {
+        $shapes = [];
+        foreach ($this->routeIdsBySource($gtfsLines) as $uuid => $routeIds) {
+            $source = $this->gtfsSources->findByUuid($uuid);
+            if ($source === null) {
+                continue;
+            }
+            $path = $this->gtfsSubset->build($source, $routeIds);
+            $colours = $this->gtfsSubset->shapeColours($path);
+            foreach ($this->gtfsSubset->shapeCoordinatesById($path) as $shapeId => $shape) {
+                if (count($shape) >= 2) {
+                    $shapes[] = [
+                        'shapeId' => $shapeId,
+                        'colour' => $colours[$shapeId] ?? '',
+                        'coordinates' => array_map(self::toGeoJsonPoint(...), $shape),
+                    ];
+                }
+            }
+        }
+
+        return $shapes;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $gtfsLines
+     * @return array<string, list<string>>
+     */
+    private function routeIdsBySource(array $gtfsLines): array
+    {
+        /** @var array<string, list<string>> $routeIdsBySource */
+        $routeIdsBySource = [];
+        foreach ($gtfsLines as $line) {
+            $uuid = $line['gtfsSourceUuid'] ?? null;
+            $routeId = $line['routeId'] ?? null;
+            if (is_string($uuid) && $uuid !== '' && is_string($routeId) && $routeId !== '') {
+                $routeIdsBySource[$uuid][] = $routeId;
+            }
+        }
+
+        return $routeIdsBySource;
     }
 
     /**

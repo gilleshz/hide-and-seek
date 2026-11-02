@@ -167,6 +167,16 @@ final readonly class GtfsSubsetService
      */
     public function shapeCoordinates(string $zipPath): array
     {
+        return array_values($this->shapeCoordinatesById($zipPath));
+    }
+
+    /**
+     * Shape polylines keyed by their shape_id, so a preview can colour each line by its route.
+     *
+     * @return array<int|string, list<array{lat: float, lon: float}>> a numeric shape_id becomes an int key
+     */
+    public function shapeCoordinatesById(string $zipPath): array
+    {
         $zip = new \ZipArchive();
         if ($zip->open($zipPath) !== true) {
             throw new FunctionalException(
@@ -176,27 +186,139 @@ final readonly class GtfsSubsetService
         }
 
         try {
-            $shapes = [];
-            if ($zip->locateName('shapes.txt') !== false) {
-                $in = $zip->getStream('shapes.txt');
-                if (is_resource($in)) {
-                    try {
-                        $shapes = $this->readShapeRows($in);
-                    } finally {
-                        fclose($in);
-                    }
-                }
+            if ($zip->locateName('shapes.txt') === false) {
+                return [];
+            }
+            $in = $zip->getStream('shapes.txt');
+            if (!is_resource($in)) {
+                return [];
             }
 
-            return $shapes;
+            try {
+                return $this->readShapeRows($in);
+            } finally {
+                fclose($in);
+            }
         } finally {
             $zip->close();
         }
     }
 
     /**
+     * Route colour of each shape, read from the routes and trips of the same archive.
+     *
+     * @return array<int|string, string> shape_id => "#RRGGBB"; shapes of routes without a usable colour are absent
+     */
+    public function shapeColours(string $zipPath): array
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new FunctionalException(
+                message: 'Failed to open GTFS archive.',
+                errorKey: 'gtfs.archive_open_failed',
+            );
+        }
+
+        try {
+            $routeColours = $this->routeColours($zip);
+
+            return $routeColours === [] ? [] : $this->shapeRouteColours($zip, $routeColours);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * @return array<string, string> route_id => "#RRGGBB"
+     */
+    private function routeColours(\ZipArchive $zip): array
+    {
+        $in = $zip->getStream('routes.txt');
+        if (!is_resource($in)) {
+            return [];
+        }
+
+        try {
+            $map = $this->headerMap($in);
+            $idIndex = $map['route_id'] ?? null;
+            if ($idIndex === null) {
+                return [];
+            }
+            $colourIndex = $map['route_color'] ?? null;
+
+            $colours = [];
+            while (($row = fgetcsv($in, null, ',', '"', '')) !== false) {
+                $routeId = $row[$idIndex] ?? '';
+                $colour = $colourIndex === null ? null : self::normalizeColour($row[$colourIndex] ?? '');
+                if ($routeId !== '' && $colour !== null) {
+                    $colours[$routeId] = $colour;
+                }
+            }
+
+            return $colours;
+        } finally {
+            fclose($in);
+        }
+    }
+
+    /**
+     * @param array<string, string> $routeColours
+     * @return array<int|string, string>
+     */
+    private function shapeRouteColours(\ZipArchive $zip, array $routeColours): array
+    {
+        $in = $zip->getStream('trips.txt');
+        if (!is_resource($in)) {
+            return [];
+        }
+
+        try {
+            $map = $this->headerMap($in);
+            $routeIndex = $map['route_id'] ?? null;
+            $shapeIndex = $map['shape_id'] ?? null;
+            if ($routeIndex === null || $shapeIndex === null) {
+                return [];
+            }
+
+            $colours = [];
+            while (($row = fgetcsv($in, null, ',', '"', '')) !== false) {
+                $shapeId = $row[$shapeIndex] ?? '';
+                $colour = $routeColours[$row[$routeIndex] ?? ''] ?? null;
+                if ($shapeId !== '' && $colour !== null && !isset($colours[$shapeId])) {
+                    $colours[$shapeId] = $colour;
+                }
+            }
+
+            return $colours;
+        } finally {
+            fclose($in);
+        }
+    }
+
+    /**
      * @param resource $in
-     * @return list<list<array{lat: float, lon: float}>>
+     * @return array<string, int>
+     */
+    private function headerMap($in): array
+    {
+        $header = fgetcsv($in, null, ',', '"', '');
+        if ($header === false) {
+            return [];
+        }
+
+        return array_flip(array_map(static fn (string|null $h): string => (string) $h, $header));
+    }
+
+    private static function normalizeColour(string $value): ?string
+    {
+        $hex = strtoupper(ltrim(trim($value), '#'));
+
+        return preg_match('/^[0-9A-F]{6}$/', $hex) === 1 ? '#' . $hex : null;
+    }
+
+    /**
+     * @param resource $in
+     * @return array<int|string, list<array{lat: float, lon: float}>>
      */
     private function readShapeRows($in): array
     {
@@ -227,9 +349,9 @@ final readonly class GtfsSubsetService
         }
 
         $shapes = [];
-        foreach ($byShape as $points) {
+        foreach ($byShape as $shapeId => $points) {
             ksort($points);
-            $shapes[] = array_values($points);
+            $shapes[$shapeId] = array_values($points);
         }
 
         return $shapes;

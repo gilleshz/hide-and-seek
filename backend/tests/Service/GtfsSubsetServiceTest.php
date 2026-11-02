@@ -121,6 +121,23 @@ final class GtfsSubsetServiceTest extends TestCase
     }
 
     #[Test]
+    public function itMapsRouteColoursToShapeIds(): void
+    {
+        $files = $this->feedFiles();
+        $files['routes.txt'] = "route_id,route_short_name,route_long_name,route_type,route_color\n"
+            . "R1,1,One,0,1a6fb5\nR2,2,Two,3,\nR3,3,Three,3,not-a-colour";
+        $files['trips.txt'] = "route_id,service_id,trip_id,shape_id\nR1,S1,T1,SH1\nR2,S1,T2,SH2\nR3,S1,T3,SH3";
+        $files['shapes.txt'] = "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
+            . "SH1,46.50,6.60,1\nSH1,46.51,6.61,2\n"
+            . "SH2,46.60,6.70,1\nSH2,46.61,6.71,2\n"
+            . "SH3,46.70,6.80,1\nSH3,46.71,6.81,2";
+        $subsetPath = $this->subsets->build($this->source($files), ['R1', 'R2', 'R3']);
+
+        self::assertSame(['SH1' => '#1A6FB5'], $this->subsets->shapeColours($subsetPath));
+        self::assertSame(['SH1', 'SH2', 'SH3'], array_keys($this->subsets->shapeCoordinatesById($subsetPath)));
+    }
+
+    #[Test]
     public function itFollowsAMultiLevelParentStationClosure(): void
     {
         $files = $this->feedFiles();
