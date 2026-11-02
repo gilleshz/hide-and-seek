@@ -42,6 +42,8 @@ final class GtfsSourceApiTest extends ApiTestCase
         self::assertIsArray($routes[0]);
         self::assertSame('R1', $routes[0]['routeId']);
         self::assertSame('1', $routes[0]['shortName']);
+        self::assertArrayNotHasKey('tripsPerDay', $routes[0]);
+        self::assertArrayNotHasKey('minTripsPerDay', $data);
     }
 
     protected function tearDown(): void
@@ -69,13 +71,22 @@ final class GtfsSourceApiTest extends ApiTestCase
     private function writeZip(): string
     {
         $path = tempnam(sys_get_temp_dir(), 'gtfs-api-fixture-') . '.zip';
+        $trips = "route_id,service_id,trip_id,shape_id\n";
+        for ($i = 1; $i <= 10; ++$i) {
+            $trips .= "R1,S1,T{$i},SH1\n";
+        }
+        $trips .= "R2,S1,SLOW,\n";
+
         $zip = new \ZipArchive();
         self::assertTrue($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE));
         foreach (
             [
             'agency.txt' => "agency_id,agency_name\nA1,Agency",
-            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3",
-            'trips.txt' => "route_id,service_id,trip_id,shape_id\nR1,S1,T1,SH1",
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3\nR2,2,Two,3",
+            'trips.txt' => $trips,
+            'calendar.txt' => "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+                . "start_date,end_date\n"
+                . "S1,1,1,1,1,1,0,0,20260101,20261231",
             'shapes.txt' => "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\nSH1,46.5,6.6,1",
             'stops.txt' => "stop_id,stop_name\nS1,Stop",
             'stop_times.txt' => "trip_id,stop_id,stop_sequence\nT1,S1,1",

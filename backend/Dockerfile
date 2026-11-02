@@ -107,6 +107,7 @@ RUN echo "APP_ENV=prod" > /app/.env \
     && echo "OVERPASS_MIRRORS_RANDOMIZE=true" >> /app/.env \
     && echo "MAX_BOUNDARY_SPAN_DEG=4.0" >> /app/.env \
     && echo "TRANSIT_MAX_RESPONSE_BYTES=33554432" >> /app/.env \
+    && echo "GTFS_MIN_TRIPS_PER_DAY=10" >> /app/.env \
     && echo "STADIA_API_KEY=" >> /app/.env \
     && echo "THUNDERFOREST_API_KEY=" >> /app/.env \
     && echo "CHAT_IMAGE_DIR=/app/var/uploads" >> /app/.env \

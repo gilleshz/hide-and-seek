@@ -30,6 +30,7 @@ use App\Service\ChatService;
 use App\Service\GameCleanupService;
 use App\Service\GameService;
 use App\Service\GameTransitBuilder;
+use App\Service\GtfsFrequencyService;
 use App\Service\GtfsService;
 use App\Service\GtfsShapeCompletionService;
 use App\Service\GtfsSubsetService;
@@ -197,7 +198,11 @@ final class GameDeleteProcessorTest extends TestCase
                 new OverpassHttpClient(new MockHttpClient(), 'https://test.example/api/', false, new NullLogger()),
                 new NullLogger(),
                 32_000_000,
+                new GtfsFrequencyService(),
+                0,
             ),
+            new GtfsFrequencyService(),
+            0,
         );
         $cleanup = new GameCleanupService(
             $this->createStub(GameGtfsLineRepository::class),

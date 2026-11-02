@@ -6,6 +6,7 @@ namespace App\Tests\Service;
 
 use App\ErrorKey;
 use App\Exception\FunctionalException;
+use App\Service\GtfsFrequencyService;
 use App\Service\GtfsShapeCompletionService;
 use App\Service\OverpassHttpClient;
 use PHPUnit\Framework\Attributes\Test;
@@ -35,6 +36,16 @@ final class GtfsShapeCompletionServiceTest extends TestCase
            {"type":"way","role":"","geometry":[
              {"lat":48.5100,"lon":7.7000},{"lat":48.5100,"lon":7.7100},{"lat":48.5100,"lon":7.7200}
            ]}
+         ]}
+        ]}
+        JSON;
+
+    private const string GEOMETRY_A_ONLY = <<<'JSON'
+        {"version":0.6,"elements":[
+         {"type":"relation","id":100,"members":[
+           {"type":"node","role":"stop","lat":48.5000,"lon":7.7000},
+           {"type":"way","role":"","geometry":[{"lat":48.5001,"lon":7.6999},{"lat":48.5001,"lon":7.7050}]},
+           {"type":"way","role":"","geometry":[{"lat":48.5001,"lon":7.7050},{"lat":48.5001,"lon":7.7201}]}
          ]}
         ]}
         JSON;
@@ -206,6 +217,61 @@ final class GtfsShapeCompletionServiceTest extends TestCase
     }
 
     #[Test]
+    public function itSkipsOsmCompletionForLowFrequencyRoutes(): void
+    {
+        $files = $this->fixture();
+        $files['trips.txt'] = "route_id,service_id,trip_id,block_id\n";
+        $files['stop_times.txt'] = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n";
+        for ($i = 1; $i <= 10; ++$i) {
+            $files['trips.txt'] .= "RA,S1,TA{$i},B1\n";
+            $files['stop_times.txt'] .= "TA{$i},08:00:00,08:00:00,SA1,1\n"
+                . "TA{$i},08:05:00,08:05:00,SA2,2\n"
+                . "TA{$i},08:10:00,08:10:00,SA3,3\n";
+        }
+        $files['trips.txt'] .= "RB,S1,TB1,B2\n";
+        $files['stop_times.txt'] .= "TB1,09:00:00,09:00:00,SB1,1\n"
+            . "TB1,09:05:00,09:05:00,SB2,2\n"
+            . "TB1,09:10:00,09:10:00,SB3,3\n";
+        $path = $this->createZip($files);
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY),
+            new MockResponse(self::GEOMETRY_A_ONLY),
+        ]);
+
+        $result = $this->createService($client, 10)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 1, 'routes' => 1, 'unmatched' => []], $result);
+
+        $zip = $this->openZip($path);
+        $trips = $this->parseCsv((string) $zip->getFromName('trips.txt'));
+        $zip->close();
+
+        $byTrip = [];
+        foreach ($trips['rows'] as $row) {
+            $byTrip[$row['trip_id']] = $row['shape_id'];
+        }
+        self::assertSame('OSM_100', $byTrip['TA1']);
+        self::assertSame('OSM_100', $byTrip['TA10']);
+        self::assertSame('', $byTrip['TB1']);
+    }
+
+    #[Test]
+    public function itCompletesShapesWhenTheFeedHasNoCalendar(): void
+    {
+        $files = $this->fixture();
+        unset($files['calendar.txt']);
+        $path = $this->createZip($files);
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY),
+            new MockResponse(self::GEOMETRY),
+        ]);
+
+        $result = $this->createService($client, 10)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 2, 'routes' => 2, 'unmatched' => []], $result);
+    }
+
+    #[Test]
     public function itRetriesAGeometryChunkWhenAMirrorOmitsMemberWays(): void
     {
         $path = $this->createZip($this->fixture());
@@ -361,6 +427,38 @@ final class GtfsShapeCompletionServiceTest extends TestCase
     }
 
     #[Test]
+    public function itCompletesShapesWhenTripIdsAreNumeric(): void
+    {
+        $files = $this->fixture();
+        $files['trips.txt'] = "route_id,service_id,trip_id,block_id\n"
+            . "RA,S1,101,B1\n"
+            . "RB,S1,102,B2\n";
+        $files['stop_times.txt'] = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            . "101,08:00:00,08:00:00,SA1,1\n"
+            . "101,08:05:00,08:05:00,SA2,2\n"
+            . "101,08:10:00,08:10:00,SA3,3\n"
+            . "102,09:00:00,09:00:00,SB1,1\n"
+            . "102,09:05:00,09:05:00,SB2,2\n"
+            . "102,09:10:00,09:10:00,SB3,3\n";
+        $path = $this->createZip($files);
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY),
+            new MockResponse(self::GEOMETRY),
+        ]);
+
+        $result = $this->createService($client)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 2, 'routes' => 2, 'unmatched' => []], $result);
+
+        $zip = $this->openZip($path);
+        $trips = $this->parseCsv((string) $zip->getFromName('trips.txt'));
+        $zip->close();
+
+        self::assertSame(['OSM_100', 'OSM_200'], array_column($trips['rows'], 'shape_id'));
+        self::assertSame(['101', '102'], array_column($trips['rows'], 'trip_id'));
+    }
+
+    #[Test]
     public function itMergesSameRefRelationsWhenNoSingleRelationCoversTheRoute(): void
     {
         $path = $this->createZip($this->fixture());
@@ -513,12 +611,14 @@ final class GtfsShapeCompletionServiceTest extends TestCase
         self::assertSame([], glob($path . '.*') ?: []);
     }
 
-    private function createService(MockHttpClient $client): GtfsShapeCompletionService
+    private function createService(MockHttpClient $client, int $minTripsPerDay = 0): GtfsShapeCompletionService
     {
         return new GtfsShapeCompletionService(
             new OverpassHttpClient($client, 'https://test.example/api/', false, new NullLogger()),
             new NullLogger(),
             32_000_000,
+            new GtfsFrequencyService(),
+            $minTripsPerDay,
         );
     }
 

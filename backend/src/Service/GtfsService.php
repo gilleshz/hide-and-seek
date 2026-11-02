@@ -43,6 +43,9 @@ final readonly class GtfsService
         private OutboundUrlGuard $urlGuard,
         private Filesystem $filesystem,
         private GtfsShapeCompletionService $shapeCompletion,
+        private GtfsFrequencyService $frequency,
+        #[Autowire('%app.gtfs_min_trips_per_day%')]
+        private int $minTripsPerDay,
     ) {
     }
 
@@ -215,7 +218,12 @@ final readonly class GtfsService
         return is_string($host) ? $host : 'unknown';
     }
 
-    /** @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string}> */
+    /**
+     * Routes below the frequency threshold are not offered at all, so the picker never lists
+     * school or other once-a-day services. Unknown frequencies are kept.
+     *
+     * @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string, tripsPerDay: int}>
+     */
     public function extractRoutes(GtfsSource $source): array
     {
         $zip = new \ZipArchive();
@@ -223,16 +231,34 @@ final readonly class GtfsService
             throw new FunctionalException(message: 'Failed to open GTFS archive for route extraction.', errorKey: 'gtfs.archive_open_failed');
         }
 
-        $csv = $zip->getFromName('routes.txt');
-        if ($csv === false) {
+        try {
+            $csv = $zip->getFromName('routes.txt');
+            if ($csv === false) {
+                throw new FunctionalException(message: 'routes.txt not found in GTFS archive.', errorKey: 'gtfs.routes_txt_missing');
+            }
+            $tripsPerDay = $this->frequency->tripsPerDay($zip);
+        } finally {
             $zip->close();
-
-            throw new FunctionalException(message: 'routes.txt not found in GTFS archive.', errorKey: 'gtfs.routes_txt_missing');
         }
 
-        $zip->close();
+        $routes = $this->parseRoutesCsv($csv);
+        foreach ($routes as &$route) {
+            $route['tripsPerDay'] = $tripsPerDay[trim($route['routeId'])] ?? 0;
+        }
+        unset($route);
 
-        return $this->parseRoutesCsv($csv);
+        $routes = array_values(array_filter(
+            $routes,
+            fn (array $route): bool => $this->keepsRoute($route['tripsPerDay']),
+        ));
+        usort($routes, static fn (array $a, array $b): int => $b['tripsPerDay'] <=> $a['tripsPerDay']);
+
+        return $routes;
+    }
+
+    private function keepsRoute(int $tripsPerDay): bool
+    {
+        return $this->minTripsPerDay <= 0 || $tripsPerDay === 0 || $tripsPerDay >= $this->minTripsPerDay;
     }
 
     /**

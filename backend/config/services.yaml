@@ -18,6 +18,7 @@ parameters:
         thunderforest: '%env(default::THUNDERFOREST_API_KEY)%'
         maptiler: '%env(default::MAPTILER_API_KEY)%'
     app.gtfs_storage_dir: '%env(GTFS_STORAGE_DIR)%'
+    app.gtfs_min_trips_per_day: '%env(int:GTFS_MIN_TRIPS_PER_DAY)%'
     app.tiles_dir: '%env(TILES_DIR)%'
     app.transit_catalog_url: 'https://files.mobilitydatabase.org/feeds_v2.csv'
     app.transit_catalog_file: '%kernel.project_dir%/var/transit-catalog/feeds.csv'

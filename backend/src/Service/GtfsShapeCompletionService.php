@@ -72,6 +72,9 @@ final readonly class GtfsShapeCompletionService
         private LoggerInterface $logger,
         #[Autowire('%app.transit_max_response_bytes%')]
         private int $maxResponseBytes,
+        private GtfsFrequencyService $frequency,
+        #[Autowire('%app.gtfs_min_trips_per_day%')]
+        private int $minTripsPerDay,
     ) {
     }
 
@@ -275,6 +278,7 @@ final readonly class GtfsShapeCompletionService
 
             $needed = [];
             $shaped = false;
+            $frequencies = null;
             while (($row = fgetcsv($stream, null, ',', '"', '')) !== false) {
                 $tripId = trim((string) ($row[$tripIndex] ?? ''));
                 if ($tripId === '') {
@@ -285,8 +289,13 @@ final readonly class GtfsShapeCompletionService
                     $shaped = true;
                     continue;
                 }
+                $routeId = trim((string) ($row[$routeIndex] ?? ''));
+                $frequencies ??= $this->frequency->tripsPerDay($zip);
+                if ($this->skipsRoute($routeId, $frequencies)) {
+                    continue;
+                }
                 $needed[$tripId] = [
-                    'routeId' => trim((string) ($row[$routeIndex] ?? '')),
+                    'routeId' => $routeId,
                     'shapeId' => $shapeId,
                 ];
                 if (count($needed) > self::MAX_TRIPS_WITHOUT_SHAPES) {
@@ -301,6 +310,19 @@ final readonly class GtfsShapeCompletionService
         } finally {
             fclose($stream);
         }
+    }
+
+    /**
+     * Low-frequency routes are left without a shape on purpose, so completion never spends
+     * OpenStreetMap requests on them. Unknown frequencies (a feed without calendar.txt) are kept.
+     *
+     * @param array<string, int> $frequencies
+     */
+    private function skipsRoute(string $routeId, array $frequencies): bool
+    {
+        $tripsPerDay = $frequencies[$routeId] ?? 0;
+
+        return $this->minTripsPerDay > 0 && $tripsPerDay > 0 && $tripsPerDay < $this->minTripsPerDay;
     }
 
     /**
@@ -422,7 +444,8 @@ final readonly class GtfsShapeCompletionService
 
         foreach ($byTrip as $tripId => $stopsBySequence) {
             ksort($stopsBySequence);
-            $this->addPattern($patterns, $tripId, array_values($stopsBySequence), $context);
+            // PHP turns a numeric CSV id into an int array key, and $tripId must stay a string.
+            $this->addPattern($patterns, (string) $tripId, array_values($stopsBySequence), $context);
         }
 
         return array_values($patterns);

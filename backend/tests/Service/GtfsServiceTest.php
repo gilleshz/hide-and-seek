@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\Entity\GtfsSource;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
+use App\Service\GtfsFrequencyService;
 use App\Service\GtfsService;
 use App\Service\GtfsShapeCompletionService;
 use App\Service\OutboundHttpFetcher;
@@ -74,6 +75,57 @@ final class GtfsServiceTest extends TestCase
         ]);
 
         self::assertSame([], $this->service->validate($path));
+    }
+
+    #[Test]
+    public function itDropsAndSortsRoutesByFrequency(): void
+    {
+        $path = $this->writeZip([
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\n"
+                . "R1,1,One,3\n"
+                . "R2,2,Two,3\n"
+                . "R3,3,Three,3\n"
+                . "R4 ,4,Four,3\n",
+            'trips.txt' => "route_id,service_id,trip_id\n"
+                . implode('', array_map(
+                    static fn (int $i): string => "R1,WEEKDAY,T{$i}\n",
+                    range(1, 10),
+                )) . "R2,WEEKDAY,T20\n"
+                . implode('', array_map(
+                    static fn (int $i): string => "R3,WEEKDAY,U{$i}\n",
+                    range(1, 25),
+                ))
+                . implode('', array_map(
+                    static fn (int $i): string => "R4,WEEKDAY,V{$i}\n",
+                    range(1, 10),
+                )),
+            'calendar.txt' => "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
+                . "start_date,end_date\n"
+                . "WEEKDAY,1,1,1,1,1,0,0,20260101,20261231\n",
+        ]);
+        $source = new GtfsSource('Feed', $path);
+
+        $all = $this->service->extractRoutes($source);
+        self::assertSame(['R3', 'R1', 'R4 ', 'R2'], array_column($all, 'routeId'));
+
+        $filtered = $this->makeService(new MockHttpClient(), null, 10)->extractRoutes($source);
+        self::assertSame(['R3', 'R1', 'R4 '], array_column($filtered, 'routeId'));
+    }
+
+    #[Test]
+    public function itKeepsRoutesWhenTheFeedHasNoCalendar(): void
+    {
+        $path = $this->writeZip([
+            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\n"
+                . "R1,1,One,3\n"
+                . "R2,2,Two,3",
+            'trips.txt' => "route_id,service_id,trip_id\nR1,NOCAL,T1\nR2,NOCAL,T2",
+        ]);
+
+        $routes = $this->makeService(new MockHttpClient(), null, 10)
+            ->extractRoutes(new GtfsSource('Feed', $path));
+
+        self::assertSame(['R1', 'R2'], array_column($routes, 'routeId'));
     }
 
     #[Test]
@@ -651,8 +703,11 @@ final class GtfsServiceTest extends TestCase
         return $path;
     }
 
-    private function makeService(MockHttpClient $client, ?MockHttpClient $overpassClient = null): GtfsService
-    {
+    private function makeService(
+        MockHttpClient $client,
+        ?MockHttpClient $overpassClient = null,
+        int $minTripsPerDay = 0,
+    ): GtfsService {
         return new GtfsService(
             $this->createStub(GtfsSourceRepository::class),
             $this->storageDir,
@@ -669,7 +724,11 @@ final class GtfsServiceTest extends TestCase
                 ),
                 new NullLogger(),
                 32_000_000,
+                new GtfsFrequencyService(),
+                $minTripsPerDay,
             ),
+            new GtfsFrequencyService(),
+            $minTripsPerDay,
         );
     }
 

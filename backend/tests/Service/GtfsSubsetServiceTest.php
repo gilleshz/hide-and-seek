@@ -7,6 +7,7 @@ namespace App\Tests\Service;
 use App\Entity\GtfsSource;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
+use App\Service\GtfsFrequencyService;
 use App\Service\GtfsService;
 use App\Service\GtfsShapeCompletionService;
 use App\Service\GtfsSubsetService;
@@ -39,7 +40,11 @@ final class GtfsSubsetServiceTest extends TestCase
                 new OverpassHttpClient(new MockHttpClient(), 'https://test.example/api/', false, new NullLogger()),
                 new NullLogger(),
                 32_000_000,
+                new GtfsFrequencyService(),
+                0,
             ),
+            new GtfsFrequencyService(),
+            0,
         );
         $this->subsets = new GtfsSubsetService($gtfs, new Filesystem(), new NullLogger());
     }
