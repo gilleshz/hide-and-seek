@@ -34,6 +34,13 @@ final class GtfsTripVariantFilterTest extends TestCase
     }
 
     #[Test]
+    public function itFingerprintsTheEffectiveEndpointShare(): void
+    {
+        self::assertSame('0.030000', $this->filter->configFingerprint());
+        self::assertSame('0.500000', (new GtfsTripVariantFilter(new Filesystem(), '0.5'))->configFingerprint());
+    }
+
+    #[Test]
     public function itDropsTripsWhoseFirstOrLastStopIsRareForItsRoute(): void
     {
         $source = $this->feed($this->rareEndpointFeed());

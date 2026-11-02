@@ -39,6 +39,7 @@ readonly class TransitTilePipeline
         #[Autowire('%app.tiles_dir%')]
         private string $tilesBaseDir,
         private TransitTimetableBuilder $timetableBuilder,
+        private TransitTileCache $cache,
     ) {
     }
 
@@ -53,6 +54,7 @@ readonly class TransitTilePipeline
         array $gtfsSources = [],
         array $osmRefs = [],
         ?string $boundaryGeoJson = null,
+        ?string $cacheKey = null,
     ): int {
         if ($relationIds === [] && $gtfsSources === []) {
             return 0;
@@ -63,17 +65,31 @@ readonly class TransitTilePipeline
             throw new \RuntimeException("Failed to create tiles directory: {$tilesDir}");
         }
 
-        $gtfsDir = sys_get_temp_dir() . '/osm2gtfs-' . $gameUuid;
         $mergedDir = sys_get_temp_dir() . '/merged-' . $gameUuid;
-        $clipFile = $gtfsDir . self::CLIP_SUFFIX;
-        if ($boundaryGeoJson !== null && $boundaryGeoJson !== '') {
-            file_put_contents($clipFile, $boundaryGeoJson);
-        }
         // Refs reach the shell only as argv "$1", never as script text.
         $routesCsv = implode(',', array_values(array_unique(array_merge(
             $osmRefs,
             ...array_map(static fn(array $s): array => $s['selectedRefs'], $gtfsSources),
         ))));
+
+        // @phpstan-ignore notIdentical.alwaysTrue (defense in depth: no empty source list may reach gtfsmerge)
+        if ($cacheKey !== null && $relationIds === [] && $gtfsSources !== [] && $this->cache->has($cacheKey)) {
+            $this->cache->linkInto($cacheKey, $tilesDir);
+            try {
+                $this->runMerge($gtfsSources, $mergedDir, $routesCsv);
+                $this->timetableBuilder->build($gameUuid, $mergedDir, $gtfsSources);
+            } finally {
+                $this->removeDir($mergedDir);
+            }
+
+            return $this->countTiles($tilesDir);
+        }
+
+        $gtfsDir = sys_get_temp_dir() . '/osm2gtfs-' . $gameUuid;
+        $clipFile = $gtfsDir . self::CLIP_SUFFIX;
+        if ($boundaryGeoJson !== null && $boundaryGeoJson !== '') {
+            file_put_contents($clipFile, $boundaryGeoJson);
+        }
         $shFile = tempnam(sys_get_temp_dir(), 'transit-') . '.sh';
         file_put_contents(
             $shFile,
@@ -101,6 +117,13 @@ readonly class TransitTilePipeline
         try {
             $process->start();
             $process->wait();
+            if ($process->isSuccessful() && $cacheKey !== null && $relationIds === []) {
+                try {
+                    $this->cache->store($cacheKey, $tilesDir);
+                } catch (\RuntimeException) {
+                    // Caching is best-effort; a successful tile build must still create the game.
+                }
+            }
             if ($process->isSuccessful() && $gtfsSources !== []) {
                 $this->timetableBuilder->build($gameUuid, $mergedDir, $gtfsSources);
             }
@@ -117,6 +140,58 @@ readonly class TransitTilePipeline
         }
 
         return $this->countTiles($tilesDir);
+    }
+
+    /**
+     * Cache hit: only the merged feed is needed, for the timetable builder.
+     *
+     * @param list<array{path: string, uuid?: string, selectedRefs: list<string>}> $gtfsSources
+     */
+    private function runMerge(array $gtfsSources, string $mergedDir, string $routesCsv): void
+    {
+        $args = '';
+        $srcIdx = 1;
+        foreach ($gtfsSources as $source) {
+            $args .= ' ' . escapeshellarg('--source')
+                . ' ' . escapeshellarg("src{$srcIdx}={$source['path']}");
+            ++$srcIdx;
+        }
+
+        $shFile = tempnam(sys_get_temp_dir(), 'transit-merge-') . '.sh';
+        file_put_contents(
+            $shFile,
+            "#!/bin/sh\nset -e\n"
+            . "ROUTES_CSV=\"\${1:-}\"\n"
+            . self::GTFSMERGE_BIN . " --output {$mergedDir}{$args}"
+            . ' --routes "$ROUTES_CSV"' . " --stop-merge-radius 200\n",
+        );
+        chmod($shFile, 0o755);
+
+        $process = new Process(
+            ['setsid', $shFile, $routesCsv],
+            null,
+            ['OVERPASS_MIRRORS' => $this->overpassMirrors],
+            null,
+            self::TIMEOUT_SECONDS,
+        );
+        $killGroup = static function () use ($process): void {
+            $pid = $process->getPid();
+            if ($pid !== null && function_exists('posix_kill')) {
+                @posix_kill(-$pid, defined('SIGTERM') ? SIGTERM : 15);
+            }
+        };
+        register_shutdown_function($killGroup);
+
+        try {
+            $process->run();
+        } finally {
+            $killGroup();
+            @unlink($shFile);
+        }
+
+        if (!$process->isSuccessful()) {
+            throw new \RuntimeException('Transit merge failed: ' . $process->getErrorOutput());
+        }
     }
 
     /**

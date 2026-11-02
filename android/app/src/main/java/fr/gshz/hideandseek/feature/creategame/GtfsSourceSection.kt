@@ -8,10 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
@@ -36,8 +37,7 @@ import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 
 @Suppress("LongParameterList")
-@Composable
-internal fun GtfsSourceSection(
+internal fun LazyListScope.gtfsSourceItems(
     sources: List<GtfsSourceState>,
     routes: List<Pair<GtfsSourceState, GtfsRoute>>,
     selectedKeys: Set<String>,
@@ -46,26 +46,32 @@ internal fun GtfsSourceSection(
     onRemoveSource: (String) -> Unit,
 ) {
     sources.forEach { source ->
-        Spacer(Modifier.height(Spacing.sm))
         val sourceRoutes = routes.filter { it.first.uuid == source.uuid }
-        GtfsSourceHeader(
-            source = source,
-            selectedCount = sourceRoutes.count { (_, route) ->
-                "${source.uuid}|${route.routeId}" in selectedKeys
-            },
-            totalCount = sourceRoutes.size,
-            onRemove = { onRemoveSource(source.uuid) },
-        )
-        GtfsSourceMeta(source)
-        if (sourceRoutes.isNotEmpty()) {
-            GtfsBulkSelectRow(
+        item(key = "gtfs-header-${source.uuid}") {
+            GtfsSourceHeader(
                 source = source,
-                routes = sourceRoutes,
-                selectedKeys = selectedKeys,
-                onToggle = { onToggleAllRoutes(source.uuid) },
+                selectedCount = sourceRoutes.count { (_, route) ->
+                    "${source.uuid}|${route.routeId}" in selectedKeys
+                },
+                totalCount = sourceRoutes.size,
+                onRemove = { onRemoveSource(source.uuid) },
             )
         }
-        sourceRoutes.forEach { (_, route) ->
+        item(key = "gtfs-meta-${source.uuid}") { GtfsSourceMeta(source) }
+        if (sourceRoutes.isNotEmpty()) {
+            item(key = "gtfs-bulk-${source.uuid}") {
+                GtfsBulkSelectRow(
+                    source = source,
+                    routes = sourceRoutes,
+                    selectedKeys = selectedKeys,
+                    onToggle = { onToggleAllRoutes(source.uuid) },
+                )
+            }
+        }
+        items(
+            items = sourceRoutes,
+            key = { (_, route) -> "gtfs-${source.uuid}|${route.routeId}" },
+        ) { (_, route) ->
             GtfsRouteRow(
                 route = route,
                 selected = "${route.sourceUuid}|${route.routeId}" in selectedKeys,

@@ -48,6 +48,7 @@ use App\Service\RosterNotifier;
 use App\Service\RosterService;
 use App\Service\TransitService;
 use App\Service\TransitStationImporter;
+use App\Service\TransitTileCache;
 use App\Service\TransitTilePipeline;
 use App\Service\TransitTileService;
 use App\Service\TransitTimetableBuilder;
@@ -251,12 +252,14 @@ final class GameDeleteProcessorTest extends TestCase
                     'http://mirror/api',
                     '/tmp/tiles',
                     new TransitTimetableBuilder('/tmp/tiles', new NullLogger(), new Filesystem()),
+                    new TransitTileCache('/tmp/tiles', new Filesystem()),
                 ),
                 new TransitStationImporter(
                     new TransitTileService('/tmp/tiles'),
                     $this->createStub(GameTransitStationRepository::class),
                     $entityManager,
                 ),
+                new TransitTileCache('/tmp/tiles', new Filesystem()),
                 $entityManager,
                 new Filesystem(),
                 '/tmp/tiles',

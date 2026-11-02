@@ -14,8 +14,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -227,13 +228,11 @@ private fun TransitLineList(
     onToggleAllGtfsRoutes: (String) -> Unit,
     onRemoveGtfsSource: (String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .heightIn(max = 400.dp)
-            .verticalScroll(rememberScrollState()),
+    LazyColumn(
+        modifier = Modifier.heightIn(max = 400.dp),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
-        GtfsSourceSection(
+        gtfsSourceItems(
             sources = gtfsSources,
             routes = uniqueGtfsRoutes,
             selectedKeys = selectedGtfsRouteKeys,
@@ -243,23 +242,30 @@ private fun TransitLineList(
         )
 
         if (groups.isNotEmpty()) {
-            BulkSelectRow(
-                label = stringResource(R.string.transit_select_all_shown),
-                groups = groups,
-                selectedIds = selectedIds,
-                onToggle = onToggleGroups,
-                showOsmChip = true,
-            )
+            item(key = "osm-bulk") {
+                BulkSelectRow(
+                    label = stringResource(R.string.transit_select_all_shown),
+                    groups = groups,
+                    selectedIds = selectedIds,
+                    onToggle = onToggleGroups,
+                    showOsmChip = true,
+                )
+            }
         }
         groups.groupBy { it.network }.forEach { (network, networkGroups) ->
-            BulkSelectRow(
-                label = network.ifBlank { stringResource(R.string.transit_network_other) },
-                groups = networkGroups,
-                selectedIds = selectedIds,
-                onToggle = onToggleGroups,
-                showOsmChip = true,
-            )
-            networkGroups.forEach { group ->
+            item(key = "osm-net-$network") {
+                BulkSelectRow(
+                    label = network.ifBlank { stringResource(R.string.transit_network_other) },
+                    groups = networkGroups,
+                    selectedIds = selectedIds,
+                    onToggle = onToggleGroups,
+                    showOsmChip = true,
+                )
+            }
+            items(
+                items = networkGroups,
+                key = { group -> "osm-${group.network}|${group.routeType}|${group.ref}" },
+            ) { group ->
                 TransitLineGroupRow(
                     group = group,
                     selected = group.osmIds.any { it in selectedIds },
@@ -493,5 +499,5 @@ internal fun routeTypeLabel(routeType: String): String = when (routeType) {
     "bus" -> stringResource(R.string.transit_route_bus)
     "monorail" -> stringResource(R.string.transit_route_monorail)
     "funicular" -> stringResource(R.string.transit_route_funicular)
-    else -> "${stringResource(R.string.transit_route_unknown)} ($routeType)"
+    else -> routeType
 }

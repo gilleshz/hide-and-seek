@@ -27,6 +27,7 @@ final readonly class GameTransitBuilder
         private GtfsTripVariantFilter $tripVariants,
         private TransitTilePipeline $transitTilePipeline,
         private TransitStationImporter $transitStationImporter,
+        private TransitTileCache $tileCache,
         private EntityManagerInterface $entityManager,
         private Filesystem $filesystem,
         #[Autowire('%app.tiles_dir%')]
@@ -114,11 +115,20 @@ final readonly class GameTransitBuilder
 
         $pipelineSources = [];
         $filteredPaths = [];
+        $cacheSources = [];
+        $cacheable = $relationIds === [];
         try {
             foreach ($gtfsSourceSpecs as $spec) {
                 $path = $spec['path'];
                 if ($this->gtfsService->sourceMetadata($spec['source'])['requiresSubset']) {
                     $path = $this->gtfsSubsetService->build($spec['source'], $spec['routeIds']);
+                }
+                if ($cacheable) {
+                    $cacheSources[] = [
+                        'uuid' => $spec['uuid'],
+                        'routeIds' => $spec['routeIds'],
+                        'refs' => $spec['selectedRefs'],
+                    ];
                 }
                 $filtered = $this->tripVariants->filter($path, $spec['routeIds']);
                 if ($filtered !== $path) {
@@ -131,12 +141,17 @@ final readonly class GameTransitBuilder
                 ];
             }
 
+            $cacheKey = $cacheable && $cacheSources !== []
+                ? $this->tileCache->key($cacheSources, $this->tripVariants->configFingerprint())
+                : null;
+
             $built = $this->transitTilePipeline->build(
                 $game->getUuid(),
                 $relationIds,
                 $pipelineSources,
                 $osmRefs,
                 $game->getBoundaryGeoJson(),
+                $cacheKey,
             );
         } catch (\RuntimeException $e) {
             $this->failTileBuild($game, $e);

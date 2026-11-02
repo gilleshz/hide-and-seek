@@ -42,6 +42,7 @@ final class GtfsSourceApiTest extends ApiTestCase
         self::assertIsArray($routes[0]);
         self::assertSame('R1', $routes[0]['routeId']);
         self::assertSame('1', $routes[0]['shortName']);
+        self::assertSame('Agency', $routes[0]['agencyName']);
         self::assertArrayNotHasKey('tripsPerDay', $routes[0]);
         self::assertArrayNotHasKey('minTripsPerDay', $data);
     }
@@ -82,7 +83,8 @@ final class GtfsSourceApiTest extends ApiTestCase
         foreach (
             [
             'agency.txt' => "agency_id,agency_name\nA1,Agency",
-            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\nR1,1,One,3\nR2,2,Two,3",
+            'routes.txt' => "route_id,agency_id,route_short_name,route_long_name,route_type\n"
+                . "R1,A1,1,One,3\nR2,A1,2,Two,3",
             'trips.txt' => $trips,
             'calendar.txt' => "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
                 . "start_date,end_date\n"

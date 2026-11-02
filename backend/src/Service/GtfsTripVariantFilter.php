@@ -157,6 +157,11 @@ final readonly class GtfsTripVariantFilter
         return $dropped;
     }
 
+    public function configFingerprint(): string
+    {
+        return number_format($this->minEndpointTripShare(), 6, '.', '');
+    }
+
     private function minEndpointTripShare(): float
     {
         $configured = (float) ($this->minEndpointTripShare ?? '');

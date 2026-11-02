@@ -202,15 +202,21 @@ class CreateGameViewModelTest {
 
     private fun gtfsCollection() = """{"type":"FeatureCollection","features":[$gtfsFeature]}"""
 
-    private fun gtfsRoute(routeId: String, ref: String) = GtfsRoute(
+    private fun gtfsRoute(
+        routeId: String,
+        ref: String,
+        routeType: Int = 0,
+        agencyName: String = "",
+    ) = GtfsRoute(
         sourceUuid = "src-1",
         sourceName = "TCL",
         routeId = routeId,
         shortName = ref,
         longName = "Line $ref",
-        routeType = 0,
+        routeType = routeType,
         color = "#FF0000",
         textColor = "#FFFFFF",
+        agencyName = agencyName,
     )
 
     private fun uploadGtfs(viewModel: CreateGameViewModel, vararg routes: GtfsRoute) {
@@ -368,6 +374,26 @@ class CreateGameViewModelTest {
 
         assertNull(viewModel.uiState.value.transitPreviewError)
         assertEquals(collection("1"), viewModel.uiState.value.transitPreviewGeoJson)
+    }
+
+    @Test
+    fun `a train route uses its agency as the mode category and search field`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        uploadGtfs(viewModel, gtfsRoute("rer-a", "A", routeType = 2, agencyName = "RER"))
+        advanceUntilIdle()
+
+        assertTrue("RER" in viewModel.uiState.value.availableModes)
+        assertEquals(
+            listOf("rer-a"),
+            viewModel.uiState.value.uniqueGtfsRoutes.map { it.second.routeId },
+        )
+
+        viewModel.onTransitLineQueryChange("RER")
+
+        assertEquals(
+            listOf("rer-a"),
+            viewModel.uiState.value.uniqueGtfsRoutes.map { it.second.routeId },
+        )
     }
 
     @Test

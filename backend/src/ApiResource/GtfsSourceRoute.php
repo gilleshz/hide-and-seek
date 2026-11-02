@@ -26,4 +26,7 @@ final class GtfsSourceRoute
 
     #[Groups([Group::GTFS_SOURCE_READ])]
     public string $textColor;
+
+    #[Groups([Group::GTFS_SOURCE_READ])]
+    public string $agencyName = '';
 }

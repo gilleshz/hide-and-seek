@@ -39,17 +39,17 @@ final readonly class GtfsShapeCompletionService
     private const float METERS_PER_DEGREE_LON = 111_319.490_793_273_58;
     private const float EARTH_RADIUS_METERS = 6_371_008.8;
 
-    /** @var array<int, string> */
+    /** @var array<int, list<string>> */
     private const array ROUTE_TYPE_MAP = [
-        0 => 'tram',
-        1 => 'subway',
-        2 => 'train',
-        3 => 'bus',
-        4 => 'ferry',
-        5 => 'cable_tram',
-        7 => 'funicular',
-        11 => 'trolleybus',
-        12 => 'monorail',
+        0 => ['tram', 'light_rail'],
+        1 => ['subway', 'light_rail'],
+        2 => ['train'],
+        3 => ['bus'],
+        4 => ['ferry'],
+        5 => ['cable_tram'],
+        7 => ['funicular'],
+        11 => ['trolleybus'],
+        12 => ['monorail'],
     ];
 
     /** @var list<string> */
@@ -585,14 +585,19 @@ final readonly class GtfsShapeCompletionService
         $types = [];
         foreach ($needed as $trip) {
             $routeType = $routes[$trip['routeId']]['routeType'] ?? -1;
-            if (isset(self::ROUTE_TYPE_MAP[$routeType])) {
-                $types[self::ROUTE_TYPE_MAP[$routeType]] = true;
+            foreach (self::ROUTE_TYPE_MAP[$routeType] ?? [] as $mapped) {
+                $types[$mapped] = true;
             }
         }
 
         $values = array_keys($types);
         if ($values === []) {
-            $values = array_values(array_unique(self::ROUTE_TYPE_MAP));
+            foreach (self::ROUTE_TYPE_MAP as $mapped) {
+                foreach ($mapped as $type) {
+                    $types[$type] = true;
+                }
+            }
+            $values = array_keys($types);
         }
         sort($values);
 
@@ -1074,6 +1079,7 @@ final readonly class GtfsShapeCompletionService
         $routeIds = [];
         $assignedShapes = [];
         $unmatched = [];
+        $matchedRefs = [];
 
         foreach ($patterns as $pattern) {
             $ref = $pattern['ref'];
@@ -1096,8 +1102,14 @@ final readonly class GtfsShapeCompletionService
             $relationIds[$best['relationId']] = true;
             $routeIds[$pattern['routeId']] = true;
             $assignedShapes[$best['relationId']] = ['ref' => $ref, 'points' => $best['geometry']];
+            if ($ref !== '') {
+                $matchedRefs[$ref] = true;
+            }
         }
 
+        foreach (array_keys($matchedRefs) as $ref) {
+            unset($unmatched[$ref]);
+        }
         $unmatchedRefs = array_keys($unmatched);
         sort($unmatchedRefs);
 

@@ -34,6 +34,15 @@ final readonly class GtfsService
     private const int MAX_ZIP_ENTRIES = 10_000;
     private const int MAX_COMPRESSION_RATIO = 100;
 
+    /** Pickers read best with rail modes first, then the rest by line name. */
+    private const array ROUTE_TYPE_RANK = [
+        1 => 0,
+        0 => 1,
+        7 => 2,
+        11 => 3,
+        3 => 4,
+    ];
+
     public function __construct(
         private GtfsSourceRepository $sources,
         #[Autowire('%app.gtfs_storage_dir%')]
@@ -222,7 +231,7 @@ final readonly class GtfsService
      * Routes below the frequency threshold are not offered at all, so the picker never lists
      * school or other once-a-day services. Unknown frequencies are kept.
      *
-     * @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string, tripsPerDay: int}>
+     * @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string, tripsPerDay: int, agencyName: string}>
      */
     public function extractRoutes(GtfsSource $source): array
     {
@@ -237,6 +246,7 @@ final readonly class GtfsService
                 throw new FunctionalException(message: 'routes.txt not found in GTFS archive.', errorKey: 'gtfs.routes_txt_missing');
             }
             $tripsPerDay = $this->frequency->tripsPerDay($zip);
+            $agencyNames = $this->agencyNames($zip);
         } finally {
             $zip->close();
         }
@@ -244,6 +254,7 @@ final readonly class GtfsService
         $routes = $this->parseRoutesCsv($csv);
         foreach ($routes as &$route) {
             $route['tripsPerDay'] = $tripsPerDay[trim($route['routeId'])] ?? 0;
+            $route['agencyName'] = $agencyNames[$route['agencyId']] ?? '';
         }
         unset($route);
 
@@ -251,7 +262,11 @@ final readonly class GtfsService
             $routes,
             fn (array $route): bool => $this->keepsRoute($route['tripsPerDay']),
         ));
-        usort($routes, static fn (array $a, array $b): int => $b['tripsPerDay'] <=> $a['tripsPerDay']);
+        usort($routes, static fn (array $a, array $b): int => (self::ROUTE_TYPE_RANK[$a['routeType']] ?? 5)
+            <=> (self::ROUTE_TYPE_RANK[$b['routeType']] ?? 5)
+            ?: strnatcasecmp($a['shortName'], $b['shortName'])
+            ?: strnatcasecmp($a['longName'], $b['longName'])
+            ?: strnatcasecmp($a['routeId'], $b['routeId']));
 
         return $routes;
     }
@@ -259,6 +274,53 @@ final readonly class GtfsService
     private function keepsRoute(int $tripsPerDay): bool
     {
         return $this->minTripsPerDay <= 0 || $tripsPerDay === 0 || $tripsPerDay >= $this->minTripsPerDay;
+    }
+
+    /**
+     * @return array<string, string> agency_id => agency_name
+     */
+    private function agencyNames(\ZipArchive $zip): array
+    {
+        $stream = $zip->getStream('agency.txt');
+        if (!is_resource($stream)) {
+            return [];
+        }
+
+        try {
+            $map = $this->headerMap($stream);
+            $idIndex = $map['agency_id'] ?? null;
+            $nameIndex = $map['agency_name'] ?? null;
+            if ($idIndex === null || $nameIndex === null) {
+                return [];
+            }
+            $names = [];
+            while (($row = fgetcsv($stream, null, ',', '"', '')) !== false) {
+                $agencyId = trim((string) ($row[$idIndex] ?? ''));
+                $name = trim((string) ($row[$nameIndex] ?? ''));
+                if ($agencyId !== '' && $name !== '') {
+                    $names[$agencyId] = $name;
+                }
+            }
+
+            return $names;
+        } finally {
+            fclose($stream);
+        }
+    }
+
+    /**
+     * @param resource $stream
+     *
+     * @return array<string, int>
+     */
+    private function headerMap($stream): array
+    {
+        $header = fgetcsv($stream, null, ',', '"', '');
+        if ($header === false) {
+            return [];
+        }
+
+        return array_flip(array_map(static fn (string|null $column): string => (string) $column, $header));
     }
 
     /**
@@ -527,7 +589,7 @@ final readonly class GtfsService
         return $issues;
     }
 
-    /** @return list<array{routeId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string}> */
+    /** @return list<array{routeId: string, agencyId: string, shortName: string, longName: string, routeType: int, color: string, textColor: string}> */
     private function parseRoutesCsv(string $csv): array
     {
         $lines = explode("\n", trim($csv));
@@ -553,6 +615,7 @@ final readonly class GtfsService
                 continue;
             }
             $seenRouteIds[$routeId] = true;
+            $agencyId = isset($headerMap['agency_id']) ? ($fields[$headerMap['agency_id']] ?? '') : '';
             $shortName = isset($headerMap['route_short_name']) ? ($fields[$headerMap['route_short_name']] ?? '') : '';
             $longName = isset($headerMap['route_long_name']) ? ($fields[$headerMap['route_long_name']] ?? '') : '';
             $rawType = isset($headerMap['route_type']) ? ($fields[$headerMap['route_type']] ?? '0') : '0';
@@ -562,6 +625,7 @@ final readonly class GtfsService
 
             $routes[] = [
                 'routeId' => $routeId,
+                'agencyId' => $agencyId,
                 'shortName' => $shortName,
                 'longName' => $longName,
                 'routeType' => $routeType,

@@ -9,6 +9,7 @@ data class GtfsRoute(
     val routeType: Int,
     val color: String,
     val textColor: String,
+    val agencyName: String = "",
 ) {
     val ref: String get() = shortName
 
@@ -20,16 +21,17 @@ data class GtfsRoute(
         else -> longName
     }
 
-    val routeTypeString: String get() = when (routeType) {
-        0 -> "tram"
-        1 -> "subway"
-        2 -> "train"
-        3 -> "bus"
-        4 -> "ferry"
-        5 -> "cable_tram"
-        7 -> "funicular"
-        11 -> "trolleybus"
-        12 -> "monorail"
+    val routeTypeString: String get() = when {
+        routeType == 2 && agencyName.isNotBlank() -> agencyName
+        routeType == 0 -> "tram"
+        routeType == 1 -> "subway"
+        routeType == 2 -> "train"
+        routeType == 3 -> "bus"
+        routeType == 4 -> "ferry"
+        routeType == 5 -> "cable_tram"
+        routeType == 7 -> "funicular"
+        routeType == 11 -> "trolleybus"
+        routeType == 12 -> "monorail"
         else -> "bus"
     }
 }

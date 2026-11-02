@@ -23,6 +23,7 @@ final class GtfsSourceResourceTest extends TestCase
             'routeType' => 0,
             'color' => 'ff0000',
             'textColor' => 'ffffff',
+            'agencyName' => 'RER',
         ]], [
             'sizeBytes' => 123456,
             'uncompressedBytes' => 987654,
@@ -38,5 +39,6 @@ final class GtfsSourceResourceTest extends TestCase
         self::assertSame('R1', $resource->routes[0]->routeId);
         self::assertSame('1', $resource->routes[0]->shortName);
         self::assertSame(0, $resource->routes[0]->routeType);
+        self::assertSame('RER', $resource->routes[0]->agencyName);
     }
 }

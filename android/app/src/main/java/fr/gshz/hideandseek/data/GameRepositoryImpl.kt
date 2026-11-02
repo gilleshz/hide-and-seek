@@ -338,6 +338,7 @@ class GameRepositoryImpl @Inject constructor(
                 routeType = dto.routeType,
                 color = dto.color,
                 textColor = dto.textColor,
+                agencyName = dto.agencyName,
             )
         },
         hasRealtime = hasRealtime,

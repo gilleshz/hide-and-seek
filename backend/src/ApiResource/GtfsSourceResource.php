@@ -53,7 +53,8 @@ final class GtfsSourceResource
      *     longName: string,
      *     routeType: int,
      *     color: string,
-     *     textColor: string
+     *     textColor: string,
+     *     agencyName: string
      * }> $routes
      * @param array{sizeBytes: int, uncompressedBytes: ?int, requiresSubset: bool} $metadata
      */
@@ -73,6 +74,7 @@ final class GtfsSourceResource
             $route->routeType = $r['routeType'];
             $route->color = $r['color'];
             $route->textColor = $r['textColor'];
+            $route->agencyName = $r['agencyName'];
 
             return $route;
         }, $routes);

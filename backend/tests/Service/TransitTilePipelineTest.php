@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Service\TransitTileCache;
 use App\Service\TransitTilePipeline;
 use App\Service\TransitTimetableBuilder;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,6 +21,7 @@ final class TransitTilePipelineTest extends TestCase
             'http://overpass.test/api/interpreter',
             '/app/var/tiles',
             new TransitTimetableBuilder('/app/var/tiles', new NullLogger(), new Filesystem()),
+            new TransitTileCache('/app/var/tiles', new Filesystem()),
         );
         $method = new \ReflectionMethod($pipeline, 'pipelineScript');
         $script = $method->invoke(

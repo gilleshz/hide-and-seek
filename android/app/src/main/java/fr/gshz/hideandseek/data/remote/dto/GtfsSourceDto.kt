@@ -20,4 +20,5 @@ data class GtfsRouteEntryDto(
     val routeType: Int = 0,
     val color: String = "",
     val textColor: String = "",
+    val agencyName: String = "",
 )

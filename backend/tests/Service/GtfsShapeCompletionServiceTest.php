@@ -64,6 +64,12 @@ final class GtfsShapeCompletionServiceTest extends TestCase
         ]}
         JSON;
 
+    private const string DISCOVERY_LIGHT_RAIL = <<<'JSON'
+        {"version":0.6,"elements":[
+         {"type":"relation","id":100,"tags":{"route":"light_rail","ref":"A"}}
+        ]}
+        JSON;
+
     private const string DISCOVERY_TWO_SAME_REF = <<<'JSON'
         {"version":0.6,"elements":[
          {"type":"relation","id":100,"tags":{"route":"tram","ref":"A"}},
@@ -456,6 +462,68 @@ final class GtfsShapeCompletionServiceTest extends TestCase
 
         self::assertSame(['OSM_100', 'OSM_200'], array_column($trips['rows'], 'shape_id'));
         self::assertSame(['101', '102'], array_column($trips['rows'], 'trip_id'));
+    }
+
+    #[Test]
+    public function itMatchesLightRailRelationsForTramRoutes(): void
+    {
+        $files = $this->fixture();
+        $files['routes.txt'] = "route_id,route_short_name,route_long_name,route_type\nRA,a,Line A,0\n";
+        $files['trips.txt'] = "route_id,service_id,trip_id,block_id\nRA,S1,TA1,B1\n";
+        $files['stop_times.txt'] = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            . "TA1,08:00:00,08:00:00,SA1,1\n"
+            . "TA1,08:05:00,08:05:00,SA2,2\n"
+            . "TA1,08:10:00,08:10:00,SA3,3\n";
+        $path = $this->createZip($files);
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY_LIGHT_RAIL),
+            new MockResponse(self::GEOMETRY_A_ONLY),
+        ]);
+
+        $result = $this->createService($client)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 1, 'routes' => 1, 'unmatched' => []], $result);
+
+        $zip = $this->openZip($path);
+        $trips = $this->parseCsv((string) $zip->getFromName('trips.txt'));
+        $zip->close();
+
+        self::assertSame('OSM_100', $trips['rows'][0]['shape_id']);
+    }
+
+    #[Test]
+    public function itReportsOnlyRefsWithoutAnyMatchedShape(): void
+    {
+        $files = $this->fixture();
+        $files['routes.txt'] = "route_id,route_short_name,route_long_name,route_type\nRA,a,Line A,0\n";
+        $files['trips.txt'] = "route_id,service_id,trip_id,block_id\nRA,S1,TA1,B1\nRA,S1,TA2,B2\n";
+        $files['stop_times.txt'] = "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            . "TA1,08:00:00,08:00:00,SA1,1\n"
+            . "TA1,08:05:00,08:05:00,SA2,2\n"
+            . "TA1,08:10:00,08:10:00,SA3,3\n"
+            . "TA2,09:00:00,09:00:00,SB1,1\n"
+            . "TA2,09:05:00,09:05:00,SB2,2\n"
+            . "TA2,09:10:00,09:10:00,SB3,3\n";
+        $path = $this->createZip($files);
+        $client = new MockHttpClient([
+            new MockResponse(self::DISCOVERY),
+            new MockResponse(self::GEOMETRY_A_ONLY),
+        ]);
+
+        $result = $this->createService($client)->completeIfNeeded($path);
+
+        self::assertSame(['completed' => true, 'shapes' => 1, 'routes' => 1, 'unmatched' => []], $result);
+
+        $zip = $this->openZip($path);
+        $trips = $this->parseCsv((string) $zip->getFromName('trips.txt'));
+        $zip->close();
+
+        $byTrip = [];
+        foreach ($trips['rows'] as $row) {
+            $byTrip[$row['trip_id']] = $row['shape_id'];
+        }
+        self::assertSame('OSM_100', $byTrip['TA1']);
+        self::assertSame('', $byTrip['TA2']);
     }
 
     #[Test]

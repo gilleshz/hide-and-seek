@@ -100,6 +100,7 @@ fun CreateGameScreen(
             onToggleTransitLineGroup = viewModel::toggleTransitLineGroup,
             onToggleTransitLineGroups = viewModel::toggleTransitLineGroups,
             onToggleModeFilter = viewModel::toggleModeFilter,
+            onTransitLineQueryChange = viewModel::onTransitLineQueryChange,
             onToggleDiscoveryMode = viewModel::toggleDiscoveryMode,
             onToggleAllDiscoveryModes = viewModel::toggleAllDiscoveryModes,
             onShowDiscoveryModeDialog = viewModel::showDiscoveryModeDialog,

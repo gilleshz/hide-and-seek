@@ -78,25 +78,32 @@ final class GtfsServiceTest extends TestCase
     }
 
     #[Test]
-    public function itDropsAndSortsRoutesByFrequency(): void
+    public function itDropsLowFrequencyRoutesAndSortsByModeThenLineName(): void
     {
         $path = $this->writeZip([
-            'routes.txt' => "route_id,route_short_name,route_long_name,route_type\n"
-                . "R1,1,One,3\n"
-                . "R2,2,Two,3\n"
-                . "R3,3,Three,3\n"
-                . "R4 ,4,Four,3\n",
+            'agency.txt' => "agency_id,agency_name\nA1,TCL\n",
+            'routes.txt' => "route_id,agency_id,route_short_name,route_long_name,route_type\n"
+                . "R1,A1,T2,Tram 2,0\n"
+                . "R2,A1,A,Metro A,1\n"
+                . "R3,A1,10,Bus 10,3\n"
+                . "R4,A1,2,Bus 2,3\n"
+                . "R5 ,A1,T10 ,Tram 10,0\n",
             'trips.txt' => "route_id,service_id,trip_id\n"
                 . implode('', array_map(
                     static fn (int $i): string => "R1,WEEKDAY,T{$i}\n",
                     range(1, 10),
-                )) . "R2,WEEKDAY,T20\n"
-                . implode('', array_map(
-                    static fn (int $i): string => "R3,WEEKDAY,U{$i}\n",
-                    range(1, 25),
                 ))
                 . implode('', array_map(
-                    static fn (int $i): string => "R4,WEEKDAY,V{$i}\n",
+                    static fn (int $i): string => "R2,WEEKDAY,U{$i}\n",
+                    range(1, 10),
+                ))
+                . "R3,WEEKDAY,V1\n"
+                . implode('', array_map(
+                    static fn (int $i): string => "R4,WEEKDAY,W{$i}\n",
+                    range(1, 10),
+                ))
+                . implode('', array_map(
+                    static fn (int $i): string => "R5,WEEKDAY,X{$i}\n",
                     range(1, 10),
                 )),
             'calendar.txt' => "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,"
@@ -106,10 +113,11 @@ final class GtfsServiceTest extends TestCase
         $source = new GtfsSource('Feed', $path);
 
         $all = $this->service->extractRoutes($source);
-        self::assertSame(['R3', 'R1', 'R4 ', 'R2'], array_column($all, 'routeId'));
+        self::assertSame(['R2', 'R1', 'R5 ', 'R4', 'R3'], array_column($all, 'routeId'));
+        self::assertSame('TCL', $all[0]['agencyName']);
 
         $filtered = $this->makeService(new MockHttpClient(), null, 10)->extractRoutes($source);
-        self::assertSame(['R3', 'R1', 'R4 '], array_column($filtered, 'routeId'));
+        self::assertSame(['R2', 'R1', 'R5 ', 'R4'], array_column($filtered, 'routeId'));
     }
 
     #[Test]
