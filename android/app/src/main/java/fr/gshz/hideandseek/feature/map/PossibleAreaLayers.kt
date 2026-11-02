@@ -2,10 +2,6 @@
 
 package fr.gshz.hideandseek.feature.map
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import kotlin.math.roundToInt
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -19,11 +15,7 @@ private const val EXCLUSION_SOURCE_ID = "exclusion-zone-source"
 private const val EXCLUSION_FILL_LAYER_ID = "exclusion-zone-fill"
 
 private const val STATION_BAND_SOURCE_ID = "station-band-source"
-internal const val STATION_BAND_BACKDROP_LAYER_ID = "station-band-backdrop"
-internal const val STATION_BAND_FILL_LAYER_ID = "station-band-fill"
-private const val STATION_BAND_BORDER_LAYER_ID = "station-band-border"
-private const val STATION_BAND_PATTERN_ID = "station-band-hatch"
-private const val MIN_PATTERN_TILE_PX = 4
+internal const val STATION_BAND_LAYER_ID = "station-band"
 
 private const val POSSIBLE_AREA_SOURCE_ID = "possible-area-outline-source"
 private const val POSSIBLE_AREA_LINE_LAYER_ID = "possible-area-outline-line"
@@ -57,26 +49,13 @@ internal fun Style.updateExclusionSource(
     )
 }
 
-internal fun Style.ensureStationBandLayer(density: Float, densityDpi: Int) {
+internal fun Style.ensureStationBandLayer() {
     if (getSource(STATION_BAND_SOURCE_ID) != null) return
-    addImage(STATION_BAND_PATTERN_ID, stationBandHatch(density, densityDpi))
     addSource(GeoJsonSource(STATION_BAND_SOURCE_ID))
     addLayer(
-        FillLayer(STATION_BAND_BACKDROP_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
+        FillLayer(STATION_BAND_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
             PropertyFactory.fillColor(MapOverlayStyle.hex(MapOverlayStyle.band)),
-            PropertyFactory.fillOpacity(MapOverlayStyle.BAND_BACKDROP_OPACITY),
-        ),
-    )
-    addLayer(
-        FillLayer(STATION_BAND_FILL_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
-            PropertyFactory.fillPattern(STATION_BAND_PATTERN_ID),
-        ),
-    )
-    addLayer(
-        LineLayer(STATION_BAND_BORDER_LAYER_ID, STATION_BAND_SOURCE_ID).withProperties(
-            PropertyFactory.lineColor(MapOverlayStyle.hex(MapOverlayStyle.band)),
-            PropertyFactory.lineWidth(MapOverlayStyle.BAND_BORDER_WIDTH),
-            PropertyFactory.lineOpacity(MapOverlayStyle.BAND_BORDER_OPACITY),
+            PropertyFactory.fillOpacity(MapOverlayStyle.BAND_OPACITY),
         ),
     )
 }
@@ -90,30 +69,6 @@ internal fun Style.ensurePossibleAreaOutlineLayer() {
             PropertyFactory.lineWidth(MapOverlayStyle.POSSIBLE_AREA_WIDTH),
         ),
     )
-}
-
-private fun stationBandHatch(density: Float, densityDpi: Int): Bitmap {
-    val scale = 2
-    val minPx = MIN_PATTERN_TILE_PX * scale
-    val size = (MapOverlayStyle.BAND_HATCH_TILE_DP * density * scale).roundToInt().coerceAtLeast(minPx)
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
-        this.density = densityDpi * scale
-    }
-    val canvas = Canvas(bitmap)
-    val stripeWidth = MapOverlayStyle.BAND_HATCH_STRIPE_DP * density * scale
-    val stripe = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = MapOverlayStyle.BAND_STRIPE
-        strokeWidth = stripeWidth
-        strokeCap = Paint.Cap.ROUND
-        style = Paint.Style.STROKE
-    }
-    val step = size.toFloat()
-    val overshoot = stripeWidth
-    for (index in 0..1) {
-        val offset = step / 2f + index * step
-        canvas.drawLine(-overshoot, offset + overshoot, size + overshoot, offset - step - overshoot, stripe)
-    }
-    return bitmap
 }
 
 internal fun Style.updateStationBandSource(geoJson: String?) {

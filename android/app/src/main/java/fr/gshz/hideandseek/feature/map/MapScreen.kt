@@ -1465,7 +1465,7 @@ private class MapViewState(private val markerPins: MarkerPins) {
     private fun attachOverlays(style: Style) {
         registeredAvatars.clear()
         style.ensureExclusionLayer()
-        style.ensureStationBandLayer(markerPins.density, markerPins.densityDpi)
+        style.ensureStationBandLayer()
         style.ensurePossibleAreaOutlineLayer()
         style.ensureBoundaryLayer()
         style.ensureZoneLayer()

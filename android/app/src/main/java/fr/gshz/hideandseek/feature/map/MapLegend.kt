@@ -39,7 +39,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,7 +52,6 @@ import fr.gshz.hideandseek.domain.model.Side
 
 private val DASH_ON = 3.dp
 private val DASH_OFF = 2.dp
-private const val BAND_SWATCH_STRIPE_STEP = 3f
 private const val PLAYERS_SELF_X = 0.36f
 private const val PLAYERS_OTHER_X = 0.68f
 private const val PLAYERS_DOT_DIVISOR = 4.5f
@@ -279,22 +277,10 @@ private fun DrawScope.dashed(): PathEffect =
     PathEffect.dashPathEffect(floatArrayOf(DASH_ON.toPx(), DASH_OFF.toPx()))
 
 private fun DrawScope.drawHidingZoneBandSwatch() {
-    drawRect(Color(MapOverlayStyle.band).copy(alpha = MapOverlayStyle.BAND_BACKDROP_OPACITY))
-    clipRect {
-        val stripeWidth = MapOverlayStyle.BAND_HATCH_STRIPE_DP.dp.toPx()
-        val color = Color(MapOverlayStyle.BAND_STRIPE)
-        val step = MapOverlayStyle.BAND_HATCH_TILE_DP.dp.toPx() / BAND_SWATCH_STRIPE_STEP
-        var start = -size.height
-        while (start < size.width + size.height) {
-            drawLine(
-                color = color,
-                start = Offset(start, size.height),
-                end = Offset(start + size.height, 0f),
-                strokeWidth = stripeWidth,
-            )
-            start += step
-        }
-    }
+    drawRoundRect(
+        color = Color(MapOverlayStyle.band).copy(alpha = MapOverlayStyle.BAND_OPACITY),
+        cornerRadius = CornerRadius(3.dp.toPx()),
+    )
 }
 
 @Preview(showBackground = true)
