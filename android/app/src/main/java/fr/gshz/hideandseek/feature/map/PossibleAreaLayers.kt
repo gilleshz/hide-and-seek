@@ -12,7 +12,7 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 
 private const val EXCLUSION_SOURCE_ID = "exclusion-zone-source"
-private const val EXCLUSION_FILL_LAYER_ID = "exclusion-zone-fill"
+internal const val EXCLUSION_FILL_LAYER_ID = "exclusion-zone-fill"
 
 private const val STATION_BAND_SOURCE_ID = "station-band-source"
 internal const val STATION_BAND_LAYER_ID = "station-band"

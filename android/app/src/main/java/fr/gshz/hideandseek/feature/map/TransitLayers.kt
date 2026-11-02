@@ -51,9 +51,9 @@ internal fun Style.ensureTransitOverlayLayer(overlayGeoJson: String, focusedRef:
         stationLayer(STATION_FILL_LAYER_ID),
         stationBorderLayer(STATION_BORDER_LAYER_ID),
     )
-    // Fixed order: exclusion under transit, band over transit.
-    val insertBelow = if (getLayer(STATION_BAND_LAYER_ID) != null) {
-        STATION_BAND_LAYER_ID
+    // Fixed order: transit under every overlay, so the dim and the band both cover it.
+    val insertBelow = if (getLayer(EXCLUSION_FILL_LAYER_ID) != null) {
+        EXCLUSION_FILL_LAYER_ID
     } else {
         firstSymbolLayerId()
     }
