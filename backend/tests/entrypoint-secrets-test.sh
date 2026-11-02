@@ -172,6 +172,20 @@ APP_SECRET=change-me-baked-secret' \
      [ "$APP_API_KEY" != "change-me-baked-key" ]' \
     0
 
+run_case "worker mode is on when the env var is unset" \
+    "$BASIC_ENV" \
+    'configure_worker_mode
+     [ -n "$FRANKENPHP_CONFIG" ]
+     [[ "$FRANKENPHP_CONFIG" == *"/app/public/index.php"* ]]' \
+    0
+
+run_case "worker mode can be disabled with the env var" \
+    "$BASIC_ENV" \
+    'export FRANKENPHP_WORKER_MODE=0
+     configure_worker_mode
+     [ -z "${FRANKENPHP_CONFIG:-}" ]' \
+    0
+
 echo
 echo "entrypoint-secrets-test: $PASS passed, $FAIL failed"
-[ "$FAIL" -eq 0 ] && [ "$PASS" -eq 15 ]
+[ "$FAIL" -eq 0 ] && [ "$PASS" -eq 17 ]
