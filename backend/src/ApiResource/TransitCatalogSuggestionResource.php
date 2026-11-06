@@ -57,6 +57,9 @@ final class TransitCatalogSuggestionResource
     public bool $live = false;
 
     #[Groups([Group::TRANSIT_CATALOG_READ])]
+    public ?string $siriProfile = null;
+
+    #[Groups([Group::TRANSIT_CATALOG_READ])]
     public string $scope;
 
     #[Groups([Group::TRANSIT_CATALOG_READ])]
@@ -75,6 +78,7 @@ final class TransitCatalogSuggestionResource
         $resource->fallbackUrl = $suggestion->fallbackUrl;
         $resource->realtimeUrl = $suggestion->realtimeUrl;
         $resource->live = $suggestion->live;
+        $resource->siriProfile = $suggestion->siriProfile;
         $resource->scope = $suggestion->scope;
         $resource->sizeBytes = $suggestion->sizeBytes;
 

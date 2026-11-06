@@ -16,4 +16,5 @@ data class TransitCatalogSuggestionDto(
     val live: Boolean = false,
     val scope: String = "regional",
     val sizeBytes: Long? = null,
+    val siriProfile: String? = null,
 )

@@ -2,15 +2,20 @@ package fr.gshz.hideandseek.feature.creategame
 
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.data.ConnectionStore
+import fr.gshz.hideandseek.core.data.GameStateCache
+import fr.gshz.hideandseek.core.model.ConnectionConfig
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.domain.model.BoundingBox
+import fr.gshz.hideandseek.domain.model.ClientConfig
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.RulesVariant
+import fr.gshz.hideandseek.domain.model.SiriProfileOption
 import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
@@ -19,6 +24,7 @@ import fr.gshz.hideandseek.fake.FakeGameRepository
 import fr.gshz.hideandseek.fake.FakeSessionRepository
 import fr.gshz.hideandseek.fake.httpException
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
@@ -32,6 +38,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -47,6 +54,7 @@ class CreateGameViewModelTest {
     private val gameRepository = FakeGameRepository()
     private val sessionRepository = FakeSessionRepository()
     private val connectionStore = mockk<ConnectionStore>(relaxed = true)
+    private val gameStateCache = mockk<GameStateCache>()
 
     /** Shared with runTest so the debounced previews advance on the test's virtual clock. */
     private val dispatcher = UnconfinedTestDispatcher()
@@ -54,6 +62,7 @@ class CreateGameViewModelTest {
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(dispatcher)
+        coEvery { connectionStore.current() } returns null
         coEvery { connectionStore.currentPlayerName() } returns "Alice"
     }
 
@@ -63,7 +72,7 @@ class CreateGameViewModelTest {
     }
 
     private fun createViewModel() =
-        CreateGameViewModel(gameRepository, sessionRepository, connectionStore, dispatcher)
+        CreateGameViewModel(gameRepository, sessionRepository, connectionStore, gameStateCache, dispatcher)
 
     @Test
     fun `default discovery mode selection is the rail modes only`() = runTest {
@@ -701,6 +710,7 @@ class CreateGameViewModelTest {
         )
         val viewModel = createViewModel()
 
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
         viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
         advanceUntilIdle()
 
@@ -718,6 +728,7 @@ class CreateGameViewModelTest {
         )
         val viewModel = createViewModel()
 
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
         viewModel.onGtfsRealtimeUrlChange("https://example.com/vehicles")
         advanceUntilIdle()
 
@@ -729,6 +740,7 @@ class CreateGameViewModelTest {
         gameRepository.probeGtfsRealtimeResult = Result.failure(IOException("offline"))
         val viewModel = createViewModel()
 
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
         viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
         advanceUntilIdle()
 
@@ -738,6 +750,7 @@ class CreateGameViewModelTest {
     @Test
     fun `clearing the realtime url clears the probe`() = runTest(dispatcher) {
         val viewModel = createViewModel()
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
         viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
         advanceUntilIdle()
 
@@ -751,11 +764,189 @@ class CreateGameViewModelTest {
     fun `a non-https realtime url is rejected without a request`() = runTest(dispatcher) {
         val viewModel = createViewModel()
 
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
         viewModel.onGtfsRealtimeUrlChange("http://example.com/feed")
         advanceUntilIdle()
 
         assertEquals(RealtimeProbeState.InvalidUrl, viewModel.uiState.value.realtimeProbe)
         assertTrue(gameRepository.probeGtfsRealtimeCalls.isEmpty())
+    }
+
+    @Test
+    fun `a pasted url is not probed outside the gtfs-rt provider`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
+        advanceUntilIdle()
+
+        assertTrue(gameRepository.probeGtfsRealtimeCalls.isEmpty())
+        assertNull(viewModel.uiState.value.realtimeProbe)
+    }
+
+    @Test
+    fun `switching away from gtfs-rt clears the probe`() = runTest(dispatcher) {
+        gameRepository.probeGtfsRealtimeResult = Result.success(
+            GtfsRealtimeProbe("ok", "trip_update", 20, 42),
+        )
+        val viewModel = createViewModel()
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
+        viewModel.onGtfsRealtimeUrlChange("https://example.com/feed")
+        advanceUntilIdle()
+        assertNotNull(viewModel.uiState.value.realtimeProbe)
+
+        viewModel.onLiveDataProviderChange(LiveDataProvider.SiriLite)
+
+        assertNull(viewModel.uiState.value.realtimeProbe)
+    }
+
+    @Test
+    fun `the client config profiles are loaded once`() = runTest(dispatcher) {
+        val profiles = listOf(SiriProfileOption("idfm", "Île-de-France Mobilités"))
+        stubClientConfig(profiles)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.showGtfsDialog()
+        advanceUntilIdle()
+
+        assertEquals(profiles, viewModel.uiState.value.siriProfiles)
+        coVerify(exactly = 1) { gameStateCache.getClientConfig("https://server") }
+    }
+
+    @Test
+    fun `a client config failure leaves the profile list empty`() = runTest(dispatcher) {
+        coEvery { connectionStore.current() } returns ConnectionConfig("https://server", "key")
+        coEvery { gameStateCache.getClientConfig("https://server") } throws IOException("offline")
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.siriProfiles.isEmpty())
+    }
+
+    @Test
+    fun `a client config schema mismatch leaves the profile list empty`() = runTest(dispatcher) {
+        coEvery { connectionStore.current() } returns ConnectionConfig("https://server", "key")
+        coEvery { gameStateCache.getClientConfig("https://server") } throws
+            SerializationException("missing label")
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onNameChange("Berlin")
+
+        assertTrue(viewModel.uiState.value.siriProfiles.isEmpty())
+        assertEquals("Berlin", viewModel.uiState.value.name)
+    }
+
+    @Test
+    fun `a gtfs-rt upload requires a url`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.onGtfsUrlChange("https://example.test/feed.zip")
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
+
+        viewModel.uploadGtfsFromUrl()
+        advanceUntilIdle()
+
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_realtime_url_required),
+            viewModel.uiState.value.gtfsError,
+        )
+        assertTrue(gameRepository.gtfsUploadCalls.isEmpty())
+    }
+
+    @Test
+    fun `a siri upload requires a profile`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.onGtfsUrlChange("https://example.test/feed.zip")
+        viewModel.onLiveDataProviderChange(LiveDataProvider.SiriLite)
+
+        viewModel.uploadGtfsFromUrl()
+        advanceUntilIdle()
+
+        assertEquals(
+            UiText.fromResource(R.string.gtfs_realtime_profile_required),
+            viewModel.uiState.value.gtfsError,
+        )
+        assertTrue(gameRepository.gtfsUploadCalls.isEmpty())
+    }
+
+    @Test
+    fun `a gtfs-rt upload sends the url selection`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.onGtfsUrlChange("https://example.test/feed.zip")
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
+        viewModel.onGtfsRealtimeUrlChange("https://example.test/realtime.pb")
+
+        viewModel.uploadGtfsFromUrl()
+        advanceUntilIdle()
+
+        assertEquals(
+            GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_GTFS_RT_URL,
+                url = "https://example.test/realtime.pb",
+            ),
+            gameRepository.gtfsUploadCalls.single().selection,
+        )
+    }
+
+    @Test
+    fun `a siri upload sends the profile selection`() = runTest(dispatcher) {
+        stubClientConfig(listOf(SiriProfileOption("idfm", "Île-de-France Mobilités")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onGtfsUrlChange("https://example.test/feed.zip")
+        viewModel.onLiveDataProviderChange(LiveDataProvider.SiriLite)
+        viewModel.onLiveDataProfileChange("idfm")
+
+        viewModel.uploadGtfsFromUrl()
+        advanceUntilIdle()
+
+        assertEquals(
+            GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_SIRI_LITE,
+                profile = "idfm",
+            ),
+            gameRepository.gtfsUploadCalls.single().selection,
+        )
+    }
+
+    @Test
+    fun `an upload with no live data sends the none selection`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.onGtfsUrlChange("https://example.test/feed.zip")
+
+        viewModel.uploadGtfsFromUrl()
+        advanceUntilIdle()
+
+        assertEquals(GtfsRealtimeSelection.None, gameRepository.gtfsUploadCalls.single().selection)
+    }
+
+    @Test
+    fun `a successful upload resets the live data selection`() = runTest(dispatcher) {
+        val viewModel = createViewModel()
+        viewModel.onGtfsUrlChange("https://example.test/feed.zip")
+        viewModel.onGtfsRealtimeUrlChange("https://example.test/realtime.pb")
+        viewModel.onLiveDataProviderChange(LiveDataProvider.GtfsRtUrl)
+
+        viewModel.uploadGtfsFromUrl()
+        advanceUntilIdle()
+
+        assertEquals(LiveDataProvider.None, viewModel.uiState.value.liveDataProvider)
+        assertEquals("", viewModel.uiState.value.liveDataProfile)
+        assertEquals("", viewModel.uiState.value.gtfsRealtimeUrlInput)
+        assertNull(viewModel.uiState.value.realtimeProbe)
+    }
+
+    private fun stubClientConfig(profiles: List<SiriProfileOption>) {
+        coEvery { connectionStore.current() } returns ConnectionConfig("https://server", "key")
+        coEvery { gameStateCache.getClientConfig("https://server") } returns ClientConfig(
+            stadiaApiKey = null,
+            thunderforestApiKey = null,
+            maptilerApiKey = null,
+            mapStyleAvailable = false,
+            availableStyles = emptyList(),
+            siriProfiles = profiles,
+        )
     }
 
     @Test
@@ -804,6 +995,8 @@ class CreateGameViewModelTest {
         name: String = "Metz Metropole",
         provider: String = "transport.data.gouv.fr",
         live: Boolean = true,
+        realtimeUrl: String = "https://catalog/realtime.pb",
+        siriProfile: String = "",
     ) = TransitCatalogSuggestion(
         id = id,
         provider = provider,
@@ -813,9 +1006,10 @@ class CreateGameViewModelTest {
         licenseUrl = "https://license",
         downloadUrl = "https://catalog/download.zip",
         fallbackUrl = "https://catalog/fallback.zip",
-        realtimeUrl = "https://catalog/realtime.pb",
+        realtimeUrl = realtimeUrl,
         live = live,
         scope = "regional",
+        siriProfile = siriProfile,
     )
 
     private fun TestScope.openCatalogDialog(): CreateGameViewModel {
@@ -982,7 +1176,10 @@ class CreateGameViewModelTest {
             FakeGameRepository.GtfsUploadCall(
                 source = "https://catalog/download.zip",
                 name = "Metz Metropole",
-                realtimeUrl = "https://catalog/realtime.pb",
+                selection = GtfsRealtimeSelection(
+                    provider = GtfsRealtimeSelection.PROVIDER_GTFS_RT_URL,
+                    url = "https://catalog/realtime.pb",
+                ),
                 fallbackUrl = "https://catalog/fallback.zip",
             ),
             gameRepository.gtfsUploadCalls.single(),
@@ -1003,6 +1200,40 @@ class CreateGameViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Open Data", gameRepository.gtfsUploadCalls.single().name)
+    }
+
+    @Test
+    fun `a catalog suggestion with a siri profile wins over its realtime url`() = runTest(dispatcher) {
+        val suggestion = catalogSuggestion(siriProfile = "idfm")
+        gameRepository.uploadGtfsFromUrlResult = Result.success(
+            GtfsSourceState("src-2", suggestion.name, emptyList(), hasRealtime = true),
+        )
+        val viewModel = openCatalogDialog()
+
+        viewModel.onSelectCatalogSuggestion(suggestion)
+        advanceUntilIdle()
+
+        assertEquals(
+            GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_SIRI_LITE,
+                profile = "idfm",
+            ),
+            gameRepository.gtfsUploadCalls.single().selection,
+        )
+    }
+
+    @Test
+    fun `a catalog suggestion without live data selects none`() = runTest(dispatcher) {
+        val suggestion = catalogSuggestion(live = false, realtimeUrl = "")
+        gameRepository.uploadGtfsFromUrlResult = Result.success(
+            GtfsSourceState("src-2", suggestion.name, emptyList()),
+        )
+        val viewModel = openCatalogDialog()
+
+        viewModel.onSelectCatalogSuggestion(suggestion)
+        advanceUntilIdle()
+
+        assertEquals(GtfsRealtimeSelection.None, gameRepository.gtfsUploadCalls.single().selection)
     }
 
     @Test
@@ -1034,34 +1265,25 @@ class CreateGameViewModelTest {
     }
 
     @Test
-    fun `a missing shapes error is localized`() {
-        assertEquals(
-            UiText.fromResource(R.string.gtfs_shapes_missing),
-            gtfsUploadError("gtfs.shapes_missing", "Invalid GTFS archive: Missing required file: shapes.txt"),
-        )
-        assertEquals(
-            UiText.fromResource(R.string.gtfs_selection_too_large),
-            gtfsUploadError("gtfs.selection_too_large", "too many"),
-        )
-        assertEquals(
-            UiText.fromResource(R.string.gtfs_selection_empty),
-            gtfsUploadError("gtfs.selection_empty", "empty"),
-        )
-        assertEquals(
-            UiText.fromResource(R.string.gtfs_subset_too_large),
-            gtfsUploadError("gtfs.subset_too_large", "too large"),
-        )
-        assertEquals(
-            UiText.fromResource(R.string.gtfs_source_too_large),
-            gtfsUploadError("gtfs.source_too_large", "too large"),
-        )
-        assertEquals(
-            UiText.fromResource(R.string.gtfs_source_uncompressed_too_large),
-            gtfsUploadError("gtfs.source_uncompressed_too_large", "too large"),
-        )
+    fun `gtfs upload errors are localized`() {
+        assertGtfsError("gtfs.shapes_missing", R.string.gtfs_shapes_missing)
+        assertGtfsError("gtfs.selection_too_large", R.string.gtfs_selection_too_large)
+        assertGtfsError("gtfs.selection_empty", R.string.gtfs_selection_empty)
+        assertGtfsError("gtfs.subset_too_large", R.string.gtfs_subset_too_large)
+        assertGtfsError("gtfs.source_too_large", R.string.gtfs_source_too_large)
+        assertGtfsError("gtfs.source_uncompressed_too_large", R.string.gtfs_source_uncompressed_too_large)
+        assertGtfsError("gtfs_source.realtime_provider_invalid", R.string.gtfs_realtime_provider_invalid)
+        assertGtfsError("gtfs_source.realtime_profile_unknown", R.string.gtfs_realtime_profile_unknown)
+        assertGtfsError("gtfs_source.realtime_profile_unavailable", R.string.gtfs_realtime_profile_unavailable)
+        assertGtfsError("gtfs_source.realtime_url_required", R.string.gtfs_realtime_url_required)
+        assertGtfsError("gtfs_source.realtime_profile_required", R.string.gtfs_realtime_profile_required)
         assertEquals(
             UiText.fromDynamic("other"),
             gtfsUploadError("gtfs.invalid_archive", "other"),
         )
+    }
+
+    private fun assertGtfsError(key: String, resource: Int) {
+        assertEquals(UiText.fromResource(resource), gtfsUploadError(key, "detail"))
     }
 }

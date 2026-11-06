@@ -8,6 +8,7 @@ use App\Command\RefreshTransitCatalogCommand;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\TransitCatalogService;
+use App\Tests\Support\TestSiriProfiles;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -83,6 +84,7 @@ final class RefreshTransitCatalogCommandTest extends TestCase
             $this->catalogFile,
             'https://8.8.8.8/feeds_v2.csv',
             $this->workDir . '/sizes.json',
+            TestSiriProfiles::registry(),
         );
 
         return new RefreshTransitCatalogCommand($service, $this->catalogFile, new NullLogger());

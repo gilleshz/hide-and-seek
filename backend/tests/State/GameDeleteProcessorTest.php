@@ -55,6 +55,7 @@ use App\Service\TransitTimetableBuilder;
 use App\State\GameDeleteProcessor;
 use App\Storage\ImageStorageInterface;
 use App\Tests\Support\IdentityFactory;
+use App\Tests\Support\TestSiriProfiles;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -204,6 +205,7 @@ final class GameDeleteProcessorTest extends TestCase
             ),
             new GtfsFrequencyService(),
             0,
+            TestSiriProfiles::registry(),
         );
         $cleanup = new GameCleanupService(
             $this->createStub(GameGtfsLineRepository::class),

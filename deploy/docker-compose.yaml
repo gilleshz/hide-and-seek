@@ -10,6 +10,10 @@ services:
       STADIA_API_KEY: ""
       THUNDERFOREST_API_KEY: ""
       MAPTILER_API_KEY: ""
+      PRIM_API_KEY: ""
+      CTS_API_TOKEN: ""
+      SYTRAL_SIRI_USER: ""
+      SYTRAL_SIRI_PASSWORD: ""
       PUBLIC_URL: https://play.example.com
       APP_API_KEY: ""
       MAX_BOUNDARY_SPAN_DEG: 5.0

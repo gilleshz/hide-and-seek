@@ -7,6 +7,7 @@ import fr.gshz.hideandseek.data.remote.HideAndSeekApi
 import fr.gshz.hideandseek.domain.model.BoundingBox
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 import fr.gshz.hideandseek.domain.repository.GtfsLineSelection
@@ -215,7 +216,7 @@ class GameRepositoryImplTest {
         repository.uploadGtfsFromUrl(
             url = "https://example.test/feed.zip",
             name = "feed",
-            realtimeUrl = null,
+            selection = GtfsRealtimeSelection.None,
             fallbackUrl = "https://example.test/fallback.zip",
         )
 
@@ -224,17 +225,59 @@ class GameRepositoryImplTest {
     }
 
     @Test
-    fun `uploadGtfsFromUrl reports realtime when the request has a realtime url`() = runTest {
+    fun `uploadGtfsFromUrl sends the realtime provider and profile`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(201).setBody(GTFS_SOURCE_JSON))
+
+        repository.uploadGtfsFromUrl(
+            url = "https://example.test/feed.zip",
+            name = "feed",
+            selection = GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_SIRI_LITE,
+                profile = "idfm",
+            ),
+            fallbackUrl = null,
+        )
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"realtimeProvider\":\"siri_lite\""))
+        assertTrue(body.contains("\"realtimeProfile\":\"idfm\""))
+        assertFalse(body.contains("\"realtimeUrl\""))
+    }
+
+    @Test
+    fun `uploadGtfsFromUrl reports realtime when the selection carries a url`() = runTest {
         server.enqueue(MockResponse().setResponseCode(201).setBody(GTFS_SOURCE_JSON))
 
         val state = repository.uploadGtfsFromUrl(
             url = "https://example.test/feed.zip",
             name = "feed",
-            realtimeUrl = "https://example.test/realtime.pb",
+            selection = GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_GTFS_RT_URL,
+                url = "https://example.test/realtime.pb",
+            ),
             fallbackUrl = null,
         )
 
         assertTrue(state.hasRealtime)
+    }
+
+    @Test
+    fun `uploadGtfsFromUrl sends the realtime url for the gtfs-rt provider`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(201).setBody(GTFS_SOURCE_JSON))
+
+        repository.uploadGtfsFromUrl(
+            url = "https://example.test/feed.zip",
+            name = "feed",
+            selection = GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_GTFS_RT_URL,
+                url = "https://example.test/realtime.pb",
+            ),
+            fallbackUrl = null,
+        )
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"realtimeProvider\":\"gtfs_rt_url\""))
+        assertTrue(body.contains("\"realtimeUrl\":\"https://example.test/realtime.pb\""))
     }
 
     @Test
@@ -246,7 +289,11 @@ class GameRepositoryImplTest {
             ),
         )
 
-        val state = repository.uploadGtfsFromUrl("https://example.test/paris.zip", "Paris")
+        val state = repository.uploadGtfsFromUrl(
+            url = "https://example.test/paris.zip",
+            name = "Paris",
+            selection = GtfsRealtimeSelection.None,
+        )
 
         assertTrue(state.requiresSubset)
         assertEquals(252628206L, state.sizeBytes)
@@ -260,11 +307,33 @@ class GameRepositoryImplTest {
         val state = repository.uploadGtfsFromUrl(
             url = "https://example.test/feed.zip",
             name = "feed",
-            realtimeUrl = null,
+            selection = GtfsRealtimeSelection.None,
             fallbackUrl = null,
         )
 
         assertFalse(state.hasRealtime)
+    }
+
+    @Test
+    fun `uploadGtfsFromFile sends the realtime selection parts`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(201).setBody(GTFS_SOURCE_JSON))
+
+        val state = repository.uploadGtfsFromFile(
+            fileBytes = ByteArray(0),
+            fileName = "feed.zip",
+            name = "feed",
+            selection = GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_SIRI_LITE,
+                profile = "idfm",
+            ),
+        )
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("name=\"realtimeProvider\""))
+        assertTrue(body.contains("siri_lite"))
+        assertTrue(body.contains("name=\"realtimeProfile\""))
+        assertTrue(body.contains("idfm"))
+        assertTrue(state.hasRealtime)
     }
 
     @Test
@@ -275,7 +344,10 @@ class GameRepositoryImplTest {
             fileBytes = ByteArray(0),
             fileName = "feed.zip",
             name = "feed",
-            realtimeUrl = "https://example.test/realtime.pb",
+            selection = GtfsRealtimeSelection(
+                provider = GtfsRealtimeSelection.PROVIDER_GTFS_RT_URL,
+                url = "https://example.test/realtime.pb",
+            ),
         )
 
         assertTrue(state.hasRealtime)

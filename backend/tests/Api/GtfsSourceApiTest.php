@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Api;
 
+use App\Enum\RealtimeProvider;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsService;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -45,6 +47,128 @@ final class GtfsSourceApiTest extends ApiTestCase
         self::assertSame('Agency', $routes[0]['agencyName']);
         self::assertArrayNotHasKey('tripsPerDay', $routes[0]);
         self::assertArrayNotHasKey('minTripsPerDay', $data);
+    }
+
+    #[Test]
+    public function itTreatsARealtimeUrlWithoutAProviderAsGtfsRt(): void
+    {
+        $client = static::createClient();
+        $this->fixturePath = $this->writeZip();
+
+        $response = $client->request('POST', '/api/gtfs-sources', [
+            'headers' => ['Content-Type' => 'multipart/form-data'] + self::AUTH['headers'],
+            'extra' => [
+                'parameters' => ['name' => 'Legacy feed', 'realtimeUrl' => 'https://8.8.8.8/rt'],
+                'files' => ['file' => new UploadedFile($this->fixturePath, 'feed.zip', 'application/zip', null, true)],
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(201);
+        $data = $response->toArray();
+        self::assertIsString($data['uuid']);
+        $this->sourceUuid = $data['uuid'];
+
+        $sources = self::getContainer()->get(GtfsSourceRepository::class);
+        self::assertInstanceOf(GtfsSourceRepository::class, $sources);
+        $source = $sources->findByUuid($data['uuid']);
+        self::assertNotNull($source);
+        self::assertSame(RealtimeProvider::GtfsRtUrl, $source->getRealtimeProvider());
+        self::assertSame('https://8.8.8.8/rt', $source->getRealtimeUrl());
+        self::assertNull($source->getRealtimeProfile());
+    }
+
+    #[Test]
+    public function itReadsTheRealtimeProviderFromMultipartFields(): void
+    {
+        $client = static::createClient();
+        $this->fixturePath = $this->writeZip();
+
+        $client->request('POST', '/api/gtfs-sources', [
+            'headers' => ['Content-Type' => 'multipart/form-data'] + self::AUTH['headers'],
+            'extra' => [
+                'parameters' => ['name' => 'SIRI feed', 'realtimeProvider' => 'carrier_pigeon'],
+                'files' => ['file' => new UploadedFile($this->fixturePath, 'feed.zip', 'application/zip', null, true)],
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'gtfs_source.realtime_provider_invalid']);
+    }
+
+    #[Test]
+    public function itRejectsASiriProviderWithoutAProfile(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/gtfs-sources', self::AUTH + [
+            'json' => [
+                'url' => 'https://8.8.8.8/feed.zip',
+                'name' => 'SIRI feed',
+                'realtimeProvider' => 'siri_lite',
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'gtfs_source.realtime_profile_required']);
+    }
+
+    #[Test]
+    public function itRejectsAnUnknownSiriProfile(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/gtfs-sources', self::AUTH + [
+            'json' => [
+                'url' => 'https://8.8.8.8/feed.zip',
+                'name' => 'SIRI feed',
+                'realtimeProvider' => 'siri_lite',
+                'realtimeProfile' => 'unknown',
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'gtfs_source.realtime_profile_unknown']);
+    }
+
+    #[Test]
+    public function itRejectsAnInvalidRealtimeProvider(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/gtfs-sources', self::AUTH + [
+            'json' => [
+                'url' => 'https://8.8.8.8/feed.zip',
+                'name' => 'SIRI feed',
+                'realtimeProvider' => 'carrier_pigeon',
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'gtfs_source.realtime_provider_invalid']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    public function itRejectsAnUnavailableSiriProfile(): void
+    {
+        foreach (['PRIM_API_KEY', 'CTS_API_TOKEN', 'SYTRAL_SIRI_USER', 'SYTRAL_SIRI_PASSWORD'] as $var) {
+            putenv($var);
+            unset($_ENV[$var], $_SERVER[$var]);
+        }
+
+        $client = static::createClient();
+
+        $client->request('POST', '/api/gtfs-sources', self::AUTH + [
+            'json' => [
+                'url' => 'https://8.8.8.8/feed.zip',
+                'name' => 'SIRI feed',
+                'realtimeProvider' => 'siri_lite',
+                'realtimeProfile' => 'idfm',
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'gtfs_source.realtime_profile_unavailable']);
     }
 
     protected function tearDown(): void

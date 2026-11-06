@@ -7,6 +7,7 @@ namespace App\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\ApiResource\GtfsSourceResource;
+use App\Dto\RealtimeSelection;
 use App\Exception\FunctionalException;
 use App\Service\GtfsService;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -36,6 +37,18 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
 
         $uploadedFile = $request->files->get('file');
         $name = $request->request->get('name');
+        $realtimeProvider = $this->readText(
+            $request->request->get('realtimeProvider'),
+            16,
+            'gtfs_source.realtime_provider_too_long',
+            'The realtime provider is too long.',
+        );
+        $realtimeProfile = $this->readText(
+            $request->request->get('realtimeProfile'),
+            32,
+            'gtfs_source.realtime_profile_too_long',
+            'The realtime profile is too long.',
+        );
         $realtimeUrl = $this->readUrl(
             $request->request->get('realtimeUrl'),
             'gtfs_source.realtime_url_too_long',
@@ -47,7 +60,8 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
                 throw new FunctionalException(message: 'File upload failed.', errorKey: 'gtfs_source.upload_failed');
             }
             $sourceName = is_string($name) && $name !== '' ? $name : 'GTFS feed';
-            $source = $this->gtfsService->createFromUpload($uploadedFile, $sourceName, $realtimeUrl);
+            $selection = RealtimeSelection::fromParts($realtimeProvider, $realtimeProfile, $realtimeUrl);
+            $source = $this->gtfsService->createFromUpload($uploadedFile, $sourceName, $selection);
         } else {
             $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($body)) {
@@ -61,6 +75,18 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
             if (!is_string($sourceName)) {
                 $sourceName = 'GTFS feed';
             }
+            $realtimeProvider = $this->readText(
+                $body['realtimeProvider'] ?? null,
+                16,
+                'gtfs_source.realtime_provider_too_long',
+                'The realtime provider is too long.',
+            );
+            $realtimeProfile = $this->readText(
+                $body['realtimeProfile'] ?? null,
+                32,
+                'gtfs_source.realtime_profile_too_long',
+                'The realtime profile is too long.',
+            );
             $realtimeUrl = $this->readUrl(
                 $body['realtimeUrl'] ?? null,
                 'gtfs_source.realtime_url_too_long',
@@ -71,7 +97,8 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
                 'gtfs_source.fallback_url_too_long',
                 'The fallback feed URL is too long.',
             );
-            $source = $this->gtfsService->createFromUrl($url, $sourceName, $realtimeUrl, $fallbackUrl);
+            $selection = RealtimeSelection::fromParts($realtimeProvider, $realtimeProfile, $realtimeUrl);
+            $source = $this->gtfsService->createFromUrl($url, $sourceName, $selection, $fallbackUrl);
         }
 
         $routes = $this->gtfsService->extractRoutes($source);
@@ -82,6 +109,11 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
 
     private function readUrl(mixed $value, string $errorKey, string $message): ?string
     {
+        return $this->readText($value, 1000, $errorKey, $message);
+    }
+
+    private function readText(mixed $value, int $maxLength, string $errorKey, string $message): ?string
+    {
         if (!is_string($value)) {
             return null;
         }
@@ -89,7 +121,7 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
         if ($trimmed === '') {
             return null;
         }
-        if (mb_strlen($trimmed) > 1000) {
+        if (mb_strlen($trimmed) > $maxLength) {
             throw new FunctionalException(
                 message: $message,
                 errorKey: $errorKey,

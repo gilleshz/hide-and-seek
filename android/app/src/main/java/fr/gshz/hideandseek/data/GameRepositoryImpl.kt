@@ -29,6 +29,7 @@ import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.JoinResult
 import fr.gshz.hideandseek.domain.model.LeaderboardEntry
@@ -114,7 +115,7 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,
-        realtimeUrl: String?,
+        selection: GtfsRealtimeSelection,
         fallbackUrl: String?,
     ): GtfsSourceState {
         val dto = longTimeoutApi.uploadGtfsFromUrl(
@@ -122,11 +123,13 @@ class GameRepositoryImpl @Inject constructor(
             body = GtfsSourceUrlRequest(
                 url = url,
                 name = name,
-                realtimeUrl = realtimeUrl,
+                realtimeUrl = selection.url,
+                realtimeProvider = selection.provider,
+                realtimeProfile = selection.profile,
                 fallbackUrl = fallbackUrl,
             ),
         )
-        return dto.toDomain(hasRealtime = !realtimeUrl.isNullOrBlank())
+        return dto.toDomain(hasRealtime = selection.hasRealtime)
     }
 
     override suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe {
@@ -147,18 +150,20 @@ class GameRepositoryImpl @Inject constructor(
         fileBytes: ByteArray,
         fileName: String,
         name: String,
-        realtimeUrl: String?,
+        selection: GtfsRealtimeSelection,
     ): GtfsSourceState {
         val requestBody = fileBytes.toRequestBody("application/zip".toMediaType())
         val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
-        val nameBody = name.toRequestBody("text/plain".toMediaType())
+        val textType = "text/plain".toMediaType()
         val dto = longTimeoutApi.uploadGtfsFile(
             url = urlFor("/api/gtfs-sources"),
             file = part,
-            name = nameBody,
-            realtimeUrl = realtimeUrl?.toRequestBody("text/plain".toMediaType()),
+            name = name.toRequestBody(textType),
+            realtimeUrl = selection.url?.toRequestBody(textType),
+            realtimeProvider = selection.provider.toRequestBody(textType),
+            realtimeProfile = selection.profile?.toRequestBody(textType),
         )
-        return dto.toDomain(hasRealtime = !realtimeUrl.isNullOrBlank())
+        return dto.toDomain(hasRealtime = selection.hasRealtime)
     }
 
     override suspend fun searchAreas(query: String): List<AreaInfo> =
@@ -360,5 +365,6 @@ class GameRepositoryImpl @Inject constructor(
         live = live,
         scope = scope,
         sizeBytes = sizeBytes,
+        siriProfile = siriProfile.orEmpty(),
     )
 }

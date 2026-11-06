@@ -67,6 +67,7 @@ final readonly class TransitCatalogService
         private string $catalogUrl,
         #[Autowire('%app.transit_catalog_sizes_file%')]
         private string $sizesFile,
+        private SiriProfileRegistry $siriProfiles,
     ) {
     }
 
@@ -646,6 +647,7 @@ final readonly class TransitCatalogService
             $spatial = $this->spatialScore($row['bbox'], $queryBox);
             $text = $this->textScore($query, [$row['provider'], $row['name'], $row['municipality']]);
             $realtimeUrl = $catalog['realtime'][$row['id']] ?? null;
+            $profile = $this->siriProfiles->match($row['provider'], $row['name'], $row['municipality']);
             $score = 0.7 * $spatial + 0.3 * $text;
             if ($score <= 0.0) {
                 continue;
@@ -661,9 +663,10 @@ final readonly class TransitCatalogService
                 licenseUrl: $row['licenseUrl'],
                 downloadUrl: $latest !== '' ? $latest : $direct,
                 fallbackUrl: $latest !== '' && $direct !== '' && $latest !== $direct ? $direct : null,
-                realtimeUrl: $realtimeUrl,
-                live: $realtimeUrl !== null,
+                realtimeUrl: $profile !== null ? null : $realtimeUrl,
+                live: $profile !== null || $realtimeUrl !== null,
                 scope: $this->scope($row['bbox'], $queryBox, $spatial),
+                siriProfile: $profile?->key,
             );
             $hit = ['score' => $score, 'text' => $text, 'suggestion' => $suggestion];
             if ($suggestion->scope === 'national') {

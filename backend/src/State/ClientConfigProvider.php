@@ -8,6 +8,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ApiResource\ClientConfigResource;
 use App\Service\MapStyleService;
+use App\Service\SiriProfile;
+use App\Service\SiriProfileRegistry;
 
 /**
  * @implements ProviderInterface<ClientConfigResource>
@@ -16,6 +18,7 @@ final readonly class ClientConfigProvider implements ProviderInterface
 {
     public function __construct(
         private MapStyleService $mapStyleService,
+        private SiriProfileRegistry $siriProfiles,
     ) {
     }
 
@@ -32,6 +35,10 @@ final readonly class ClientConfigProvider implements ProviderInterface
         $resource->maptilerApiKey = $maptilerAvailable ? $this->mapStyleService->maptilerApiKey() : null;
         $resource->mapStyleAvailable = $anyAvailable;
         $resource->availableStyles = $anyAvailable ? $this->mapStyleService->availableStyles() : [];
+        $resource->siriProfiles = array_map(
+            static fn (SiriProfile $profile): array => ['key' => $profile->key, 'label' => $profile->label],
+            $this->siriProfiles->available(),
+        );
 
         return $resource;
     }

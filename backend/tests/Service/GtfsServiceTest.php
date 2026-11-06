@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Dto\RealtimeSelection;
 use App\Entity\GtfsSource;
+use App\Enum\RealtimeProvider;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
 use App\Service\GtfsFrequencyService;
@@ -13,6 +15,8 @@ use App\Service\GtfsShapeCompletionService;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\OverpassHttpClient;
+use App\Service\SiriProfileRegistry;
+use App\Tests\Support\TestSiriProfiles;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -390,11 +394,83 @@ final class GtfsServiceTest extends TestCase
         $source = $this->service->createFromUpload(
             new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
             'Feed',
-            'https://example.com/rt',
+            RealtimeSelection::fromParts(null, null, 'https://example.com/rt'),
         );
 
         self::assertSame('https://example.com/rt', $source->getRealtimeUrl());
+        self::assertSame(RealtimeProvider::GtfsRtUrl, $source->getRealtimeProvider());
+        self::assertNull($source->getRealtimeProfile());
         self::assertSame(1, $source->getRouteCount());
+    }
+
+    #[Test]
+    public function itStoresAnAvailableSiriProfile(): void
+    {
+        $source = $this->service->createFromUpload(
+            new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
+            'Feed',
+            new RealtimeSelection(RealtimeProvider::SiriLite->value, 'idfm'),
+        );
+
+        self::assertSame(RealtimeProvider::SiriLite, $source->getRealtimeProvider());
+        self::assertSame('idfm', $source->getRealtimeProfile());
+        self::assertNull($source->getRealtimeUrl());
+    }
+
+    #[Test]
+    public function itRejectsAnUnknownRealtimeProvider(): void
+    {
+        $this->expectRealtimeFailure(
+            new RealtimeSelection('carrier_pigeon'),
+            'gtfs_source.realtime_provider_invalid',
+        );
+    }
+
+    #[Test]
+    public function itRejectsAGtfsRtSelectionWithoutAUrl(): void
+    {
+        $this->expectRealtimeFailure(
+            new RealtimeSelection(RealtimeProvider::GtfsRtUrl->value),
+            'gtfs_source.realtime_url_required',
+        );
+    }
+
+    #[Test]
+    public function itRejectsASiriSelectionWithoutAProfile(): void
+    {
+        $this->expectRealtimeFailure(
+            new RealtimeSelection(RealtimeProvider::SiriLite->value),
+            'gtfs_source.realtime_profile_required',
+        );
+    }
+
+    #[Test]
+    public function itRejectsAnUnknownSiriProfile(): void
+    {
+        $this->expectRealtimeFailure(
+            new RealtimeSelection(RealtimeProvider::SiriLite->value, 'unknown'),
+            'gtfs_source.realtime_profile_unknown',
+        );
+    }
+
+    #[Test]
+    public function itRejectsAnUnavailableSiriProfile(): void
+    {
+        $service = $this->makeService(
+            new MockHttpClient(),
+            profiles: TestSiriProfiles::registry(TestSiriProfiles::withUnavailableProfile()),
+        );
+
+        try {
+            $service->createFromUpload(
+                new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
+                'Feed',
+                new RealtimeSelection(RealtimeProvider::SiriLite->value, 'offline'),
+            );
+            self::fail('Expected the unavailable SIRI profile to be rejected.');
+        } catch (FunctionalException $e) {
+            self::assertSame('gtfs_source.realtime_profile_unavailable', $e->getErrorKey());
+        }
     }
 
     #[Test]
@@ -406,7 +482,7 @@ final class GtfsServiceTest extends TestCase
             $this->makeService($client)->createFromUrl(
                 'https://8.8.8.8/feed.zip',
                 'Feed',
-                'http://example.com/rt',
+                RealtimeSelection::fromParts(null, null, 'http://example.com/rt'),
             );
             self::fail('Expected the insecure realtime URL to be rejected.');
         } catch (FunctionalException $e) {
@@ -424,11 +500,25 @@ final class GtfsServiceTest extends TestCase
             $this->service->createFromUpload(
                 new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
                 'Feed',
-                'http://example.com/rt',
+                RealtimeSelection::fromParts(null, null, 'http://example.com/rt'),
             );
             self::fail('Expected the insecure realtime URL to be rejected.');
         } catch (FunctionalException $e) {
             self::assertSame('gtfs.https_only', $e->getErrorKey());
+        }
+    }
+
+    private function expectRealtimeFailure(RealtimeSelection $selection, string $errorKey): void
+    {
+        try {
+            $this->service->createFromUpload(
+                new UploadedFile($this->validZip(), 'feed.zip', 'application/zip', null, true),
+                'Feed',
+                $selection,
+            );
+            self::fail('Expected the realtime selection to be rejected.');
+        } catch (FunctionalException $e) {
+            self::assertSame($errorKey, $e->getErrorKey());
         }
     }
 
@@ -715,6 +805,7 @@ final class GtfsServiceTest extends TestCase
         MockHttpClient $client,
         ?MockHttpClient $overpassClient = null,
         int $minTripsPerDay = 0,
+        ?SiriProfileRegistry $profiles = null,
     ): GtfsService {
         return new GtfsService(
             $this->createStub(GtfsSourceRepository::class),
@@ -737,6 +828,7 @@ final class GtfsServiceTest extends TestCase
             ),
             new GtfsFrequencyService(),
             $minTripsPerDay,
+            $profiles ?? TestSiriProfiles::registry(),
         );
     }
 

@@ -8,6 +8,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ApiResource\TransitDepartureGroupResource;
 use App\ApiResource\TransitDeparturesResource;
+use App\Dto\RealtimeSelection;
+use App\Enum\RealtimeProvider;
 use App\Exception\EntityNotFoundException;
 use App\Repository\GameGtfsLineRepository;
 use App\Repository\GameRepository;
@@ -58,20 +60,28 @@ final readonly class TransitDeparturesProvider implements ProviderInterface
             );
         }
 
-        $realtimeUrls = [];
+        $realtimeSelections = [];
         foreach ($this->gtfsLines->findByGame($game) as $line) {
             $source = $line->getGtfsSource();
-            $url = $source->getRealtimeUrl();
-            if ($url !== null && $url !== '') {
-                $realtimeUrls[$source->getUuid()] = $url;
+            $provider = $source->getRealtimeProvider();
+            $value = $provider === RealtimeProvider::SiriLite
+                ? $source->getRealtimeProfile()
+                : $source->getRealtimeUrl();
+            if ($provider === RealtimeProvider::None || $value === null || $value === '') {
+                continue;
             }
+            $realtimeSelections[$source->getUuid()] = new RealtimeSelection(
+                $provider->value,
+                $source->getRealtimeProfile(),
+                $source->getRealtimeUrl(),
+            );
         }
 
         $fullDay = $this->requestStack->getCurrentRequest()?->query->getBoolean('fullDay') ?? false;
         $data = $this->departures->forStation(
             $game->getUuid(),
             $stationId,
-            $realtimeUrls,
+            $realtimeSelections,
             fullDay: $fullDay,
         );
 

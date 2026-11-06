@@ -73,6 +73,7 @@ final class TransitCatalogApiTest extends ApiTestCase
             array_keys($data[0]),
         );
         self::assertSame(['tdg-80725', 'tdg-80427'], array_column($data, 'id'));
+        self::assertArrayNotHasKey('siriProfile', $data[0]);
         self::assertSame('LeMet', $data[0]['provider']);
         self::assertSame('Metz', $data[0]['municipality']);
         self::assertSame('FR', $data[0]['countryCode']);

@@ -42,4 +42,8 @@ final class ClientConfigResource
     /** @var list<string> */
     #[Groups([Group::CLIENT_CONFIG_READ])]
     public array $availableStyles = [];
+
+    /** @var list<array{key: string, label: string}> */
+    #[Groups([Group::CLIENT_CONFIG_READ])]
+    public array $siriProfiles = [];
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\RealtimeSelection;
+use App\Enum\RealtimeProvider;
 use App\Exception\EntityNotFoundException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -59,18 +61,20 @@ final readonly class TransitDeparturesService
         #[Autowire('%app.tiles_dir%')]
         private string $tilesBaseDir,
         private TransitRealtimeService $realtime,
+        private SiriLiteClient $siri,
+        private SiriDepartureMatcher $siriMatcher,
         private LoggerInterface $logger,
     ) {
     }
 
     /**
-     * @param array<string, string> $realtimeUrlsBySourceUuid
+     * @param array<string, RealtimeSelection> $realtimeSelectionsBySourceUuid
      * @return array{timezone: string, serverNow: int, groups: list<Group>}
      */
     public function forStation(
         string $gameUuid,
         string $stationId,
-        array $realtimeUrlsBySourceUuid = [],
+        array $realtimeSelectionsBySourceUuid = [],
         ?\DateTimeImmutable $now = null,
         bool $fullDay = false,
     ): array {
@@ -84,7 +88,7 @@ final readonly class TransitDeparturesService
             $departures,
             $index,
             $localNow,
-            $realtimeUrlsBySourceUuid !== [],
+            $realtimeSelectionsBySourceUuid !== [],
             $fullDay,
         );
         $candidates = $this->applyRealtime(
@@ -92,7 +96,7 @@ final readonly class TransitDeparturesService
             $index,
             $originalStops,
             $stationId,
-            $realtimeUrlsBySourceUuid,
+            $realtimeSelectionsBySourceUuid,
             $localNow,
             $fullDay,
         );
@@ -305,7 +309,7 @@ final readonly class TransitDeparturesService
      * @param list<Candidate> $candidates
      * @param Index $index
      * @param array<int, list<string>> $originalStops
-     * @param array<string, string> $realtimeUrlsBySourceUuid
+     * @param array<string, RealtimeSelection> $realtimeSelectionsBySourceUuid
      * @return list<Candidate>
      */
     private function applyRealtime(
@@ -313,30 +317,78 @@ final readonly class TransitDeparturesService
         array $index,
         array $originalStops,
         string $stationId,
-        array $realtimeUrlsBySourceUuid,
+        array $realtimeSelectionsBySourceUuid,
         \DateTimeImmutable $now,
         bool $fullDay,
     ): array {
+        /** @var array<int, RealtimeSelection|null> $selectionBySource */
+        $selectionBySource = [];
         /** @var array<int, array<string, TripUpdate>> $updatesBySource */
         $updatesBySource = [];
+        /** @var array<int, list<SiriVisit>> $visitsBySource */
+        $visitsBySource = [];
+        /** @var array<int, list<string>> $stopCodesBySource */
+        $stopCodesBySource = [];
+        /** @var array<int, list<string>> $routeCodesBySource */
+        $routeCodesBySource = [];
+        /** @var array<int, array<int, true>> $directionsBySource */
+        $directionsBySource = [];
+        foreach ($candidates as $candidate) {
+            $routeCodesBySource[$candidate['src']][] = $candidate['route'];
+            $directionsBySource[$candidate['src']][$candidate['direction']] = true;
+        }
         foreach ($candidates as $candidate) {
             $src = $candidate['src'];
-            if (array_key_exists($src, $updatesBySource)) {
+            if (array_key_exists($src, $selectionBySource)) {
                 continue;
             }
             $sourceUuid = $index['sources'][$src]['uuid'] ?? '';
-            $url = $realtimeUrlsBySourceUuid[$sourceUuid] ?? null;
-            $updatesBySource[$src] = $url !== null ? $this->safeUpdates($sourceUuid, $url) : [];
+            $selection = $realtimeSelectionsBySourceUuid[$sourceUuid] ?? null;
+            $selectionBySource[$src] = $selection;
+            $updatesBySource[$src] = [];
+            $visitsBySource[$src] = [];
+            $stopCodesBySource[$src] = $this->stationStopCodes($src, $stationId, $originalStops);
+            if ($selection === null) {
+                continue;
+            }
+            if ($selection->provider === RealtimeProvider::GtfsRtUrl->value && $selection->url !== null) {
+                $updatesBySource[$src] = $this->safeUpdates($sourceUuid, $selection->url);
+            } elseif ($selection->provider === RealtimeProvider::SiriLite->value) {
+                $visitsBySource[$src] = $this->safeSiriVisits(
+                    $selection,
+                    $stopCodesBySource[$src],
+                    $routeCodesBySource[$src] ?? [],
+                );
+            }
         }
 
         $result = [];
         foreach ($candidates as $candidate) {
             $expected = $candidate['expected'];
             $realtime = false;
-            $trip = $updatesBySource[$candidate['src']][$candidate['trip']] ?? null;
-            if ($trip !== null && $this->sameServiceDate($candidate['serviceDate'], $trip['startDate'])) {
-                $stop = $this->stopFor($candidate, $trip['stops'], $originalStops, $stationId);
-                [$expected, $realtime] = $this->expectedAt($candidate['scheduled'], $stop, $trip['delay']);
+            $src = $candidate['src'];
+            $selection = $selectionBySource[$src] ?? null;
+            if ($selection !== null && $selection->provider === RealtimeProvider::GtfsRtUrl->value) {
+                $trip = $updatesBySource[$src][$candidate['trip']] ?? null;
+                if ($trip !== null && $this->sameServiceDate($candidate['serviceDate'], $trip['startDate'])) {
+                    $stop = $this->stopFor($candidate, $trip['stops'], $originalStops, $stationId);
+                    [$expected, $realtime] = $this->expectedAt($candidate['scheduled'], $stop, $trip['delay']);
+                }
+            } elseif ($selection !== null && $selection->provider === RealtimeProvider::SiriLite->value) {
+                $matched = $this->siriMatcher->match([
+                    'lineCodes' => $this->lineCodes($index, $candidate['route']),
+                    'stopCodes' => $stopCodesBySource[$src] ?? [$stationId],
+                    'scheduledAt' => $candidate['scheduled'],
+                    'tripRef' => $candidate['trip'],
+                    'seq' => $candidate['seq'],
+                    'headsign' => $candidate['headsign'],
+                    'strict' => count($stopCodesBySource[$src] ?? []) > 1
+                        || count($directionsBySource[$src] ?? []) > 1,
+                ], $visitsBySource[$src] ?? []);
+                if ($matched !== null) {
+                    $expected = $matched;
+                    $realtime = true;
+                }
             }
             if ($expected < $now->getTimestamp()) {
                 if (!$fullDay) {
@@ -364,6 +416,47 @@ final readonly class TransitDeparturesService
 
             return [];
         }
+    }
+
+    /**
+     * @param list<string> $stopCodes
+     * @param list<string> $routeCodes
+     *
+     * @return list<SiriVisit>
+     */
+    private function safeSiriVisits(RealtimeSelection $selection, array $stopCodes, array $routeCodes): array
+    {
+        try {
+            return $this->siri->visits($selection, $stopCodes, $routeCodes);
+        } catch (\Throwable $e) {
+            $this->logger->warning('SIRI departures unavailable: {error}', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @param Index $index
+     *
+     * @return list<string>
+     */
+    private function lineCodes(array $index, string $routeId): array
+    {
+        $ref = $index['routes'][$routeId]['ref'] ?? '';
+
+        return $ref !== '' && $ref !== $routeId ? [$routeId, $ref] : [$routeId];
+    }
+
+    /**
+     * @param array<int, list<string>> $originalStops
+     *
+     * @return list<string>
+     */
+    private function stationStopCodes(int $src, string $stationId, array $originalStops): array
+    {
+        $stops = array_values(array_unique($originalStops[$src] ?? []));
+
+        return $stops === [] ? [$stationId] : $stops;
     }
 
     private function sameServiceDate(string $serviceDate, ?string $startDate): bool

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\RealtimeProvider;
 use App\Repository\GtfsSourceRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -35,6 +36,12 @@ class GtfsSource
 
     #[ORM\Column(type: 'string', length: 1000, nullable: true)]
     private ?string $realtimeUrl = null;
+
+    #[ORM\Column(type: 'string', length: 16, enumType: RealtimeProvider::class, options: ['default' => 'none'])]
+    private RealtimeProvider $realtimeProvider = RealtimeProvider::None;
+
+    #[ORM\Column(type: 'string', length: 32, nullable: true)]
+    private ?string $realtimeProfile = null;
 
     #[ORM\Column(type: 'integer')]
     private int $routeCount = 0;
@@ -102,6 +109,30 @@ class GtfsSource
     public function setRealtimeUrl(?string $realtimeUrl): self
     {
         $this->realtimeUrl = $realtimeUrl;
+
+        return $this;
+    }
+
+    public function getRealtimeProvider(): RealtimeProvider
+    {
+        return $this->realtimeProvider;
+    }
+
+    public function setRealtimeProvider(RealtimeProvider $realtimeProvider): self
+    {
+        $this->realtimeProvider = $realtimeProvider;
+
+        return $this;
+    }
+
+    public function getRealtimeProfile(): ?string
+    {
+        return $this->realtimeProfile;
+    }
+
+    public function setRealtimeProfile(?string $realtimeProfile): self
+    {
+        $this->realtimeProfile = $realtimeProfile;
 
         return $this;
     }

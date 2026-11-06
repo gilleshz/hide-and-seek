@@ -19,6 +19,7 @@ final readonly class TransitCatalogSuggestion
         public bool $live,
         public string $scope,
         public ?int $sizeBytes = null,
+        public ?string $siriProfile = null,
     ) {
     }
 
@@ -37,6 +38,7 @@ final readonly class TransitCatalogSuggestion
             live: $this->live,
             scope: $this->scope,
             sizeBytes: $sizeBytes,
+            siriProfile: $this->siriProfile,
         );
     }
 }

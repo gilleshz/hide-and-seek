@@ -32,6 +32,9 @@ Leave the rest alone unless you have a reason:
 - `APP_API_KEY` empty: generated on first boot and kept in the `secrets` volume.
 - The map style keys empty: the extra styles stay off, the OpenStreetMap style
   always works.
+- The SIRI Lite keys empty: the IDFM, CTS and TCL live-data profiles stay hidden.
+  Set `PRIM_API_KEY` for IDFM, `CTS_API_TOKEN` for CTS, or `SYTRAL_SIRI_USER` plus
+  `SYTRAL_SIRI_PASSWORD` for TCL to enable that network's live departures.
 - `FRANKENPHP_WORKER_MODE: 1`: reuses the PHP process between requests. Set it
   to `0` to turn it off.
 - `MAX_BOUNDARY_SPAN_DEG`: largest allowed game area, in degrees.

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\RealtimeSelection;
 use App\Entity\GtfsSource;
+use App\Enum\RealtimeProvider;
 use App\ErrorKey;
 use App\Exception\FunctionalException;
 use App\Repository\GtfsSourceRepository;
@@ -55,12 +57,13 @@ final readonly class GtfsService
         private GtfsFrequencyService $frequency,
         #[Autowire('%app.gtfs_min_trips_per_day%')]
         private int $minTripsPerDay,
+        private SiriProfileRegistry $siriProfiles,
     ) {
     }
 
-    public function createFromUpload(UploadedFile $file, string $name, ?string $realtimeUrl = null): GtfsSource
+    public function createFromUpload(UploadedFile $file, string $name, ?RealtimeSelection $realtime = null): GtfsSource
     {
-        $realtime = $this->validRealtimeUrl($realtimeUrl);
+        $selection = $this->validRealtime($realtime);
         $uuid = Uuid::v4()->toRfc4122();
         $destPath = $this->ensureStorageDir() . '/' . $uuid . '.zip';
 
@@ -78,9 +81,7 @@ final readonly class GtfsService
 
         $source = new GtfsSource($name, $destPath, $uuid);
         $source->setRouteCount($routeCount);
-        if ($realtime !== null) {
-            $source->setRealtimeUrl($realtime);
-        }
+        $this->applyRealtime($source, $selection);
         $this->sources->save($source);
 
         return $source;
@@ -89,10 +90,10 @@ final readonly class GtfsService
     public function createFromUrl(
         string $url,
         string $name,
-        ?string $realtimeUrl = null,
+        ?RealtimeSelection $realtime = null,
         ?string $fallbackUrl = null,
     ): GtfsSource {
-        $realtime = $this->validRealtimeUrl($realtimeUrl);
+        $selection = $this->validRealtime($realtime);
         $uuid = Uuid::v4()->toRfc4122();
         $destPath = $this->ensureStorageDir() . '/' . $uuid . '.zip';
 
@@ -132,9 +133,7 @@ final readonly class GtfsService
         $source = new GtfsSource($name, $destPath, $uuid);
         $source->setSourceUrl($usedUrl);
         $source->setRouteCount($routeCount);
-        if ($realtime !== null) {
-            $source->setRealtimeUrl($realtime);
-        }
+        $this->applyRealtime($source, $selection);
         $this->sources->save($source);
 
         return $source;
@@ -209,15 +208,75 @@ final readonly class GtfsService
         return $trimmed;
     }
 
-    private function validRealtimeUrl(?string $realtimeUrl): ?string
+    private function validRealtime(?RealtimeSelection $selection): RealtimeSelection
     {
-        $trimmed = $realtimeUrl !== null ? trim($realtimeUrl) : '';
+        $selection ??= RealtimeSelection::none();
+        $providerValue = trim($selection->provider);
+        if ($providerValue === '') {
+            $providerValue = trim((string) $selection->url) !== ''
+                ? RealtimeProvider::GtfsRtUrl->value
+                : RealtimeProvider::None->value;
+        }
+        $provider = RealtimeProvider::tryFrom($providerValue);
+        if ($provider === null) {
+            throw new FunctionalException(
+                message: 'Invalid realtime provider.',
+                errorKey: 'gtfs_source.realtime_provider_invalid',
+            );
+        }
+
+        return match ($provider) {
+            RealtimeProvider::None => RealtimeSelection::none(),
+            RealtimeProvider::GtfsRtUrl => $this->validGtfsRealtimeUrl($selection->url),
+            RealtimeProvider::SiriLite => $this->validSiriProfile($selection->profile),
+        };
+    }
+
+    private function validGtfsRealtimeUrl(?string $url): RealtimeSelection
+    {
+        $trimmed = trim((string) $url);
         if ($trimmed === '') {
-            return null;
+            throw new FunctionalException(
+                message: 'A realtime feed URL is required for GTFS-RT.',
+                errorKey: 'gtfs_source.realtime_url_required',
+            );
         }
         $this->urlGuard->assertShape($trimmed);
 
-        return $trimmed;
+        return new RealtimeSelection(RealtimeProvider::GtfsRtUrl->value, null, $trimmed);
+    }
+
+    private function validSiriProfile(?string $key): RealtimeSelection
+    {
+        $trimmed = trim((string) $key);
+        if ($trimmed === '') {
+            throw new FunctionalException(
+                message: 'A SIRI profile is required for SIRI Lite.',
+                errorKey: 'gtfs_source.realtime_profile_required',
+            );
+        }
+        $profile = $this->siriProfiles->find($trimmed);
+        if ($profile === null) {
+            throw new FunctionalException(
+                message: 'Unknown SIRI profile.',
+                errorKey: 'gtfs_source.realtime_profile_unknown',
+            );
+        }
+        if (!$profile->available) {
+            throw new FunctionalException(
+                message: 'This SIRI profile is not configured on the server.',
+                errorKey: 'gtfs_source.realtime_profile_unavailable',
+            );
+        }
+
+        return new RealtimeSelection(RealtimeProvider::SiriLite->value, $profile->key, null);
+    }
+
+    private function applyRealtime(GtfsSource $source, RealtimeSelection $selection): void
+    {
+        $source->setRealtimeProvider(RealtimeProvider::from($selection->provider));
+        $source->setRealtimeUrl($selection->url);
+        $source->setRealtimeProfile($selection->profile);
     }
 
     private function hostOf(string $url): string

@@ -118,8 +118,7 @@ final readonly class OutboundHttpFetcher
         } catch (\Throwable $e) {
             $this->logger->warning('Outbound HEAD failed for {host}: {error}', [
                 'host' => $this->hostOf($url),
-                'error' => $e->getMessage(),
-                'exception' => $e,
+                'error' => $this->redactQuery($e->getMessage()),
             ]);
 
             throw new \RuntimeException('Outbound request failed.', 0, $e);
@@ -163,8 +162,7 @@ final readonly class OutboundHttpFetcher
         } catch (\Throwable $e) {
             $this->logger->warning('Outbound fetch failed for {host}: {error}', [
                 'host' => $this->hostOf($url),
-                'error' => $e->getMessage(),
-                'exception' => $e,
+                'error' => $this->redactQuery($e->getMessage()),
             ]);
 
             throw new \RuntimeException('Outbound request failed.', 0, $e);
@@ -183,18 +181,20 @@ final readonly class OutboundHttpFetcher
     ): ResponseInterface {
         $deadline = microtime(true) + $maxDurationSeconds;
         $current = $url;
+        $originalHost = strtolower($this->hostOf($url));
         for ($redirects = 0;; ++$redirects) {
             $remaining = $deadline - microtime(true);
             if ($remaining <= 0.0) {
                 throw new \RuntimeException('Outbound request timed out.');
             }
+            $hopHeaders = strtolower($this->hostOf($current)) === $originalHost ? $headers : [];
             $pinned = $this->urlGuard->resolve($current);
             $response = $this->httpClient->request($method, $current, [
                 'timeout' => min($timeoutSeconds, $remaining),
                 'max_duration' => $remaining,
                 'max_redirects' => 0,
                 'resolve' => [$pinned['host'] => $pinned['ip']],
-                'headers' => $headers,
+                'headers' => $hopHeaders,
             ]);
 
             $status = $response->getStatusCode();
@@ -264,5 +264,10 @@ final readonly class OutboundHttpFetcher
         $host = parse_url($url, PHP_URL_HOST);
 
         return is_string($host) ? $host : 'unknown';
+    }
+
+    private function redactQuery(string $message): string
+    {
+        return (string) preg_replace('~(https?://[^\s"\'<>?]+)\?[^\s"\'<>]*~i', '$1?[redacted]', $message);
     }
 }

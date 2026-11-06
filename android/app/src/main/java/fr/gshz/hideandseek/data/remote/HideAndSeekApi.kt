@@ -332,6 +332,8 @@ interface HideAndSeekApi {
         @Part file: MultipartBody.Part,
         @Part("name") name: RequestBody,
         @Part("realtimeUrl") realtimeUrl: RequestBody? = null,
+        @Part("realtimeProvider") realtimeProvider: RequestBody? = null,
+        @Part("realtimeProfile") realtimeProfile: RequestBody? = null,
     ): GtfsSourceDto
 
     @POST

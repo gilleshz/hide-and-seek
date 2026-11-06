@@ -7,12 +7,16 @@ namespace App\Tests\Service;
 use App\Exception\FunctionalException;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
+use Monolog\Formatter\JsonFormatter;
+use Monolog\Level;
+use Monolog\LogRecord;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Symfony\Component\HttpClient\Exception\TransportException;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -230,6 +234,135 @@ final class OutboundHttpFetcherTest extends TestCase
     }
 
     #[Test]
+    public function itDropsCallerHeadersOnACrossHostRedirect(): void
+    {
+        $headers = [];
+        $client = new MockHttpClient(
+            function (string $method, string $url, array $options) use (&$headers): MockResponse {
+                $headers[] = $this->headerLines($options);
+
+                return count($headers) === 1
+                    ? $this->redirect('https://1.1.1.1/final.pb')
+                    : new MockResponse('final');
+            },
+        );
+
+        $body = $this->fetcher($client)->fetchToString(
+            'https://8.8.8.8/feed.pb',
+            1024,
+            1.0,
+            1.0,
+            ['Authorization' => 'Bearer secret'],
+        );
+
+        self::assertSame('final', $body);
+        self::assertCount(2, $headers);
+        self::assertContains('Authorization: Bearer secret', $headers[0]);
+        self::assertSame([], array_filter(
+            $headers[1],
+            static fn (string $line): bool => str_starts_with($line, 'Authorization:'),
+        ));
+    }
+
+    #[Test]
+    public function itKeepsCallerHeadersAcrossASameHostRedirect(): void
+    {
+        $headers = [];
+        $client = new MockHttpClient(
+            function (string $method, string $url, array $options) use (&$headers): MockResponse {
+                $headers[] = $this->headerLines($options);
+
+                return count($headers) === 1
+                    ? $this->redirect('https://8.8.8.8/final.pb')
+                    : new MockResponse('final');
+            },
+        );
+
+        $this->fetcher($client)->fetchToString(
+            'https://8.8.8.8/feed.pb',
+            1024,
+            1.0,
+            1.0,
+            ['Authorization' => 'Bearer secret'],
+        );
+
+        self::assertCount(2, $headers);
+        self::assertContains('Authorization: Bearer secret', $headers[0]);
+        self::assertContains('Authorization: Bearer secret', $headers[1]);
+    }
+
+    #[Test]
+    public function itRestoresCallerHeadersWhenTheChainReturnsToTheOriginalHost(): void
+    {
+        $headers = [];
+        $client = new MockHttpClient(
+            function (string $method, string $url, array $options) use (&$headers): MockResponse {
+                $headers[] = $this->headerLines($options);
+
+                return match (count($headers)) {
+                    1 => $this->redirect('https://1.1.1.1/elsewhere.pb'),
+                    2 => $this->redirect('https://8.8.8.8/final.pb'),
+                    default => new MockResponse('final'),
+                };
+            },
+        );
+
+        $this->fetcher($client)->fetchToString(
+            'https://8.8.8.8/feed.pb',
+            1024,
+            1.0,
+            1.0,
+            ['Authorization' => 'Bearer secret'],
+        );
+
+        self::assertCount(3, $headers);
+        self::assertContains('Authorization: Bearer secret', $headers[0]);
+        self::assertContains('Authorization: Bearer secret', $headers[2]);
+        self::assertSame([], array_filter(
+            $headers[1],
+            static fn (string $line): bool => str_starts_with($line, 'Authorization:'),
+        ));
+    }
+
+    #[Test]
+    public function itRedactsQueryStringsFromFailureLogs(): void
+    {
+        $logger = new class extends AbstractLogger {
+            /** @var list<array<mixed>> */
+            public array $contexts = [];
+
+            public function log($level, string|\Stringable $message, array $context = []): void
+            {
+                $this->contexts[] = $context;
+            }
+        };
+        $client = new MockHttpClient(
+            static function (string $method, string $url): MockResponse {
+                throw new TransportException('Idle timeout reached for "' . $url . '".');
+            },
+        );
+
+        try {
+            $this->fetcher($client, $logger)
+                ->fetchToString('https://8.8.8.8/feed.zip?token=secret', 1024, 1.0, 1.0);
+            self::fail('Expected a RuntimeException.');
+        } catch (\RuntimeException) {
+        }
+
+        self::assertNotSame([], $logger->contexts);
+        $record = new LogRecord(
+            new \DateTimeImmutable(),
+            'app',
+            Level::Warning,
+            'Outbound fetch failed.',
+            $logger->contexts[0],
+        );
+        $formatted = (new JsonFormatter())->format($record);
+        self::assertStringContainsString('[redacted]', $formatted);
+        self::assertStringNotContainsString('secret', $formatted);
+    }
+
+    #[Test]
     public function itPinsEveryHopToTheGuardedAddress(): void
     {
         $captured = [];
@@ -308,6 +441,23 @@ final class OutboundHttpFetcherTest extends TestCase
     private function redirect(string $location): MockResponse
     {
         return new MockResponse('', ['http_code' => 302, 'response_headers' => ['Location' => $location]]);
+    }
+
+    /**
+     * @param array<mixed> $options
+     *
+     * @return list<string>
+     */
+    private function headerLines(array $options): array
+    {
+        $lines = [];
+        foreach (is_array($options['headers'] ?? null) ? $options['headers'] : [] as $line) {
+            if (is_string($line)) {
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
     }
 
     private function expectFunctional(string $errorKey, callable $call): void

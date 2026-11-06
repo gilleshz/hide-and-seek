@@ -3,6 +3,7 @@ package fr.gshz.hideandseek.data
 import fr.gshz.hideandseek.data.remote.HideAndSeekApi
 import fr.gshz.hideandseek.data.remote.dto.ClientConfigDto
 import fr.gshz.hideandseek.domain.model.ClientConfig
+import fr.gshz.hideandseek.domain.model.SiriProfileOption
 import fr.gshz.hideandseek.domain.repository.ClientConfigRepository
 import javax.inject.Inject
 
@@ -22,4 +23,5 @@ private fun ClientConfigDto.toDomain() = ClientConfig(
     maptilerApiKey = maptilerApiKey,
     mapStyleAvailable = mapStyleAvailable,
     availableStyles = availableStyles,
+    siriProfiles = siriProfiles.map { SiriProfileOption(it.key, it.label) },
 )

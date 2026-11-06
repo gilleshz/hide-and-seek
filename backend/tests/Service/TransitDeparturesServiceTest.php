@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Dto\RealtimeSelection;
+use App\Enum\RealtimeProvider;
 use App\Exception\EntityNotFoundException;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
+use App\Service\SiriDepartureMatcher;
+use App\Service\SiriLiteClient;
+use App\Service\SiriProfileRegistry;
 use App\Service\TransitDeparturesService;
 use App\Service\TransitRealtimeService;
+use App\Tests\Support\TestSiriProfiles;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -155,7 +161,7 @@ final class TransitDeparturesServiceTest extends TestCase
         $result = $this->service($realtime)->forStation(
             self::GAME,
             self::STATION,
-            ['source-1' => 'https://8.8.8.8/rt'],
+            ['source-1' => RealtimeSelection::fromParts(null, null, 'https://8.8.8.8/rt')],
             $this->now(),
         );
 
@@ -181,7 +187,7 @@ final class TransitDeparturesServiceTest extends TestCase
         $result = $this->service($realtime)->forStation(
             self::GAME,
             self::STATION,
-            ['source-1' => 'https://8.8.8.8/rt'],
+            ['source-1' => RealtimeSelection::fromParts(null, null, 'https://8.8.8.8/rt')],
             $this->now(),
         );
 
@@ -206,9 +212,10 @@ final class TransitDeparturesServiceTest extends TestCase
             ], JSON_THROW_ON_ERROR));
         }));
         $service = $this->service($realtime);
+        $selection = ['source-1' => RealtimeSelection::fromParts(null, null, 'https://8.8.8.8/rt')];
 
-        $service->forStation(self::GAME, self::STATION, ['source-1' => 'https://8.8.8.8/rt'], $this->now());
-        $service->forStation(self::GAME, self::STATION, ['source-1' => 'https://8.8.8.8/rt'], $this->now());
+        $service->forStation(self::GAME, self::STATION, $selection, $this->now());
+        $service->forStation(self::GAME, self::STATION, $selection, $this->now());
 
         self::assertSame(1, $calls);
     }
@@ -226,18 +233,199 @@ final class TransitDeparturesServiceTest extends TestCase
         $result = $this->service($realtime)->forStation(
             self::GAME,
             self::STATION,
-            ['source-1' => 'https://8.8.8.8/rt'],
+            ['source-1' => RealtimeSelection::fromParts(null, null, 'https://8.8.8.8/rt')],
             $this->now(),
         );
 
         self::assertFalse($result['groups'][0]['departures'][0]['realtime']);
     }
 
-    private function service(?TransitRealtimeService $realtime = null): TransitDeparturesService
+    #[Test]
+    public function itUsesASiriStopMonitoringVisit(): void
     {
+        $this->writeIndex(self::GAME, [
+            $this->departure('1', 13 * 3600, 'T1', 0, 'Alpha'),
+        ]);
+        $scheduled = (new \DateTimeImmutable('2026-10-18 13:00:00', new \DateTimeZone('Europe/Paris')))->getTimestamp();
+        $siri = $this->siriClient(new MockHttpClient(new MockResponse(json_encode([
+            'Siri' => [
+                'ServiceDelivery' => [
+                    'StopMonitoringDelivery' => [[
+                        'MonitoredStopVisit' => [[
+                            'MonitoredVehicleJourney' => [
+                                'LineRef' => ['value' => 'STIF:Line::L1:'],
+                                'FramedVehicleJourneyRef' => ['DatedVehicleJourneyRef' => 'T1'],
+                                'MonitoredCall' => [
+                                    'StopPointRef' => ['value' => 'STIF:StopPoint:Q:orig-1:'],
+                                    'AimedDepartureTime' => '2026-10-18T13:00:00+02:00',
+                                    'ExpectedDepartureTime' => '2026-10-18T13:04:00+02:00',
+                                ],
+                            ],
+                        ]],
+                    ]],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR))));
+
+        $result = $this->service(siri: $siri)->forStation(
+            self::GAME,
+            self::STATION,
+            ['source-1' => new RealtimeSelection(RealtimeProvider::SiriLite->value, 'idfm')],
+            $this->now(),
+        );
+
+        $departure = $result['groups'][0]['departures'][0];
+        self::assertTrue($departure['realtime']);
+        self::assertSame(240, $departure['delaySeconds']);
+        self::assertSame($scheduled + 240, $departure['at']);
+        self::assertTrue($result['groups'][0]['realtime']);
+    }
+
+    #[Test]
+    public function itFallsBackToTheScheduleWhenTheOnlyVisitIsTheWrongDirection(): void
+    {
+        $this->writeIndex(
+            self::GAME,
+            [$this->departure('1', 13 * 3600, 'T1', 0, 'Alpha')],
+            null,
+            [['src' => 0, 'stopId' => 'orig-1'], ['src' => 0, 'stopId' => 'orig-2']],
+        );
+        $siri = $this->siriClient(new MockHttpClient(new MockResponse(json_encode([
+            'Siri' => [
+                'ServiceDelivery' => [
+                    'StopMonitoringDelivery' => [[
+                        'MonitoredStopVisit' => [[
+                            'MonitoredVehicleJourney' => [
+                                'LineRef' => ['value' => 'STIF:Line::L1:'],
+                                'DestinationName' => ['value' => 'Beta'],
+                                'MonitoredCall' => [
+                                    'StopPointRef' => ['value' => 'STIF:StopPoint:Q:orig-2:'],
+                                    'AimedDepartureTime' => '2026-10-18T13:00:00+02:00',
+                                    'ExpectedDepartureTime' => '2026-10-18T13:04:00+02:00',
+                                ],
+                            ],
+                        ]],
+                    ]],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR))));
+
+        $result = $this->service(siri: $siri)->forStation(
+            self::GAME,
+            self::STATION,
+            ['source-1' => new RealtimeSelection(RealtimeProvider::SiriLite->value, 'idfm')],
+            $this->now(),
+        );
+
+        $departure = $result['groups'][0]['departures'][0];
+        self::assertFalse($departure['realtime']);
+        self::assertSame(3600, $departure['inSeconds']);
+    }
+
+    #[Test]
+    public function itRejectsASignalLessVisitAtAStationWithTwoDirections(): void
+    {
+        $this->writeIndex(self::GAME, [
+            $this->departure('1', 13 * 3600, 'T1', 0, 'Alpha'),
+            $this->departure('1', 13 * 3600, 'T2', 1, 'Beta'),
+        ]);
+        $siri = $this->siriClient(new MockHttpClient(new MockResponse(json_encode([
+            'Siri' => [
+                'ServiceDelivery' => [
+                    'StopMonitoringDelivery' => [[
+                        'MonitoredStopVisit' => [[
+                            'MonitoredVehicleJourney' => [
+                                'LineRef' => ['value' => 'STIF:Line::L1:'],
+                                'MonitoredCall' => [
+                                    'StopPointRef' => ['value' => 'STIF:StopPoint:Q:orig-1:'],
+                                    'AimedDepartureTime' => '2026-10-18T13:00:00+02:00',
+                                    'ExpectedDepartureTime' => '2026-10-18T13:04:00+02:00',
+                                ],
+                            ],
+                        ]],
+                    ]],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR))));
+
+        $result = $this->service(siri: $siri)->forStation(
+            self::GAME,
+            self::STATION,
+            ['source-1' => new RealtimeSelection(RealtimeProvider::SiriLite->value, 'idfm')],
+            $this->now(),
+        );
+
+        self::assertSame(2, \count($result['groups']));
+        foreach ($result['groups'] as $group) {
+            self::assertFalse($group['realtime']);
+            self::assertFalse($group['departures'][0]['realtime']);
+        }
+    }
+
+    #[Test]
+    public function itQueriesTheStationsRealStopCodesNotTheMergedStationId(): void
+    {
+        $this->writeIndex(self::GAME, [
+            $this->departure('1', 13 * 3600, 'T1', 0, 'Alpha'),
+        ]);
+        $requested = [];
+        $siri = $this->siriClient(new MockHttpClient(
+            function (string $method, string $url) use (&$requested): MockResponse {
+                $requested[] = $url;
+
+                return new MockResponse('{}');
+            },
+        ));
+
+        $this->service(siri: $siri)->forStation(
+            self::GAME,
+            self::STATION,
+            ['source-1' => new RealtimeSelection(RealtimeProvider::SiriLite->value, 'idfm')],
+            $this->now(),
+        );
+
+        self::assertNotSame([], $requested);
+        self::assertStringContainsString('MonitoringRef=STIF%3AStopPoint%3AQ%3Aorig-1%3A', $requested[0]);
+        self::assertStringNotContainsString(rawurlencode(self::STATION), $requested[0]);
+    }
+
+    #[Test]
+    public function itFallsBackToTheScheduleWhenTheSiriProfileIsUnknown(): void
+    {
+        $this->writeIndex(self::GAME, [
+            $this->departure('1', 13 * 3600, 'T1', 0, 'Alpha'),
+        ]);
+
+        $result = $this->service()->forStation(
+            self::GAME,
+            self::STATION,
+            ['source-1' => new RealtimeSelection(RealtimeProvider::SiriLite->value, 'unknown')],
+            $this->now(),
+        );
+
+        self::assertFalse($result['groups'][0]['departures'][0]['realtime']);
+        self::assertSame(3600, $result['groups'][0]['departures'][0]['inSeconds']);
+    }
+
+    private function service(
+        ?TransitRealtimeService $realtime = null,
+        ?SiriLiteClient $siri = null,
+    ): TransitDeparturesService {
         return new TransitDeparturesService(
             $this->tilesDir,
             $realtime ?? $this->realtimeService(new MockHttpClient(static fn (): MockResponse => new MockResponse(''))),
+            $siri ?? $this->siriClient(new MockHttpClient(static fn (): MockResponse => new MockResponse(''))),
+            new SiriDepartureMatcher(),
+            new NullLogger(),
+        );
+    }
+
+    private function siriClient(MockHttpClient $client, ?SiriProfileRegistry $profiles = null): SiriLiteClient
+    {
+        return new SiriLiteClient(
+            new OutboundHttpFetcher($client, new OutboundUrlGuard(), new NullLogger()),
+            $profiles ?? TestSiriProfiles::registry(),
+            new ArrayAdapter(),
             new NullLogger(),
         );
     }
@@ -273,9 +461,14 @@ final class TransitDeparturesServiceTest extends TestCase
     /**
      * @param list<array<string, mixed>> $departures
      * @param array<string, list<string>>|null $serviceDays
+     * @param list<array{src: int, stopId: string}>|null $stops
      */
-    private function writeIndex(string $gameUuid, array $departures, ?array $serviceDays = null): void
-    {
+    private function writeIndex(
+        string $gameUuid,
+        array $departures,
+        ?array $serviceDays = null,
+        ?array $stops = null,
+    ): void {
         $dir = $this->tilesDir . '/' . $gameUuid . '/timetable';
         (new Filesystem())->mkdir($dir);
         file_put_contents($dir . '/meta.json', json_encode([
@@ -289,7 +482,10 @@ final class TransitDeparturesServiceTest extends TestCase
         ], JSON_THROW_ON_ERROR));
         file_put_contents(
             $dir . '/stops.json',
-            json_encode([self::STATION => [['src' => 0, 'stopId' => 'orig-1']]], JSON_THROW_ON_ERROR),
+            json_encode(
+                [self::STATION => $stops ?? [['src' => 0, 'stopId' => 'orig-1']]],
+                JSON_THROW_ON_ERROR,
+            ),
         );
         $rows = array_map(static fn (array $row): array => $row + ['src' => 0, 'seq' => 1], $departures);
         file_put_contents(

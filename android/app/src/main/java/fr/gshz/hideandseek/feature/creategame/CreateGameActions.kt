@@ -29,6 +29,8 @@ data class CreateGameActions(
     val onDismissGtfsDialog: () -> Unit = {},
     val onGtfsUrlChange: (String) -> Unit = {},
     val onGtfsRealtimeUrlChange: (String) -> Unit = {},
+    val onLiveDataProviderChange: (LiveDataProvider) -> Unit = {},
+    val onLiveDataProfileChange: (String) -> Unit = {},
     val onGtfsDialogModeChange: (GtfsDialogMode) -> Unit = {},
     val onUploadGtfsFromUrl: () -> Unit = {},
     val onUploadGtfsFromFile: (ByteArray, String) -> Unit = { _, _ -> },

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.data.ConnectionStore
+import fr.gshz.hideandseek.core.data.GameStateCache
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.model.PlayerSession
@@ -21,6 +22,7 @@ import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
@@ -48,6 +50,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -62,6 +65,7 @@ class CreateGameViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val sessionRepository: SessionRepository,
     private val connectionStore: ConnectionStore,
+    private val gameStateCache: GameStateCache,
     @DefaultDispatcher private val parsingDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -87,10 +91,27 @@ class CreateGameViewModel @Inject constructor(
     private var previewedGtfsLines: List<GtfsLineSelection> = emptyList()
 
     init {
+        loadSiriProfiles()
         observeBoundaryInput()
         observeSelectedTransitLines()
         observeRealtimeProbe()
         observeCatalogBoundary()
+    }
+
+    private fun loadSiriProfiles() {
+        viewModelScope.launch {
+            val apiUrl = connectionStore.current()?.apiUrl ?: return@launch
+            try {
+                val profiles = gameStateCache.getClientConfig(apiUrl).siriProfiles
+                _uiState.update { it.copy(siriProfiles = profiles) }
+            } catch (e: IOException) {
+                Log.w(TAG, "Client config failed", e)
+            } catch (e: HttpException) {
+                Log.w(TAG, "Client config failed", e)
+            } catch (e: SerializationException) {
+                Log.w(TAG, "Client config schema mismatch", e)
+            }
+        }
     }
 
     /**
@@ -126,10 +147,16 @@ class CreateGameViewModel @Inject constructor(
 
     private fun observeRealtimeProbe() {
         viewModelScope.launch {
-            _uiState.map { it.gtfsRealtimeUrlInput }
+            _uiState.map { it.liveDataProvider to it.gtfsRealtimeUrlInput }
                 .distinctUntilChanged()
                 .debounce(REALTIME_PROBE_DEBOUNCE_MS)
-                .collectLatest { raw -> checkRealtimeFeed(raw.trim()) }
+                .collectLatest { (provider, raw) ->
+                    if (provider == LiveDataProvider.GtfsRtUrl) {
+                        checkRealtimeFeed(raw.trim())
+                    } else {
+                        _uiState.update { it.copy(realtimeProbe = null) }
+                    }
+                }
         }
     }
 
@@ -637,9 +664,22 @@ class CreateGameViewModel @Inject constructor(
         uploadGtfsUrl(
             url = suggestion.downloadUrl,
             name = name,
-            realtimeUrl = suggestion.realtimeUrl.takeIf { it.startsWith(REALTIME_URL_PREFIX, ignoreCase = true) },
+            selection = catalogLiveDataSelection(suggestion),
             fallbackUrl = suggestion.fallbackUrl.ifBlank { null },
         )
+    }
+
+    /** The server knows which profiles it can serve, so its suggestion wins over a stale local list. */
+    private fun catalogLiveDataSelection(suggestion: TransitCatalogSuggestion): GtfsRealtimeSelection = when {
+        suggestion.siriProfile.isNotBlank() -> GtfsRealtimeSelection(
+            provider = LiveDataProvider.SiriLite.wireValue,
+            profile = suggestion.siriProfile,
+        )
+        suggestion.realtimeUrl.startsWith(REALTIME_URL_PREFIX, ignoreCase = true) -> GtfsRealtimeSelection(
+            provider = LiveDataProvider.GtfsRtUrl.wireValue,
+            url = suggestion.realtimeUrl,
+        )
+        else -> GtfsRealtimeSelection.None
     }
 
     private fun launchCatalogLoad() {
@@ -717,14 +757,46 @@ class CreateGameViewModel @Inject constructor(
         _uiState.update { it.copy(gtfsRealtimeUrlInput = value, gtfsError = null) }
     }
 
-    private fun realtimeUrlIsValid(): Boolean {
-        val value = _uiState.value.gtfsRealtimeUrlInput.trim()
-        if (value.isEmpty() || value.startsWith(REALTIME_URL_PREFIX)) return true
-        _uiState.update { it.copy(gtfsError = UiText.fromResource(R.string.gtfs_realtime_url_invalid)) }
-        return false
+    fun onLiveDataProviderChange(provider: LiveDataProvider) {
+        _uiState.update {
+            it.copy(
+                liveDataProvider = provider,
+                realtimeProbe = if (provider == LiveDataProvider.GtfsRtUrl) it.realtimeProbe else null,
+                gtfsError = null,
+            )
+        }
     }
 
-    private fun realtimeUrlOrNull(): String? = _uiState.value.gtfsRealtimeUrlInput.trim().ifBlank { null }
+    fun onLiveDataProfileChange(key: String) {
+        _uiState.update { it.copy(liveDataProfile = key, gtfsError = null) }
+    }
+
+    private fun liveDataSelectionOrNull(): GtfsRealtimeSelection? {
+        val state = _uiState.value
+        return when (state.liveDataProvider) {
+            LiveDataProvider.None -> GtfsRealtimeSelection.None
+            LiveDataProvider.GtfsRtUrl -> gtfsRtSelection(state.gtfsRealtimeUrlInput.trim())
+            LiveDataProvider.SiriLite -> siriSelection(state.liveDataProfile.trim())
+        }
+    }
+
+    private fun gtfsRtSelection(url: String): GtfsRealtimeSelection? = when {
+        url.isEmpty() -> failLiveDataSelection(R.string.gtfs_realtime_url_required)
+        !url.startsWith(REALTIME_URL_PREFIX) -> failLiveDataSelection(R.string.gtfs_realtime_url_invalid)
+        else -> GtfsRealtimeSelection(LiveDataProvider.GtfsRtUrl.wireValue, url = url)
+    }
+
+    private fun siriSelection(profile: String): GtfsRealtimeSelection? =
+        if (profile.isEmpty()) {
+            failLiveDataSelection(R.string.gtfs_realtime_profile_required)
+        } else {
+            GtfsRealtimeSelection(LiveDataProvider.SiriLite.wireValue, profile = profile)
+        }
+
+    private fun failLiveDataSelection(@StringRes message: Int): GtfsRealtimeSelection? {
+        _uiState.update { it.copy(gtfsError = UiText.fromResource(message)) }
+        return null
+    }
 
     fun onGtfsDialogModeChange(mode: GtfsDialogMode) {
         _uiState.update { it.copy(gtfsDialogMode = mode, gtfsError = null) }
@@ -736,17 +808,22 @@ class CreateGameViewModel @Inject constructor(
             _uiState.update { it.copy(gtfsError = UiText.fromResource(R.string.gtfs_url_required)) }
             return
         }
-        if (!realtimeUrlIsValid()) return
+        val selection = liveDataSelectionOrNull() ?: return
         val feedName = url.substringAfterLast("/")
             .take(GTFS_FEED_NAME_MAX_LENGTH).ifBlank { DEFAULT_GTFS_FEED_NAME }
-        uploadGtfsUrl(url, feedName, realtimeUrlOrNull(), fallbackUrl = null)
+        uploadGtfsUrl(url, feedName, selection, fallbackUrl = null)
     }
 
-    private fun uploadGtfsUrl(url: String, name: String, realtimeUrl: String?, fallbackUrl: String?) {
+    private fun uploadGtfsUrl(
+        url: String,
+        name: String,
+        selection: GtfsRealtimeSelection,
+        fallbackUrl: String?,
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(gtfsUploading = true, gtfsError = null) }
             try {
-                val source = gameRepository.uploadGtfsFromUrl(url, name, realtimeUrl, fallbackUrl)
+                val source = gameRepository.uploadGtfsFromUrl(url, name, selection, fallbackUrl)
                 catalogJob?.cancel()
                 _uiState.update { state ->
                     state.copy(
@@ -755,6 +832,8 @@ class CreateGameViewModel @Inject constructor(
                         isCatalogLoading = false,
                         gtfsUrlInput = "",
                         gtfsRealtimeUrlInput = "",
+                        liveDataProvider = LiveDataProvider.None,
+                        liveDataProfile = "",
                         realtimeProbe = null,
                         gtfsSources = state.gtfsSources + source,
                     )
@@ -772,19 +851,20 @@ class CreateGameViewModel @Inject constructor(
     }
 
     fun uploadGtfsFromFile(bytes: ByteArray, fileName: String) {
-        if (!realtimeUrlIsValid()) return
-        val realtimeUrl = realtimeUrlOrNull()
+        val selection = liveDataSelectionOrNull() ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(gtfsUploading = true, gtfsError = null) }
             try {
                 val feedName = fileName.removeSuffix(".zip")
                     .take(GTFS_FEED_NAME_MAX_LENGTH).ifBlank { DEFAULT_GTFS_FEED_NAME }
-                val source = gameRepository.uploadGtfsFromFile(bytes, fileName, feedName, realtimeUrl)
+                val source = gameRepository.uploadGtfsFromFile(bytes, fileName, feedName, selection)
                 _uiState.update { state ->
                     state.copy(
                         gtfsUploading = false,
                         showGtfsDialog = false,
                         gtfsRealtimeUrlInput = "",
+                        liveDataProvider = LiveDataProvider.None,
+                        liveDataProfile = "",
                         realtimeProbe = null,
                         gtfsSources = state.gtfsSources + source,
                     )
@@ -964,6 +1044,11 @@ internal fun gtfsUploadError(serverKey: String?, detail: String?): UiText = when
     ERROR_KEY_GTFS_SUBSET_TOO_LARGE -> UiText.fromResource(R.string.gtfs_subset_too_large)
     ERROR_KEY_GTFS_SOURCE_TOO_LARGE -> UiText.fromResource(R.string.gtfs_source_too_large)
     ERROR_KEY_GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE -> UiText.fromResource(R.string.gtfs_source_uncompressed_too_large)
+    ERROR_KEY_GTFS_REALTIME_PROVIDER_INVALID -> UiText.fromResource(R.string.gtfs_realtime_provider_invalid)
+    ERROR_KEY_GTFS_REALTIME_PROFILE_UNKNOWN -> UiText.fromResource(R.string.gtfs_realtime_profile_unknown)
+    ERROR_KEY_GTFS_REALTIME_PROFILE_UNAVAILABLE -> UiText.fromResource(R.string.gtfs_realtime_profile_unavailable)
+    ERROR_KEY_GTFS_REALTIME_URL_REQUIRED -> UiText.fromResource(R.string.gtfs_realtime_url_required)
+    ERROR_KEY_GTFS_REALTIME_PROFILE_REQUIRED -> UiText.fromResource(R.string.gtfs_realtime_profile_required)
     else -> UiText.fromDynamic(detail ?: "")
 }
 
@@ -973,6 +1058,11 @@ private const val ERROR_KEY_GTFS_SELECTION_EMPTY = "gtfs.selection_empty"
 private const val ERROR_KEY_GTFS_SUBSET_TOO_LARGE = "gtfs.subset_too_large"
 private const val ERROR_KEY_GTFS_SOURCE_TOO_LARGE = "gtfs.source_too_large"
 private const val ERROR_KEY_GTFS_SOURCE_UNCOMPRESSED_TOO_LARGE = "gtfs.source_uncompressed_too_large"
+private const val ERROR_KEY_GTFS_REALTIME_PROVIDER_INVALID = "gtfs_source.realtime_provider_invalid"
+private const val ERROR_KEY_GTFS_REALTIME_PROFILE_UNKNOWN = "gtfs_source.realtime_profile_unknown"
+private const val ERROR_KEY_GTFS_REALTIME_PROFILE_UNAVAILABLE = "gtfs_source.realtime_profile_unavailable"
+private const val ERROR_KEY_GTFS_REALTIME_URL_REQUIRED = "gtfs_source.realtime_url_required"
+private const val ERROR_KEY_GTFS_REALTIME_PROFILE_REQUIRED = "gtfs_source.realtime_profile_required"
 private const val ERROR_KEY_AREA_FIT_NO_LINES = "area_fit.no_lines"
 private const val ERROR_KEY_AREA_FIT_NO_GEOMETRY = "area_fit.no_geometry"
 private const val ERROR_KEY_AREA_FIT_TOO_LARGE = "area_fit.too_large"

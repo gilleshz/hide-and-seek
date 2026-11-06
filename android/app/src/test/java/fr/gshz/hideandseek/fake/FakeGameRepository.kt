@@ -5,6 +5,7 @@ import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
 import fr.gshz.hideandseek.domain.model.GameSummary
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.JoinResult
@@ -26,7 +27,7 @@ class FakeGameRepository : GameRepository {
     data class GtfsUploadCall(
         val source: String,
         val name: String,
-        val realtimeUrl: String?,
+        val selection: GtfsRealtimeSelection,
         val fallbackUrl: String? = null,
     )
 
@@ -157,10 +158,10 @@ class FakeGameRepository : GameRepository {
     override suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,
-        realtimeUrl: String?,
+        selection: GtfsRealtimeSelection,
         fallbackUrl: String?,
     ): GtfsSourceState {
-        gtfsUploadCalls += GtfsUploadCall(url, name, realtimeUrl, fallbackUrl)
+        gtfsUploadCalls += GtfsUploadCall(url, name, selection, fallbackUrl)
         return uploadGtfsFromUrlResult.getOrThrow()
     }
 
@@ -173,9 +174,9 @@ class FakeGameRepository : GameRepository {
         fileBytes: ByteArray,
         fileName: String,
         name: String,
-        realtimeUrl: String?,
+        selection: GtfsRealtimeSelection,
     ): GtfsSourceState {
-        gtfsUploadCalls += GtfsUploadCall(fileName, name, realtimeUrl)
+        gtfsUploadCalls += GtfsUploadCall(fileName, name, selection)
         return uploadGtfsFromFileResult.getOrThrow()
     }
 

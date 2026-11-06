@@ -112,6 +112,8 @@ fun CreateGameScreen(
             onDismissGtfsDialog = viewModel::dismissGtfsDialog,
             onGtfsUrlChange = viewModel::onGtfsUrlChange,
             onGtfsRealtimeUrlChange = viewModel::onGtfsRealtimeUrlChange,
+            onLiveDataProviderChange = viewModel::onLiveDataProviderChange,
+            onLiveDataProfileChange = viewModel::onLiveDataProfileChange,
             onGtfsDialogModeChange = viewModel::onGtfsDialogModeChange,
             onUploadGtfsFromUrl = viewModel::uploadGtfsFromUrl,
             onUploadGtfsFromFile = viewModel::uploadGtfsFromFile,
@@ -167,8 +169,18 @@ private fun GtfsDialogIfShown(
         GtfsUploadDialog(
             mode = uiState.gtfsDialogMode,
             urlInput = uiState.gtfsUrlInput,
-            realtimeUrlInput = uiState.gtfsRealtimeUrlInput,
-            realtimeProbe = uiState.realtimeProbe,
+            liveData = GtfsLiveDataUi(
+                provider = uiState.liveDataProvider,
+                profile = uiState.liveDataProfile,
+                profiles = uiState.siriProfiles,
+                urlInput = uiState.gtfsRealtimeUrlInput,
+                probe = uiState.realtimeProbe,
+            ),
+            liveDataActions = GtfsLiveDataActions(
+                onProviderChange = actions.onLiveDataProviderChange,
+                onProfileChange = actions.onLiveDataProfileChange,
+                onUrlChange = actions.onGtfsRealtimeUrlChange,
+            ),
             isUploading = uiState.gtfsUploading,
             error = uiState.gtfsError,
             catalog = GtfsCatalogUi(
@@ -184,7 +196,6 @@ private fun GtfsDialogIfShown(
             ),
             onModeChange = actions.onGtfsDialogModeChange,
             onUrlChange = actions.onGtfsUrlChange,
-            onRealtimeUrlChange = actions.onGtfsRealtimeUrlChange,
             onUploadUrl = actions.onUploadGtfsFromUrl,
             onChooseFile = { onChooseFile?.invoke() },
             onDismiss = actions.onDismissGtfsDialog,

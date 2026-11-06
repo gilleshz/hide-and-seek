@@ -67,7 +67,7 @@ has to be someone you trust. Only connect to a host you know.
 - Create a game: name, player count, area, and transit lines from OpenStreetMap
   or a GTFS feed
 - GTFS network catalog: pick a public feed for the area, with live departures
-  when the feed provides them
+  from a GTFS-RT feed or a server-configured SIRI Lite profile
 - Join by game code or by scanning the host's QR code
 - Live map: player positions update in real time over a server-sent events stream
 - Profile photos on the map pins, picked from the camera or the gallery
@@ -108,8 +108,11 @@ docker compose up -d
 ```
 
 Everything else is optional, or generated at first boot, including the API
-key the app needs. TLS, a reverse proxy and the full guide are in
-[deploy/README.md](deploy/README.md).
+key the app needs. Optional live-data keys enable station boards from an
+operator SIRI Lite API: `PRIM_API_KEY` (IDFM), `CTS_API_TOKEN` (CTS
+Strasbourg), and `SYTRAL_SIRI_USER` plus `SYTRAL_SIRI_PASSWORD` (TCL Lyon).
+Leave them blank to hide those profiles. TLS, a reverse proxy and the full
+guide are in [deploy/README.md](deploy/README.md).
 
 ## Use the app
 

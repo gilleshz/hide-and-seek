@@ -13,4 +13,5 @@ data class TransitCatalogSuggestion(
     val live: Boolean,
     val scope: String,
     val sizeBytes: Long? = null,
+    val siriProfile: String = "",
 )

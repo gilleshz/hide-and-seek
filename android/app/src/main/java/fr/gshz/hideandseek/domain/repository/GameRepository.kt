@@ -14,6 +14,7 @@ import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitDepartures
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsRealtimeProbe
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
 import fr.gshz.hideandseek.domain.model.TransitLine
 
@@ -70,7 +71,7 @@ interface GameRepository {
     suspend fun uploadGtfsFromUrl(
         url: String,
         name: String,
-        realtimeUrl: String? = null,
+        selection: GtfsRealtimeSelection = GtfsRealtimeSelection.None,
         fallbackUrl: String? = null,
     ): GtfsSourceState
     suspend fun probeGtfsRealtime(url: String): GtfsRealtimeProbe
@@ -78,7 +79,7 @@ interface GameRepository {
         fileBytes: ByteArray,
         fileName: String,
         name: String,
-        realtimeUrl: String? = null,
+        selection: GtfsRealtimeSelection = GtfsRealtimeSelection.None,
     ): GtfsSourceState
     suspend fun getGame(gameUuid: String): GameSummary
     suspend fun getStationDepartures(

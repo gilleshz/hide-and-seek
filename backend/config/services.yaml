@@ -17,6 +17,43 @@ parameters:
         stadia: '%env(default::STADIA_API_KEY)%'
         thunderforest: '%env(default::THUNDERFOREST_API_KEY)%'
         maptiler: '%env(default::MAPTILER_API_KEY)%'
+    app.siri_profiles:
+        idfm:
+            label: 'Île-de-France Mobilités'
+            service: stop_monitoring
+            endpoint: 'https://prim.iledefrance-mobilites.fr/marketplace/stop-monitoring'
+            auth:
+                kind: header
+                name: apiKey
+                value: '%env(default::PRIM_API_KEY)%'
+            stop_ref: 'STIF:StopPoint:Q:{code}:'
+            aliases: ['IDFM', 'RATP', 'Transilien', 'Île-de-France']
+            cities: ['Paris', 'Île-de-France']
+            city_optional: true
+        cts:
+            label: 'CTS Strasbourg'
+            service: estimated_timetable
+            endpoint: 'https://api.cts-strasbourg.eu/v1/siri/2.0/estimated-timetable'
+            auth:
+                kind: basic
+                user: '%env(default::CTS_API_TOKEN)%'
+                password: ''
+            query:
+                GetStopIdInsteadOfStopCode: 'true'
+            aliases: ['CTS']
+            cities: ['Strasbourg']
+        tcl:
+            label: 'TCL Lyon'
+            service: estimated_timetable
+            endpoint: 'https://data.grandlyon.com/siri-lite/2.0/estimated-timetables.json'
+            auth:
+                kind: basic
+                user: '%env(default::SYTRAL_SIRI_USER)%'
+                password: '%env(default::SYTRAL_SIRI_PASSWORD)%'
+                password_required: true
+            line_ref: '{code}'
+            aliases: ['SYTRAL']
+            cities: ['Lyon']
     app.gtfs_storage_dir: '%env(GTFS_STORAGE_DIR)%'
     app.gtfs_min_trips_per_day: '%env(int:GTFS_MIN_TRIPS_PER_DAY)%'
     app.tiles_dir: '%env(TILES_DIR)%'

@@ -14,6 +14,7 @@ use App\Service\GtfsSubsetService;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\OverpassHttpClient;
+use App\Tests\Support\TestSiriProfiles;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -45,6 +46,7 @@ final class GtfsSubsetServiceTest extends TestCase
             ),
             new GtfsFrequencyService(),
             0,
+            TestSiriProfiles::registry(),
         );
         $this->subsets = new GtfsSubsetService($gtfs, new Filesystem(), new NullLogger());
     }

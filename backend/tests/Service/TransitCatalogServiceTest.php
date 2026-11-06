@@ -7,7 +7,9 @@ namespace App\Tests\Service;
 use App\Dto\TransitCatalogSuggestion;
 use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
+use App\Service\SiriProfileRegistry;
 use App\Service\TransitCatalogService;
+use App\Tests\Support\TestSiriProfiles;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -107,6 +109,101 @@ final class TransitCatalogServiceTest extends TestCase
         $results = $this->service()->search(0.0, 0.0, 0.1, 0.1, 'SNCF');
 
         self::assertSame(['tdg-83582'], self::ids($results));
+    }
+
+    #[Test]
+    public function itAttachesAnAvailableSiriProfileAndClearsTheRealtimeUrl(): void
+    {
+        $this->writeSiriCatalogRow();
+
+        $results = $this->service()->search(48.8, 2.3, 48.9, 2.4, '');
+
+        self::assertSame(['idfm-paris'], self::ids($results));
+        self::assertSame('idfm', $results[0]->siriProfile);
+        self::assertNull($results[0]->realtimeUrl);
+        self::assertTrue($results[0]->live);
+    }
+
+    #[Test]
+    public function itAttachesAnIdfmProfileOutsideItsListedCities(): void
+    {
+        $this->writeCatalogRow([
+            'id' => 'idfm-suburb',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Saint-Denis',
+            'provider' => 'Île-de-France Mobilités',
+            'name' => 'Réseaux urbains',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://files.example.com/idfm-suburb.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '48.9',
+            'location.bounding_box.maximum_latitude' => '49.0',
+            'location.bounding_box.minimum_longitude' => '2.3',
+            'location.bounding_box.maximum_longitude' => '2.4',
+        ]);
+
+        $results = $this->service()->search(48.9, 2.3, 49.0, 2.4, '');
+
+        self::assertSame(['idfm-suburb'], self::ids($results));
+        self::assertSame('idfm', $results[0]->siriProfile);
+        self::assertNull($results[0]->realtimeUrl);
+        self::assertTrue($results[0]->live);
+    }
+
+    #[Test]
+    public function itDoesNotAttachAProfileAcrossAConflictingCity(): void
+    {
+        $this->writeCatalogRow([
+            'id' => 'sytral-limoges',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Limoges',
+            'provider' => 'SYTRAL',
+            'name' => 'SYTRAL network',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://files.example.com/sytral-limoges.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '45.8',
+            'location.bounding_box.maximum_latitude' => '45.9',
+            'location.bounding_box.minimum_longitude' => '1.2',
+            'location.bounding_box.maximum_longitude' => '1.3',
+        ]);
+
+        $results = $this->service()->search(45.8, 1.2, 45.9, 1.3, '');
+
+        self::assertSame(['sytral-limoges'], self::ids($results));
+        self::assertNull($results[0]->siriProfile);
+        self::assertFalse($results[0]->live);
+    }
+
+    #[Test]
+    public function itLeavesTheSuggestionAloneWhenTheSiriProfileIsUnavailable(): void
+    {
+        $this->writeSiriCatalogRow();
+        $profiles = TestSiriProfiles::registry(array_diff_key(
+            TestSiriProfiles::withUnavailableProfile(),
+            ['idfm' => true],
+        ));
+
+        $results = $this->service(profiles: $profiles)->search(48.8, 2.3, 48.9, 2.4, '');
+
+        self::assertSame(['idfm-paris'], self::ids($results));
+        self::assertNull($results[0]->siriProfile);
+        self::assertSame('https://rt.example.com/idfm-tu.pb', $results[0]->realtimeUrl);
+        self::assertTrue($results[0]->live);
+    }
+
+    #[Test]
+    public function itDoesNotMatchAProfileOnLocaleAlone(): void
+    {
+        $this->copyFixture();
+
+        $results = $this->service()->search(48.9757, 6.0031, 49.2037, 6.3245, 'Metz');
+
+        self::assertSame('tdg-80725', $results[0]->id);
+        self::assertNull($results[0]->siriProfile);
+        self::assertSame('https://rt.example.com/lemet-tu.pb', $results[0]->realtimeUrl);
     }
 
     #[Test]
@@ -252,8 +349,10 @@ final class TransitCatalogServiceTest extends TestCase
         self::assertNull($entry['size'] ?? null);
     }
 
-    private function service(?MockHttpClient $client = null): TransitCatalogService
-    {
+    private function service(
+        ?MockHttpClient $client = null,
+        ?SiriProfileRegistry $profiles = null,
+    ): TransitCatalogService {
         $fetcher = new OutboundHttpFetcher($client ?? new MockHttpClient([]), new OutboundUrlGuard(), new NullLogger());
 
         return new TransitCatalogService(
@@ -262,6 +361,7 @@ final class TransitCatalogServiceTest extends TestCase
             $this->catalogFile,
             'https://8.8.8.8/feeds_v2.csv',
             $this->sizesFile,
+            $profiles ?? TestSiriProfiles::registry(),
         );
     }
 
@@ -332,6 +432,45 @@ final class TransitCatalogServiceTest extends TestCase
             'location.bounding_box.maximum_longitude' => '6.1',
         ]);
         file_put_contents($this->catalogFile, $header . "\n" . $row . "\n");
+    }
+
+    /**
+     * @param array<string, string> $values
+     */
+    private function writeCatalogRow(array $values): void
+    {
+        $header = explode("\n", $this->fixture(), 2)[0];
+        file_put_contents($this->catalogFile, $header . "\n" . $this->csvRow($values) . "\n");
+    }
+
+    private function writeSiriCatalogRow(): void
+    {
+        $header = explode("\n", $this->fixture(), 2)[0];
+        $static = $this->csvRow([
+            'id' => 'idfm-paris',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Paris',
+            'provider' => 'Île-de-France Mobilités',
+            'name' => 'Réseaux urbains',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://files.example.com/idfm.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '48.8',
+            'location.bounding_box.maximum_latitude' => '48.9',
+            'location.bounding_box.minimum_longitude' => '2.3',
+            'location.bounding_box.maximum_longitude' => '2.4',
+        ]);
+        $realtime = $this->csvRow([
+            'id' => 'idfm-paris-tu',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => 'tu',
+            'static_reference' => 'idfm-paris',
+            'urls.direct_download' => 'https://rt.example.com/idfm-tu.pb',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        file_put_contents($this->catalogFile, $header . "\n" . $static . "\n" . $realtime . "\n");
     }
 
     private function copyFixture(): void

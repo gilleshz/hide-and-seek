@@ -28,8 +28,26 @@ final class ClientConfigApiTest extends ApiTestCase
         $data = $response->toArray();
         self::assertArrayHasKey('mapStyleAvailable', $data);
         self::assertArrayHasKey('availableStyles', $data);
+        self::assertArrayHasKey('siriProfiles', $data);
         self::assertIsBool($data['mapStyleAvailable']);
         self::assertIsArray($data['availableStyles']);
+        self::assertIsArray($data['siriProfiles']);
+    }
+
+    #[Test]
+    #[RunInSeparateProcess]
+    public function siriProfilesAreEmptyWhenNoCredentialsAreConfigured(): void
+    {
+        foreach (['PRIM_API_KEY', 'CTS_API_TOKEN', 'SYTRAL_SIRI_USER', 'SYTRAL_SIRI_PASSWORD'] as $var) {
+            putenv($var);
+            unset($_ENV[$var], $_SERVER[$var]);
+        }
+
+        $client = static::createClient();
+        $response = $client->request('GET', '/api/client-config', self::AUTH);
+
+        $data = $response->toArray();
+        self::assertSame([], $data['siriProfiles']);
     }
 
     #[Test]

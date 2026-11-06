@@ -4,13 +4,21 @@ import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.domain.model.Edition
 import fr.gshz.hideandseek.domain.model.GameSize
+import fr.gshz.hideandseek.domain.model.GtfsRealtimeSelection
 import fr.gshz.hideandseek.domain.model.GtfsRoute
 import fr.gshz.hideandseek.domain.model.GtfsSourceState
+import fr.gshz.hideandseek.domain.model.SiriProfileOption
 import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.AreaInfo
 
 enum class GtfsDialogMode { Networks, Url, File }
+
+enum class LiveDataProvider(val wireValue: String) {
+    None(GtfsRealtimeSelection.PROVIDER_NONE),
+    GtfsRtUrl(GtfsRealtimeSelection.PROVIDER_GTFS_RT_URL),
+    SiriLite(GtfsRealtimeSelection.PROVIDER_SIRI_LITE),
+}
 
 sealed interface RealtimeProbeState {
     data object Checking : RealtimeProbeState
@@ -122,6 +130,9 @@ data class CreateGameUiState(
     val gtfsDialogMode: GtfsDialogMode = GtfsDialogMode.Networks,
     val gtfsUrlInput: String = "",
     val gtfsRealtimeUrlInput: String = "",
+    val siriProfiles: List<SiriProfileOption> = emptyList(),
+    val liveDataProvider: LiveDataProvider = LiveDataProvider.None,
+    val liveDataProfile: String = "",
     val realtimeProbe: RealtimeProbeState? = null,
     val gtfsUploading: Boolean = false,
     val gtfsError: UiText? = null,

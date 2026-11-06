@@ -20,6 +20,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +36,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -44,6 +52,7 @@ import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.UiText
 import fr.gshz.hideandseek.core.ui.resolve
 import fr.gshz.hideandseek.core.ui.theme.Spacing
+import fr.gshz.hideandseek.domain.model.SiriProfileOption
 import fr.gshz.hideandseek.domain.model.TransitCatalogSuggestion
 
 internal data class GtfsCatalogUi(
@@ -59,20 +68,33 @@ internal data class GtfsCatalogActions(
     val onRetry: () -> Unit = {},
 )
 
+internal data class GtfsLiveDataUi(
+    val provider: LiveDataProvider = LiveDataProvider.None,
+    val profile: String = "",
+    val profiles: List<SiriProfileOption> = emptyList(),
+    val urlInput: String = "",
+    val probe: RealtimeProbeState? = null,
+)
+
+internal data class GtfsLiveDataActions(
+    val onProviderChange: (LiveDataProvider) -> Unit = {},
+    val onProfileChange: (String) -> Unit = {},
+    val onUrlChange: (String) -> Unit = {},
+)
+
 @Suppress("LongParameterList")
 @Composable
 internal fun GtfsUploadDialog(
     mode: GtfsDialogMode,
     urlInput: String,
-    realtimeUrlInput: String,
-    realtimeProbe: RealtimeProbeState?,
+    liveData: GtfsLiveDataUi,
+    liveDataActions: GtfsLiveDataActions,
     isUploading: Boolean,
     error: UiText?,
     catalog: GtfsCatalogUi,
     catalogActions: GtfsCatalogActions,
     onModeChange: (GtfsDialogMode) -> Unit,
     onUrlChange: (String) -> Unit,
-    onRealtimeUrlChange: (String) -> Unit,
     onUploadUrl: () -> Unit,
     onChooseFile: () -> Unit,
     onDismiss: () -> Unit,
@@ -86,15 +108,14 @@ internal fun GtfsUploadDialog(
             GtfsUploadDialogContent(
                 mode = mode,
                 urlInput = urlInput,
-                realtimeUrlInput = realtimeUrlInput,
-                realtimeProbe = realtimeProbe,
+                liveData = liveData,
+                liveDataActions = liveDataActions,
                 isUploading = isUploading,
                 error = error,
                 catalog = catalog,
                 catalogActions = catalogActions,
                 onModeChange = onModeChange,
                 onUrlChange = onUrlChange,
-                onRealtimeUrlChange = onRealtimeUrlChange,
                 onUploadUrl = onUploadUrl,
                 onChooseFile = onChooseFile,
                 onDismiss = onDismiss,
@@ -108,15 +129,14 @@ internal fun GtfsUploadDialog(
 private fun GtfsUploadDialogContent(
     mode: GtfsDialogMode,
     urlInput: String,
-    realtimeUrlInput: String,
-    realtimeProbe: RealtimeProbeState?,
+    liveData: GtfsLiveDataUi,
+    liveDataActions: GtfsLiveDataActions,
     isUploading: Boolean,
     error: UiText?,
     catalog: GtfsCatalogUi,
     catalogActions: GtfsCatalogActions,
     onModeChange: (GtfsDialogMode) -> Unit,
     onUrlChange: (String) -> Unit,
-    onRealtimeUrlChange: (String) -> Unit,
     onUploadUrl: () -> Unit,
     onChooseFile: () -> Unit,
     onDismiss: () -> Unit,
@@ -128,11 +148,10 @@ private fun GtfsUploadDialogContent(
         GtfsDialogTitleBar(isUploading = isUploading, onDismiss = onDismiss)
         GtfsModeSelector(mode = mode, isUploading = isUploading, onModeChange = onModeChange)
         if (mode != GtfsDialogMode.Networks) {
-            GtfsRealtimeUrlField(
-                urlInput = realtimeUrlInput,
-                probeState = realtimeProbe,
+            GtfsLiveDataFields(
+                liveData = liveData,
                 isUploading = isUploading,
-                onUrlChange = onRealtimeUrlChange,
+                actions = liveDataActions,
             )
         }
         when (mode) {
@@ -384,6 +403,116 @@ internal fun catalogSuggestionsInDisplayOrder(
 ): List<TransitCatalogSuggestion> = suggestions.sortedBy { it.isTooLarge }
 
 private val CATALOG_LIST_MAX_HEIGHT = 280.dp
+
+@Composable
+private fun GtfsLiveDataFields(
+    liveData: GtfsLiveDataUi,
+    isUploading: Boolean,
+    actions: GtfsLiveDataActions,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Text(
+            text = stringResource(R.string.gtfs_live_data_label),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        val providers = LiveDataProvider.entries
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            providers.forEachIndexed { index, provider ->
+                SegmentedButton(
+                    selected = liveData.provider == provider,
+                    onClick = { actions.onProviderChange(provider) },
+                    enabled = !isUploading &&
+                        (provider != LiveDataProvider.SiriLite || liveData.profiles.isNotEmpty()),
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = providers.size),
+                ) {
+                    Text(provider.label())
+                }
+            }
+        }
+        when (liveData.provider) {
+            LiveDataProvider.None -> Unit
+            LiveDataProvider.GtfsRtUrl -> GtfsRealtimeUrlField(
+                urlInput = liveData.urlInput,
+                probeState = liveData.probe,
+                isUploading = isUploading,
+                onUrlChange = actions.onUrlChange,
+            )
+            LiveDataProvider.SiriLite -> SiriProfileDropdown(
+                profiles = liveData.profiles,
+                selectedKey = liveData.profile,
+                isUploading = isUploading,
+                onProfileChange = actions.onProfileChange,
+            )
+        }
+        LiveDataHelper(liveData)
+    }
+}
+
+@Composable
+private fun LiveDataHelper(liveData: GtfsLiveDataUi) {
+    val text = when {
+        liveData.profiles.isEmpty() -> stringResource(R.string.gtfs_live_data_no_profile)
+        liveData.provider == LiveDataProvider.SiriLite -> stringResource(R.string.gtfs_live_data_helper)
+        else -> return
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun LiveDataProvider.label(): String = when (this) {
+    LiveDataProvider.None -> stringResource(R.string.gtfs_live_data_none)
+    LiveDataProvider.GtfsRtUrl -> stringResource(R.string.gtfs_live_data_gtfs_rt)
+    LiveDataProvider.SiriLite -> stringResource(R.string.gtfs_live_data_siri)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SiriProfileDropdown(
+    profiles: List<SiriProfileOption>,
+    selectedKey: String,
+    isUploading: Boolean,
+    onProfileChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = profiles.find { it.key == selectedKey }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = selected?.label.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.gtfs_live_data_profile_label)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
+            singleLine = true,
+            enabled = !isUploading,
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            profiles.forEach { profile ->
+                DropdownMenuItem(
+                    text = { Text(profile.label) },
+                    onClick = {
+                        onProfileChange(profile.key)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun GtfsRealtimeUrlField(
