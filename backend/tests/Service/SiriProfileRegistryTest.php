@@ -67,6 +67,29 @@ final class SiriProfileRegistryTest extends TestCase
     }
 
     #[Test]
+    public function itFoldsRefsForCaseAndAccentInsensitiveMatching(): void
+    {
+        self::assertSame('c1', SiriRef::normalizedFolded('TCL:Line::C1:'));
+        self::assertSame('etoile', SiriRef::normalizedFolded('ÉTOILE'));
+        self::assertSame('30', SiriRef::normalizedFolded('30'));
+    }
+
+    #[Test]
+    public function itParsesTheOptionalAlertsEndpointAndRequiresHttpsForIt(): void
+    {
+        $profiles = new SiriProfileRegistry(TestSiriProfiles::config());
+
+        self::assertSame('https://1.1.1.1/cts-alerts', $profiles->find('cts')?->alertsEndpoint);
+        self::assertSame('https://1.1.1.1/tcl-alerts', $profiles->find('tcl')?->alertsEndpoint);
+        self::assertNull($profiles->find('idfm')?->alertsEndpoint);
+
+        $config = TestSiriProfiles::config();
+        $config['cts']['alerts_endpoint'] = 'http://1.1.1.1/cts-alerts';
+        $this->expectException(\InvalidArgumentException::class);
+        new SiriProfileRegistry($config);
+    }
+
+    #[Test]
     public function itMatchesAnAvailableProfileByAliasAndCity(): void
     {
         $profiles = new SiriProfileRegistry(TestSiriProfiles::config());

@@ -20,6 +20,7 @@ final readonly class TransitCatalogSuggestion
         public string $scope,
         public ?int $sizeBytes = null,
         public ?string $siriProfile = null,
+        public ?string $realtimeAlertsUrl = null,
     ) {
     }
 
@@ -35,6 +36,7 @@ final readonly class TransitCatalogSuggestion
             downloadUrl: $this->downloadUrl,
             fallbackUrl: $this->fallbackUrl,
             realtimeUrl: $this->realtimeUrl,
+            realtimeAlertsUrl: $this->realtimeAlertsUrl,
             live: $this->live,
             scope: $this->scope,
             sizeBytes: $sizeBytes,

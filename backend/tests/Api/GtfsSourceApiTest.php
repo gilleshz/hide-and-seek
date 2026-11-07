@@ -78,6 +78,54 @@ final class GtfsSourceApiTest extends ApiTestCase
     }
 
     #[Test]
+    public function itStoresAnOptionalRealtimeAlertsUrl(): void
+    {
+        $client = static::createClient();
+        $this->fixturePath = $this->writeZip();
+
+        $response = $client->request('POST', '/api/gtfs-sources', [
+            'headers' => ['Content-Type' => 'multipart/form-data'] + self::AUTH['headers'],
+            'extra' => [
+                'parameters' => [
+                    'name' => 'Alerts feed',
+                    'realtimeUrl' => 'https://8.8.8.8/rt',
+                    'realtimeAlertsUrl' => 'https://8.8.8.8/alerts.pb',
+                ],
+                'files' => ['file' => new UploadedFile($this->fixturePath, 'feed.zip', 'application/zip', null, true)],
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(201);
+        $data = $response->toArray();
+        $this->sourceUuid = is_string($data['uuid'] ?? null) ? $data['uuid'] : null;
+
+        $sources = self::getContainer()->get(GtfsSourceRepository::class);
+        self::assertInstanceOf(GtfsSourceRepository::class, $sources);
+        $source = $sources->findByUuid((string) $this->sourceUuid);
+        self::assertNotNull($source);
+        self::assertSame(RealtimeProvider::GtfsRtUrl, $source->getRealtimeProvider());
+        self::assertSame('https://8.8.8.8/rt', $source->getRealtimeUrl());
+        self::assertSame('https://8.8.8.8/alerts.pb', $source->getRealtimeAlertsUrl());
+    }
+
+    #[Test]
+    public function itRejectsANonHttpsRealtimeAlertsUrl(): void
+    {
+        $client = static::createClient();
+
+        $client->request('POST', '/api/gtfs-sources', self::AUTH + [
+            'json' => [
+                'url' => 'https://8.8.8.8/feed.zip',
+                'name' => 'Alerts feed',
+                'realtimeAlertsUrl' => 'http://8.8.8.8/alerts.pb',
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertJsonContains(['errorKey' => 'gtfs_source.realtime_alerts_url_invalid']);
+    }
+
+    #[Test]
     public function itReadsTheRealtimeProviderFromMultipartFields(): void
     {
         $client = static::createClient();

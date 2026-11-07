@@ -54,13 +54,23 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
             'gtfs_source.realtime_url_too_long',
             'The realtime feed URL is too long.',
         );
+        $realtimeAlertsUrl = $this->readUrl(
+            $request->request->get('realtimeAlertsUrl'),
+            'gtfs_source.realtime_alerts_url_invalid',
+            'The realtime alerts URL is invalid.',
+        );
 
         if ($uploadedFile instanceof UploadedFile) {
             if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
                 throw new FunctionalException(message: 'File upload failed.', errorKey: 'gtfs_source.upload_failed');
             }
             $sourceName = is_string($name) && $name !== '' ? $name : 'GTFS feed';
-            $selection = RealtimeSelection::fromParts($realtimeProvider, $realtimeProfile, $realtimeUrl);
+            $selection = RealtimeSelection::fromParts(
+                $realtimeProvider,
+                $realtimeProfile,
+                $realtimeUrl,
+                $realtimeAlertsUrl,
+            );
             $source = $this->gtfsService->createFromUpload($uploadedFile, $sourceName, $selection);
         } else {
             $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -92,12 +102,22 @@ final readonly class GtfsSourceUploadProcessor implements ProcessorInterface
                 'gtfs_source.realtime_url_too_long',
                 'The realtime feed URL is too long.',
             );
+            $realtimeAlertsUrl = $this->readUrl(
+                $body['realtimeAlertsUrl'] ?? null,
+                'gtfs_source.realtime_alerts_url_invalid',
+                'The realtime alerts URL is invalid.',
+            );
             $fallbackUrl = $this->readUrl(
                 $body['fallbackUrl'] ?? null,
                 'gtfs_source.fallback_url_too_long',
                 'The fallback feed URL is too long.',
             );
-            $selection = RealtimeSelection::fromParts($realtimeProvider, $realtimeProfile, $realtimeUrl);
+            $selection = RealtimeSelection::fromParts(
+                $realtimeProvider,
+                $realtimeProfile,
+                $realtimeUrl,
+                $realtimeAlertsUrl,
+            );
             $source = $this->gtfsService->createFromUrl($url, $sourceName, $selection, $fallbackUrl);
         }
 

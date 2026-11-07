@@ -22,6 +22,7 @@ import fr.gshz.hideandseek.data.SeekerMarkerRepositoryImpl
 import fr.gshz.hideandseek.data.SessionRepositoryImpl
 import fr.gshz.hideandseek.data.StreetNetworkRepositoryImpl
 import fr.gshz.hideandseek.data.TimeTrapRepositoryImpl
+import fr.gshz.hideandseek.data.TrafficAlertsRepositoryImpl
 import fr.gshz.hideandseek.data.ZoneRepositoryImpl
 import fr.gshz.hideandseek.domain.repository.AvatarRepository
 import fr.gshz.hideandseek.domain.repository.ChatRepository
@@ -39,6 +40,7 @@ import fr.gshz.hideandseek.domain.repository.SeekerMarkerRepository
 import fr.gshz.hideandseek.domain.repository.SessionRepository
 import fr.gshz.hideandseek.domain.repository.StreetNetworkRepository
 import fr.gshz.hideandseek.domain.repository.TimeTrapRepository
+import fr.gshz.hideandseek.domain.repository.TrafficAlertsRepository
 import fr.gshz.hideandseek.domain.repository.ZoneRepository
 import fr.gshz.hideandseek.feature.map.AndroidTraceImageWriter
 import fr.gshz.hideandseek.feature.map.TraceImageWriter
@@ -46,6 +48,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
+@Suppress("TooManyFunctions")
 abstract class RepositoryModule {
 
     @Binds
@@ -123,6 +126,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAvatarRepository(impl: AvatarRepositoryImpl): AvatarRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTrafficAlertsRepository(impl: TrafficAlertsRepositoryImpl): TrafficAlertsRepository
 
     @Binds
     @Singleton

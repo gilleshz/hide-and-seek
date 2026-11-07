@@ -20,6 +20,7 @@ use Symfony\Contracts\Cache\ItemInterface;
 final readonly class TransitRealtimeService
 {
     private const int CACHE_TTL_SECONDS = 25;
+    private const int ALERTS_CACHE_TTL_SECONDS = 45;
     private const int MAX_FEED_AGE_SECONDS = 300;
     private const int MAX_BYTES = 5 * 1024 * 1024;
 
@@ -64,6 +65,32 @@ final readonly class TransitRealtimeService
                 return is_array($trips) ? $this->normalizeTrips($trips) : [];
             } catch (\Throwable $e) {
                 $this->logger->warning('GTFS-RT fetch failed for source {source}: {error}', [
+                    'source' => $sourceUuid,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return [];
+            }
+        });
+    }
+
+    /**
+     * Fetches and decodes a GTFS-RT service-alerts feed, cached briefly like the trip updates.
+     * Every failure resolves to an empty list.
+     *
+     * @return list<\App\Dto\TrafficAlert>
+     */
+    public function serviceAlerts(string $sourceUuid, string $url): array
+    {
+        $key = 'gtfs_rt_alerts_' . $sourceUuid . '_' . md5($url);
+
+        return $this->cache->get($key, function (ItemInterface $item) use ($sourceUuid, $url): array {
+            $item->expiresAfter(self::ALERTS_CACHE_TTL_SECONDS);
+
+            try {
+                return GtfsRtAlertsParser::parse($this->decode($this->fetch($url)));
+            } catch (\Throwable $e) {
+                $this->logger->warning('GTFS-RT alerts fetch failed for source {source}: {error}', [
                     'source' => $sourceUuid,
                     'error' => $e->getMessage(),
                 ]);

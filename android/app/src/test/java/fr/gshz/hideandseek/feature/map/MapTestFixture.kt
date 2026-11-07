@@ -21,6 +21,7 @@ import fr.gshz.hideandseek.fake.FakeSeekerMarkerRepository
 import fr.gshz.hideandseek.fake.FakeSessionRepository
 import fr.gshz.hideandseek.fake.FakeStreetNetworkRepository
 import fr.gshz.hideandseek.fake.FakeTimeTrapRepository
+import fr.gshz.hideandseek.fake.FakeTrafficAlertsRepository
 import fr.gshz.hideandseek.fake.FakeTraceImageWriter
 import fr.gshz.hideandseek.fake.FakeZoneRepository
 import io.mockk.coEvery
@@ -43,6 +44,7 @@ class MapTestFixture(
     val manualConstraintRepository = FakeManualConstraintRepository()
     val roundRepository = FakeRoundRepository()
     val timeTrapRepository = FakeTimeTrapRepository()
+    val trafficAlertsRepository = FakeTrafficAlertsRepository()
     val possibleAreaRepository = FakePossibleAreaRepository()
     val gameEventRepository = FakeGameEventRepository()
     val chatVisibilityTracker = ChatVisibilityTracker()
@@ -79,8 +81,8 @@ class MapTestFixture(
     }
 
     fun createSessionViewModel() = MapSessionViewModel(
-        locationRepository, roundRepository, sessionEvents, gameInfoSource, roundRefreshFlow,
-        chatVisibilityTracker,
+        locationRepository, roundRepository, trafficAlertsRepository, sessionEvents, gameInfoSource,
+        roundRefreshFlow, chatVisibilityTracker,
     )
 
     fun createZoneViewModel() = ZoneViewModel(

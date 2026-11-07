@@ -678,6 +678,7 @@ class CreateGameViewModel @Inject constructor(
         suggestion.realtimeUrl.startsWith(REALTIME_URL_PREFIX, ignoreCase = true) -> GtfsRealtimeSelection(
             provider = LiveDataProvider.GtfsRtUrl.wireValue,
             url = suggestion.realtimeUrl,
+            alertsUrl = suggestion.realtimeAlertsUrl.ifBlank { null },
         )
         else -> GtfsRealtimeSelection.None
     }

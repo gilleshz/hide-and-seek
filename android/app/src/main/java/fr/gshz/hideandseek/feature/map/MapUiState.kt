@@ -16,6 +16,7 @@ import fr.gshz.hideandseek.domain.model.RulesVariant
 import fr.gshz.hideandseek.domain.model.SeekerMarker
 import fr.gshz.hideandseek.domain.model.Side
 import fr.gshz.hideandseek.domain.model.TimeTrap
+import fr.gshz.hideandseek.domain.model.TrafficAlert
 import fr.gshz.hideandseek.domain.model.TransitLine
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -24,6 +25,12 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 enum class QuestionSheetMode { Ask, Preview }
+
+/** The polled traffic alerts plus the server clock they were sampled against. */
+data class TrafficAlertsState(
+    val alerts: List<TrafficAlert> = emptyList(),
+    val serverNow: Long = 0,
+)
 
 // Server-derived: a thermometer without a reveal deadline is still traveling (survives restarts).
 val AskedQuestion.isTravelingThermometer: Boolean
@@ -123,6 +130,10 @@ data class MapUiState(
     val roundErrorArgs: Map<String, String>? = null,
     val transitOverlayGeoJson: String? = null,
     val focusedTransitRef: String? = null,
+    val trafficAlerts: TrafficAlertsState = TrafficAlertsState(),
+    val selectedAlertId: String? = null,
+    val highlightedTransitRefs: Set<String> = emptySet(),
+    val transitLineColors: Map<String, String> = emptyMap(),
     val boundaryGeoJson: String? = null,
     val outsideZone: Boolean = false,
     val halfZoneExcludesSelf: Boolean = false,
@@ -351,6 +362,12 @@ internal fun assembleMapUiState(
     val base = sessionAndZoneUiState(session, zone)
     return base.copy(
         markers = session.markers,
+        highlightedTransitRefs = computeAlertHighlightRefs(
+            session.selectedTransitLines,
+            session.trafficAlerts.alerts,
+            session.selectedAlertId,
+        ),
+        transitLineColors = session.selectedTransitLines.associate { line -> line.ref to line.colour },
         outsideZone = computeOutsideZone(session.selfPlayerUuid, session.locations, zone.submittedZone),
         halfZoneExcludesSelf = computeHalfZoneExcludesSelf(
             session.selfPlayerUuid,
@@ -412,6 +429,8 @@ private fun sessionAndZoneUiState(session: MapSessionUiState, zone: MapZoneUiSta
         roundErrorArgs = session.roundErrorArgs,
         transitOverlayGeoJson = session.transitOverlayGeoJson,
         focusedTransitRef = session.focusedTransitRef,
+        trafficAlerts = session.trafficAlerts,
+        selectedAlertId = session.selectedAlertId,
         boundaryGeoJson = session.boundaryGeoJson,
         inMovePeriod = session.inMovePeriod,
         mapStyleAvailable = session.mapStyleAvailable,

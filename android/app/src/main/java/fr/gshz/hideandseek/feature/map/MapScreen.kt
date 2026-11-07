@@ -248,6 +248,8 @@ fun MapScreen(
             drawingViewModel.addSearchAreaConstraint(lat, lng, radius)
         },
         onTransitLineTapped = sessionViewModel::toggleTransitFocus,
+        onSelectTrafficAlert = sessionViewModel::toggleTrafficAlertSelection,
+        onClearTrafficAlertSelection = sessionViewModel::clearTrafficAlertSelection,
         timetableState = timetableState,
         onTimetableTapped = { station ->
             station.stationId?.let { stationId -> timetableViewModel.open(stationId, station.label) }
@@ -483,6 +485,8 @@ internal fun MapContent(
     onUnmarkStation: (String) -> Unit = {},
     onConstrainSearchArea: (Double, Double, Double) -> Unit = { _, _, _ -> },
     onTransitLineTapped: (String) -> Unit = {},
+    onSelectTrafficAlert: (String) -> Unit = {},
+    onClearTrafficAlertSelection: () -> Unit = {},
     timetableState: TimetableUiState = TimetableUiState(),
     onTimetableTapped: (StationTooltipData) -> Unit = {},
     onTimetableRetry: () -> Unit = {},
@@ -493,6 +497,8 @@ internal fun MapContent(
     val recenterCounter = remember { mutableStateOf(0) }
     // Freezing the timer here keeps the bonus tally out of the score.
     val frozenHidingSeconds = remember { mutableStateOf<Long?>(null) }
+    // Null when closed; a non-null line filter means the sheet opened from the departure board.
+    var trafficSheet by remember { mutableStateOf<TrafficSheetRequest?>(null) }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -502,6 +508,17 @@ internal fun MapContent(
                     uiState.roundTimerSeconds,
                     spectator = uiState.isSpectator,
                 )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.sm),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TrafficAlertChip(
+                        count = uiState.trafficAlerts.alerts.size,
+                        onClick = { trafficSheet = TrafficSheetRequest() },
+                    )
+                }
                 if (frozenHidingSeconds.value == null) {
                     ErrorText(uiState.roundError, errorKey = uiState.roundErrorKey, errorArgs = uiState.roundErrorArgs)
                 }
@@ -551,6 +568,8 @@ internal fun MapContent(
                 styleSource = uiState.currentStyleSource,
                 navigation = navigation,
                 onTransitLineTapped = onTransitLineTapped,
+                onClearTrafficAlertSelection = onClearTrafficAlertSelection,
+                onLineAlertsTapped = { lineRef -> trafficSheet = TrafficSheetRequest(lineRef) },
                 timetableState = timetableState,
                 onTimetableTapped = onTimetableTapped,
                 onTimetableRetry = onTimetableRetry,
@@ -568,6 +587,16 @@ internal fun MapContent(
                 ),
             )
         }
+    }
+    trafficSheet?.let { request ->
+        TrafficAlertsSheet(
+            state = uiState.trafficAlerts,
+            lineFilter = request.lineFilter,
+            selectedAlertId = uiState.selectedAlertId,
+            lineColors = uiState.transitLineColors,
+            onSelectAlert = onSelectTrafficAlert,
+            onDismissRequest = { trafficSheet = null },
+        )
     }
     uiState.pendingTrapDetection?.let { trap ->
         TimeTrapDetectionDialog(
@@ -610,6 +639,8 @@ private fun BoxScope.MapContentLayout(
     navigation: MapNavigation,
     seekerOverlay: SeekerMarkerOverlay = SeekerMarkerOverlay(),
     onTransitLineTapped: (String) -> Unit = {},
+    onClearTrafficAlertSelection: () -> Unit = {},
+    onLineAlertsTapped: (String) -> Unit = {},
     timetableState: TimetableUiState = TimetableUiState(),
     onTimetableTapped: (StationTooltipData) -> Unit = {},
     onTimetableRetry: () -> Unit = {},
@@ -617,6 +648,11 @@ private fun BoxScope.MapContentLayout(
     onTimetableToggleFullDay: () -> Unit = {},
 ) {
     val isPreviewMode = uiState.simulation?.mode == QuestionSheetMode.Preview
+    // An alert selection wins over the single-line focus; both dim the rest of the network.
+    val highlightRefs: Set<String>? = when {
+        uiState.highlightedTransitRefs.isNotEmpty() -> uiState.highlightedTransitRefs
+        else -> uiState.focusedTransitRef?.let { setOf(it) }
+    }
     MapLibreMapView(
         markers = uiState.markers,
         possibleAreaGeoJson = uiState.possibleAreaGeoJson,
@@ -624,8 +660,9 @@ private fun BoxScope.MapContentLayout(
         stationAreaGeoJson = uiState.stationAreaGeoJson,
         boundary = uiState.boundary,
         transitOverlayGeoJson = uiState.transitOverlayGeoJson,
-        focusedTransitRef = uiState.focusedTransitRef,
+        highlightedTransitRefs = highlightRefs,
         onTransitLineTapped = onTransitLineTapped,
+        onMapTap = onClearTrafficAlertSelection,
         boundaryGeoJson = uiState.boundaryGeoJson,
         recenterCounter = recenterCounter,
         simulationGeoJson = uiState.simulation?.previewGeoJson,
@@ -648,12 +685,16 @@ private fun BoxScope.MapContentLayout(
         onEnterSimulation = onEnterSimulation,
         navigation = navigation,
         onTransitLineTapped = onTransitLineTapped,
+        onLineAlertsTapped = onLineAlertsTapped,
         timetableState = timetableState,
         onTimetableRetry = onTimetableRetry,
         onTimetableClose = onTimetableClose,
         onTimetableToggleFullDay = onTimetableToggleFullDay,
     )
 }
+
+/** A null [lineFilter] is the chip's full list; a line ref is the departure board's filtered view. */
+private data class TrafficSheetRequest(val lineFilter: String? = null)
 
 private fun zoneOverlayState(
     uiState: MapUiState,
@@ -767,6 +808,7 @@ private fun BoxScope.MapOverlays(
     onEnterSimulation: (QuestionCategory) -> Unit = {},
     navigation: MapNavigation = MapNavigation(onOpenChatClick = {}),
     onTransitLineTapped: (String) -> Unit = {},
+    onLineAlertsTapped: (String) -> Unit = {},
     timetableState: TimetableUiState = TimetableUiState(),
     onTimetableRetry: () -> Unit = {},
     onTimetableClose: () -> Unit = {},
@@ -863,6 +905,8 @@ private fun BoxScope.MapOverlays(
     if (timetableState.isVisible) {
         TimetableSheet(
             state = timetableState,
+            alerts = uiState.trafficAlerts.alerts,
+            onLineAlertsTapped = onLineAlertsTapped,
             onRetry = onTimetableRetry,
             onClose = onTimetableClose,
             onToggleFullDay = onTimetableToggleFullDay,
@@ -1289,8 +1333,9 @@ private fun MapLibreMapView(
     boundary: MapBounds?,
     zoneOverlay: ZoneOverlayState,
     transitOverlayGeoJson: String? = null,
-    focusedTransitRef: String? = null,
+    highlightedTransitRefs: Set<String>? = null,
     onTransitLineTapped: (String) -> Unit = {},
+    onMapTap: () -> Unit = {},
     boundaryGeoJson: String? = null,
     simulationGeoJson: String? = null,
     candidatePoiGeoJson: String? = null,
@@ -1331,6 +1376,7 @@ private fun MapLibreMapView(
                 canPlacePin = zoneOverlay.canPlacePin,
                 onPinPlaced = zoneOverlay.onPinPlaced,
                 onCandidateTapped = zoneOverlay.onCandidatePoiTapped,
+                onMapTap = onMapTap,
             ),
             tooltip = TooltipHost(
                 data = stationTooltip.value,
@@ -1372,7 +1418,7 @@ private fun MapLibreMapView(
         zoneOverlay.pin, transitOverlayGeoJson, zoneOverlay.radiusMeters,
         boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
         seekerCircles, seekerOverlay.radiusMeters,
-        drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, focusedTransitRef,
+        drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, highlightedTransitRefs,
         avatars,
     ) {
         state.syncSources(
@@ -1380,7 +1426,7 @@ private fun MapLibreMapView(
             zoneOverlay.pin, transitOverlayGeoJson, zoneOverlay.radiusMeters,
             boundaryGeoJson, simulationGeoJson, candidatePoiGeoJson, simulationPinGeoJson,
             seekerCircles, seekerOverlay.radiusMeters,
-            drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, focusedTransitRef,
+            drawingOverlay.drawing, drawingOverlay.manualConstraints, trapPins, highlightedTransitRefs,
             avatars,
         )
     }
@@ -1499,15 +1545,15 @@ private class MapViewState(private val markerPins: MarkerPins) {
         drawing: DrawingUiState = DrawingUiState(),
         manualConstraints: List<ManualConstraint> = emptyList(),
         trapPins: List<TrapPin> = emptyList(),
-        focusedTransitRef: String? = null,
+        highlightedTransitRefs: Set<String>? = null,
         avatars: Map<String, AvatarBitmap> = emptyMap(),
     ) {
         val map = mapRef.value?.takeIf { styleReady.value } ?: return
         val style = map.style ?: return
         if (transitOverlayGeoJson != null) {
-            style.ensureTransitOverlayLayer(transitOverlayGeoJson, focusedTransitRef)
+            style.ensureTransitOverlayLayer(transitOverlayGeoJson, highlightedTransitRefs)
         }
-        style.applyTransitFocus(focusedTransitRef)
+        style.applyTransitFocus(highlightedTransitRefs)
         val staleImages = style.updateAvatarImages(
             avatars,
             registeredAvatars,
@@ -1650,6 +1696,7 @@ private data class MapTapCallbacks(
     val canPlacePin: Boolean,
     val onPinPlaced: (Double, Double, String?) -> Unit,
     val onCandidateTapped: (String) -> Unit,
+    val onMapTap: () -> Unit = {},
 )
 
 @Composable
@@ -1669,6 +1716,7 @@ private fun MapWithTooltipOverlay(
 ) {
     // Listeners register once; callbacks are read live so entering simulation enables pin taps.
     val currentTap by rememberUpdatedState(tapCallbacks)
+    val currentOnMapTap by rememberUpdatedState(tapCallbacks.onMapTap)
     val currentTooltip by rememberUpdatedState(tooltip)
     val currentSeekerHost by rememberUpdatedState(seekerHost)
     val currentDrawing by rememberUpdatedState(drawingOverlay)
@@ -1694,6 +1742,8 @@ private fun MapWithTooltipOverlay(
                     state.stationClickListenerRegistered = true
                     map.addOnMapClickListener { latLng ->
                         seekerAction.value = null
+                        // Any map tap clears an alert's line highlight, per MAP-12.
+                        currentOnMapTap()
                         handleMapTap(map, latLng, currentTap, currentTooltip, currentDrawing, density)
                     }
                 }

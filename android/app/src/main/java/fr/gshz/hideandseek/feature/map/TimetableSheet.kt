@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,6 +50,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.theme.Spacing
+import fr.gshz.hideandseek.domain.model.TrafficAlert
+import fr.gshz.hideandseek.domain.model.TrafficAlertSeverity
 import fr.gshz.hideandseek.domain.model.TransitDeparture
 import fr.gshz.hideandseek.domain.model.TransitDepartureGroup
 import java.time.Instant
@@ -65,8 +68,11 @@ private const val PAST_ALPHA = 0.5f
 private val stationTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
 @Composable
+@Suppress("LongParameterList")
 internal fun TimetableSheet(
     state: TimetableUiState,
+    alerts: List<TrafficAlert> = emptyList(),
+    onLineAlertsTapped: (String) -> Unit = {},
     onRetry: () -> Unit,
     onClose: () -> Unit,
     onToggleFullDay: () -> Unit,
@@ -97,8 +103,14 @@ internal fun TimetableSheet(
                 state.error == TimetableError.Unavailable -> TimetableMessage(R.string.timetable_unavailable)
                 state.groups.isEmpty() && state.error == TimetableError.Network -> TimetableNetworkError(onRetry)
                 state.groups.isEmpty() -> TimetableMessage(R.string.timetable_empty)
-                state.showFullDay -> TimetableDayBody(state = state, onRetry = onRetry, modifier = bodyModifier)
-                else -> TimetableNextBody(state = state, onRetry = onRetry, modifier = bodyModifier)
+                state.showFullDay -> TimetableDayBody(
+                    state = state, alerts = alerts, onLineAlertsTapped = onLineAlertsTapped,
+                    onRetry = onRetry, modifier = bodyModifier,
+                )
+                else -> TimetableNextBody(
+                    state = state, alerts = alerts, onLineAlertsTapped = onLineAlertsTapped,
+                    onRetry = onRetry, modifier = bodyModifier,
+                )
             }
         }
     }
@@ -141,20 +153,37 @@ private fun TimetableHeader(
 }
 
 @Composable
-private fun TimetableNextBody(state: TimetableUiState, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+private fun TimetableNextBody(
+    state: TimetableUiState,
+    alerts: List<TrafficAlert>,
+    onLineAlertsTapped: (String) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         if (state.error == TimetableError.Network) TimetableNetworkError(onRetry)
         state.groups.forEach { group ->
-            TimetableGroup(group = group, timezone = state.timezone)
+            TimetableGroup(
+                group = group,
+                timezone = state.timezone,
+                alerts = alerts,
+                onLineAlertsTapped = onLineAlertsTapped,
+            )
         }
     }
 }
 
 @Composable
-private fun TimetableDayBody(state: TimetableUiState, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+private fun TimetableDayBody(
+    state: TimetableUiState,
+    alerts: List<TrafficAlert>,
+    onLineAlertsTapped: (String) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val dayItems = remember(state.groups, state.serverNow) {
         buildDayItems(state.groups, state.serverNow)
     }
@@ -186,6 +215,8 @@ private fun TimetableDayBody(state: TimetableUiState, onRetry: () -> Unit, modif
                     departure = item.departure,
                     timezone = state.timezone,
                     isPast = item.isPast,
+                    hasAlert = alerts.alertsForLine(item.group.lineRef).isNotEmpty(),
+                    onAlertsTapped = { onLineAlertsTapped(item.group.lineRef) },
                 )
             }
         }
@@ -262,14 +293,23 @@ private fun TimetableNetworkError(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun TimetableGroup(group: TransitDepartureGroup, timezone: String) {
+private fun TimetableGroup(
+    group: TransitDepartureGroup,
+    timezone: String,
+    alerts: List<TrafficAlert>,
+    onLineAlertsTapped: (String) -> Unit,
+) {
     val multipleHeadsigns = group.departures
         .map { it.headsign }
         .filter { it.isNotBlank() }
         .distinct()
         .size > 1
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-        TimetableGroupHeader(group)
+        TimetableGroupHeader(
+            group = group,
+            hasAlert = alerts.alertsForLine(group.lineRef).isNotEmpty(),
+            onAlertsTapped = { onLineAlertsTapped(group.lineRef) },
+        )
         group.departures.forEach { departure ->
             DepartureRow(
                 departure = departure,
@@ -281,13 +321,31 @@ private fun TimetableGroup(group: TransitDepartureGroup, timezone: String) {
 }
 
 @Composable
-private fun TimetableGroupHeader(group: TransitDepartureGroup) {
+private fun TimetableGroupHeader(
+    group: TransitDepartureGroup,
+    hasAlert: Boolean,
+    onAlertsTapped: () -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         LineBadge(ref = group.lineRef, color = group.colour)
         Text(
             text = groupTitle(group),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (hasAlert) LineAlertWarning(onClick = onAlertsTapped)
+    }
+}
+
+@Composable
+private fun LineAlertWarning(onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(20.dp)) {
+        Icon(
+            Icons.Filled.Warning,
+            contentDescription = stringResource(R.string.traffic_alert_line_warning),
+            tint = severityColor(TrafficAlertSeverity.Warning),
+            modifier = Modifier.size(16.dp),
         )
     }
 }
@@ -331,6 +389,8 @@ private fun DayDepartureRow(
     departure: TransitDeparture,
     timezone: String,
     isPast: Boolean,
+    hasAlert: Boolean = false,
+    onAlertsTapped: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier
@@ -345,6 +405,7 @@ private fun DayDepartureRow(
             fontWeight = FontWeight.Medium,
         )
         LineBadge(ref = group.lineRef, color = group.colour)
+        if (hasAlert) LineAlertWarning(onClick = onAlertsTapped)
         Text(
             text = departure.headsign.ifBlank { group.headsign },
             modifier = Modifier.weight(1f),

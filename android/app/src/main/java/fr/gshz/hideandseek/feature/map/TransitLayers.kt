@@ -40,7 +40,7 @@ private val FOCUS_HALO_COLOR: Expression = Expression.toColor(Expression.literal
 
 private fun Style.firstSymbolLayerId(): String? = layers.firstOrNull { it is SymbolLayer }?.id
 
-internal fun Style.ensureTransitOverlayLayer(overlayGeoJson: String, focusedRef: String? = null) {
+internal fun Style.ensureTransitOverlayLayer(overlayGeoJson: String, highlightedRefs: Set<String>? = null) {
     if (getSource(TRANSIT_OVERLAY_SOURCE_ID) != null) return
     addSource(GeoJsonSource(TRANSIT_OVERLAY_SOURCE_ID, overlayGeoJson))
 
@@ -65,15 +65,20 @@ internal fun Style.ensureTransitOverlayLayer(overlayGeoJson: String, focusedRef:
     // Under the stations, as the base lines are, so the focused route never covers a stop marker.
     addLayerAbove(halo, FILL_LAYER_ID)
     addLayerAbove(route, FOCUS_CASING_LAYER_ID)
-    applyTransitFocus(focusedRef)
+    applyTransitFocus(highlightedRefs)
 }
 
-internal fun Style.applyTransitFocus(ref: String?) {
-    val dimmed = ref != null
+internal fun Style.applyTransitFocus(refs: Set<String>?) {
+    val dimmed = !refs.isNullOrEmpty()
     setLineOpacity(CASING_LAYER_ID, if (dimmed) DIMMED_LINE_OPACITY else 1f)
     setLineOpacity(FILL_LAYER_ID, if (dimmed) DIMMED_LINE_OPACITY else 1f)
     // Only fill features carry a ref, so filtering by it never touches the other lines' casings.
-    val filter = Expression.eq(Expression.get("ref"), Expression.literal(ref ?: ""))
+    val filter = if (dimmed) {
+        // `in` is a Kotlin keyword, hence the backticks around the Java helper.
+        Expression.`in`(Expression.get("ref"), Expression.literal(refs.toTypedArray()))
+    } else {
+        Expression.eq(Expression.get("ref"), Expression.literal(""))
+    }
     getLayerAs<LineLayer>(FOCUS_CASING_LAYER_ID)?.setFilter(filter)
     getLayerAs<LineLayer>(FOCUS_FILL_LAYER_ID)?.setFilter(filter)
 }

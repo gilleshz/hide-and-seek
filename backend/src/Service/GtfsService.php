@@ -224,15 +224,41 @@ final readonly class GtfsService
                 errorKey: 'gtfs_source.realtime_provider_invalid',
             );
         }
+        $alertsUrl = $this->validAlertsUrl($selection->alertsUrl);
 
         return match ($provider) {
-            RealtimeProvider::None => RealtimeSelection::none(),
-            RealtimeProvider::GtfsRtUrl => $this->validGtfsRealtimeUrl($selection->url),
-            RealtimeProvider::SiriLite => $this->validSiriProfile($selection->profile),
+            RealtimeProvider::None => new RealtimeSelection(RealtimeProvider::None->value, alertsUrl: $alertsUrl),
+            RealtimeProvider::GtfsRtUrl => $this->validGtfsRealtimeUrl($selection->url, $alertsUrl),
+            RealtimeProvider::SiriLite => $this->validSiriProfile($selection->profile, $alertsUrl),
         };
     }
 
-    private function validGtfsRealtimeUrl(?string $url): RealtimeSelection
+    private function validAlertsUrl(?string $url): ?string
+    {
+        $trimmed = trim((string) $url);
+        if ($trimmed === '') {
+            return null;
+        }
+        if (mb_strlen($trimmed) > 1000) {
+            throw new FunctionalException(
+                message: 'The realtime alerts URL is too long.',
+                errorKey: 'gtfs_source.realtime_alerts_url_invalid',
+            );
+        }
+        try {
+            $this->urlGuard->assertShape($trimmed);
+        } catch (FunctionalException $e) {
+            throw new FunctionalException(
+                message: 'The realtime alerts URL must be a valid HTTPS URL.',
+                errorKey: 'gtfs_source.realtime_alerts_url_invalid',
+                previous: $e,
+            );
+        }
+
+        return $trimmed;
+    }
+
+    private function validGtfsRealtimeUrl(?string $url, ?string $alertsUrl = null): RealtimeSelection
     {
         $trimmed = trim((string) $url);
         if ($trimmed === '') {
@@ -243,10 +269,10 @@ final readonly class GtfsService
         }
         $this->urlGuard->assertShape($trimmed);
 
-        return new RealtimeSelection(RealtimeProvider::GtfsRtUrl->value, null, $trimmed);
+        return new RealtimeSelection(RealtimeProvider::GtfsRtUrl->value, null, $trimmed, $alertsUrl);
     }
 
-    private function validSiriProfile(?string $key): RealtimeSelection
+    private function validSiriProfile(?string $key, ?string $alertsUrl = null): RealtimeSelection
     {
         $trimmed = trim((string) $key);
         if ($trimmed === '') {
@@ -269,7 +295,7 @@ final readonly class GtfsService
             );
         }
 
-        return new RealtimeSelection(RealtimeProvider::SiriLite->value, $profile->key, null);
+        return new RealtimeSelection(RealtimeProvider::SiriLite->value, $profile->key, null, $alertsUrl);
     }
 
     private function applyRealtime(GtfsSource $source, RealtimeSelection $selection): void
@@ -277,6 +303,7 @@ final readonly class GtfsService
         $source->setRealtimeProvider(RealtimeProvider::from($selection->provider));
         $source->setRealtimeUrl($selection->url);
         $source->setRealtimeProfile($selection->profile);
+        $source->setRealtimeAlertsUrl($selection->alertsUrl);
     }
 
     private function hostOf(string $url): string

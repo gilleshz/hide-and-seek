@@ -24,6 +24,7 @@ import fr.gshz.hideandseek.domain.model.TransitLine
 import fr.gshz.hideandseek.domain.repository.LocationRepository
 import fr.gshz.hideandseek.domain.repository.RoundRepository
 import fr.gshz.hideandseek.domain.repository.TimerEvent
+import fr.gshz.hideandseek.domain.repository.TrafficAlertsRepository
 import java.io.IOException
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -56,9 +57,11 @@ import retrofit2.HttpException
  * the lobby navigation: everything one "game session" owns.
  */
 @HiltViewModel
-class MapSessionViewModel @Inject constructor(
+@Suppress("TooManyFunctions")
+class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
     private val locationRepository: LocationRepository,
     private val roundRepository: RoundRepository,
+    private val trafficAlertsRepository: TrafficAlertsRepository,
     private val sessionEvents: MapSessionEvents,
     private val gameInfoSource: MapGameInfoSource,
     private val roundRefreshFlow: RoundRefreshFlow,
@@ -82,6 +85,7 @@ class MapSessionViewModel @Inject constructor(
     private val roundInteraction = MutableStateFlow(RoundInteraction())
     private val selectedMapStyle = MutableStateFlow(MapStyle.Standard)
     private val focusedTransitRef = MutableStateFlow<String?>(null)
+    private val selectedAlertId = MutableStateFlow<String?>(null)
 
     private var loadGameInfoJob: Job? = null
     private var lobbySignaledRoundUuid: String? = null
@@ -161,6 +165,32 @@ class MapSessionViewModel @Inject constructor(
         val interaction: RoundInteraction,
     )
 
+    private data class ChromePart(
+        val style: MapStyle,
+        val focusedRef: String?,
+        val alerts: TrafficAlertsState,
+        val alertId: String?,
+    )
+
+    /**
+     * The map polls the alerts with the departure board's cadence while the screen collects the
+     * state. A failed poll emits nothing, so the last good list stays on screen.
+     */
+    private val trafficAlerts: StateFlow<TrafficAlertsState> = flow {
+        while (currentCoroutineContext().isActive) {
+            try {
+                val result = trafficAlertsRepository.getTrafficAlerts(gameUuid)
+                emit(TrafficAlertsState(alerts = result.alerts, serverNow = result.serverNow))
+            } catch (e: IOException) {
+                Log.w(TAG, "Failed to poll traffic alerts", e)
+            } catch (e: HttpException) {
+                sessionEvents.handleSessionExpiry(e)
+                Log.w(TAG, "Failed to poll traffic alerts", e)
+            }
+            delay(TRAFFIC_ALERTS_POLL_INTERVAL_MS)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), TrafficAlertsState())
+
     val uiState: StateFlow<MapSessionUiState> = combine(
         combine(gameInfo, roster, selfPlayerUuid, locations, selfGps) { info, roster, self, locs, gps ->
             PlayersPart(info, roster, self, locs, gps)
@@ -168,10 +198,11 @@ class MapSessionViewModel @Inject constructor(
         combine(round, ticker, roundInteraction) { round, nowMillis, interaction ->
             RoundPart(round, nowMillis, interaction)
         },
-        selectedMapStyle,
-        focusedTransitRef,
+        combine(selectedMapStyle, focusedTransitRef, trafficAlerts, selectedAlertId) { style, ref, alerts, alertId ->
+            ChromePart(style, ref, alerts, alertId)
+        },
         chatVisibilityTracker.hasUnread,
-    ) { players, roundPart, style, focusedRef, hasUnreadChat ->
+    ) { players, roundPart, chrome, hasUnreadChat ->
         val info = players.info
         val currentRound = roundPart.round
         val nowMillis = roundPart.nowMillis
@@ -193,12 +224,14 @@ class MapSessionViewModel @Inject constructor(
             boundary = info.boundary,
             boundaryGeoJson = info.boundaryGeoJson,
             transitOverlayGeoJson = info.transitOverlayGeoJson,
-            focusedTransitRef = focusedRef,
+            focusedTransitRef = chrome.focusedRef,
+            trafficAlerts = chrome.alerts,
+            selectedAlertId = chrome.alertId,
             stadiaApiKey = info.stadiaApiKey,
             thunderforestApiKey = info.thunderforestApiKey,
             maptilerApiKey = info.maptilerApiKey,
             mapStyleAvailable = info.mapStyleAvailable,
-            selectedMapStyle = style,
+            selectedMapStyle = chrome.style,
             selectedTransitLines = info.selectedTransitLines,
             hasGtfsLines = info.hasGtfsLines,
             roster = players.roster.mapValues { it.value.displayName },
@@ -226,6 +259,14 @@ class MapSessionViewModel @Inject constructor(
         observeSessionChanges()
         observeTimerEvents()
         observeMapStyle()
+    }
+
+    fun toggleTrafficAlertSelection(alertId: String) {
+        selectedAlertId.value = alertId.takeIf { it != selectedAlertId.value }
+    }
+
+    fun clearTrafficAlertSelection() {
+        selectedAlertId.value = null
     }
 
     private fun loadGameInfo(refresh: Boolean = false) {
@@ -509,6 +550,7 @@ class MapSessionViewModel @Inject constructor(
         const val STOP_TIMEOUT_MS = 5_000L
         const val POLL_INTERVAL_MS = 60_000L
         const val TICK_INTERVAL_MS = 1_000L
+        const val TRAFFIC_ALERTS_POLL_INTERVAL_MS = 30_000L
     }
 }
 
@@ -525,6 +567,8 @@ data class MapSessionUiState(
     val boundaryGeoJson: String? = null,
     val transitOverlayGeoJson: String? = null,
     val focusedTransitRef: String? = null,
+    val trafficAlerts: TrafficAlertsState = TrafficAlertsState(),
+    val selectedAlertId: String? = null,
     val stadiaApiKey: String? = null,
     val thunderforestApiKey: String? = null,
     val maptilerApiKey: String? = null,

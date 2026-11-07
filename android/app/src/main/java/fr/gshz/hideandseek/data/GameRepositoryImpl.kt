@@ -124,6 +124,7 @@ class GameRepositoryImpl @Inject constructor(
                 url = url,
                 name = name,
                 realtimeUrl = selection.url,
+                realtimeAlertsUrl = selection.alertsUrl,
                 realtimeProvider = selection.provider,
                 realtimeProfile = selection.profile,
                 fallbackUrl = fallbackUrl,
@@ -160,6 +161,7 @@ class GameRepositoryImpl @Inject constructor(
             file = part,
             name = name.toRequestBody(textType),
             realtimeUrl = selection.url?.toRequestBody(textType),
+            realtimeAlertsUrl = selection.alertsUrl?.toRequestBody(textType),
             realtimeProvider = selection.provider.toRequestBody(textType),
             realtimeProfile = selection.profile?.toRequestBody(textType),
         )
@@ -362,6 +364,7 @@ class GameRepositoryImpl @Inject constructor(
         downloadUrl = downloadUrl,
         fallbackUrl = fallbackUrl.orEmpty(),
         realtimeUrl = realtimeUrl.orEmpty(),
+        realtimeAlertsUrl = realtimeAlertsUrl.orEmpty(),
         live = live,
         scope = scope,
         sizeBytes = sizeBytes,

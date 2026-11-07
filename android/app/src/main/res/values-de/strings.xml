@@ -179,6 +179,23 @@
     <string name="timetable_delay_early"><xliff:g>%1$d</xliff:g> Min. zu früh</string>
     <string name="timetable_direction">Richtung <xliff:g>%1$d</xliff:g></string>
 
+    <string name="traffic_chip_label">Verkehr</string>
+    <plurals name="traffic_alert_count">
+        <item quantity="one"><xliff:g>%1$d</xliff:g> aktive Meldung</item>
+        <item quantity="other"><xliff:g>%1$d</xliff:g> aktive Meldungen</item>
+    </plurals>
+    <string name="traffic_alerts_title">Verkehrsmeldungen</string>
+    <string name="traffic_alerts_filtered_title">Meldungen für Linie <xliff:g>%1$s</xliff:g></string>
+    <string name="traffic_alerts_empty">Keine aktiven Meldungen.</string>
+    <string name="traffic_alert_validity_from">Ab <xliff:g>%1$s</xliff:g></string>
+    <string name="traffic_alert_validity_until">Bis <xliff:g>%1$s</xliff:g></string>
+    <string name="traffic_alert_validity_from_until"><xliff:g>%1$s</xliff:g> bis <xliff:g>%2$s</xliff:g></string>
+    <string name="traffic_alert_validity_indefinite">Aktiv bis auf Weiteres</string>
+    <string name="traffic_alert_severity_info">Information</string>
+    <string name="traffic_alert_severity_warning">Warnung</string>
+    <string name="traffic_alert_severity_severe">Schwerwiegend</string>
+    <string name="traffic_alert_line_warning">Meldungen für diese Linie anzeigen</string>
+
     <string name="round_status_not_started">Nicht gestartet</string>
     <string name="round_status_hiding">Verstecken:</string>
     <string name="round_status_seeking">Suchen:</string>

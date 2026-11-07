@@ -179,6 +179,23 @@
     <string name="timetable_delay_early">avance <xliff:g>%1$d</xliff:g> min</string>
     <string name="timetable_direction">Direction <xliff:g>%1$d</xliff:g></string>
 
+    <string name="traffic_chip_label">Trafic</string>
+    <plurals name="traffic_alert_count">
+        <item quantity="one"><xliff:g>%1$d</xliff:g> alerte active</item>
+        <item quantity="other"><xliff:g>%1$d</xliff:g> alertes actives</item>
+    </plurals>
+    <string name="traffic_alerts_title">Alertes trafic</string>
+    <string name="traffic_alerts_filtered_title">Alertes de la ligne <xliff:g>%1$s</xliff:g></string>
+    <string name="traffic_alerts_empty">Aucune alerte active.</string>
+    <string name="traffic_alert_validity_from">Dès <xliff:g>%1$s</xliff:g></string>
+    <string name="traffic_alert_validity_until">Jusqu\'à <xliff:g>%1$s</xliff:g></string>
+    <string name="traffic_alert_validity_from_until"><xliff:g>%1$s</xliff:g> à <xliff:g>%2$s</xliff:g></string>
+    <string name="traffic_alert_validity_indefinite">Active jusqu\'à nouvel ordre</string>
+    <string name="traffic_alert_severity_info">Information</string>
+    <string name="traffic_alert_severity_warning">Avertissement</string>
+    <string name="traffic_alert_severity_severe">Grave</string>
+    <string name="traffic_alert_line_warning">Voir les alertes de cette ligne</string>
+
     <string name="round_status_not_started">Non commencée</string>
     <string name="round_status_hiding">Cache :</string>
     <string name="round_status_seeking">Recherche :</string>

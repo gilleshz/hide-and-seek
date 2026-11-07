@@ -7,6 +7,7 @@ data class GtfsSourceUrlRequest(
     val url: String,
     val name: String,
     val realtimeUrl: String? = null,
+    val realtimeAlertsUrl: String? = null,
     val realtimeProvider: String? = null,
     val realtimeProfile: String? = null,
     val fallbackUrl: String? = null,

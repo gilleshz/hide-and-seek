@@ -37,6 +37,9 @@ class GtfsSource
     #[ORM\Column(type: 'string', length: 1000, nullable: true)]
     private ?string $realtimeUrl = null;
 
+    #[ORM\Column(type: 'string', length: 1000, nullable: true)]
+    private ?string $realtimeAlertsUrl = null;
+
     #[ORM\Column(type: 'string', length: 16, enumType: RealtimeProvider::class, options: ['default' => 'none'])]
     private RealtimeProvider $realtimeProvider = RealtimeProvider::None;
 
@@ -109,6 +112,18 @@ class GtfsSource
     public function setRealtimeUrl(?string $realtimeUrl): self
     {
         $this->realtimeUrl = $realtimeUrl;
+
+        return $this;
+    }
+
+    public function getRealtimeAlertsUrl(): ?string
+    {
+        return $this->realtimeAlertsUrl;
+    }
+
+    public function setRealtimeAlertsUrl(?string $realtimeAlertsUrl): self
+    {
+        $this->realtimeAlertsUrl = $realtimeAlertsUrl;
 
         return $this;
     }

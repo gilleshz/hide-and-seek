@@ -47,6 +47,7 @@ import fr.gshz.hideandseek.data.remote.dto.SetHidingZoneRequest
 import fr.gshz.hideandseek.data.remote.dto.StreetNetworkDto
 import fr.gshz.hideandseek.data.remote.dto.TeamDto
 import fr.gshz.hideandseek.data.remote.dto.TeamRequest
+import fr.gshz.hideandseek.data.remote.dto.TrafficAlertsDto
 import fr.gshz.hideandseek.data.remote.dto.TimeTrapDto
 import fr.gshz.hideandseek.data.remote.dto.TimeTrapResolutionRequest
 import fr.gshz.hideandseek.data.remote.dto.GtfsRealtimeProbeDto
@@ -100,6 +101,9 @@ interface HideAndSeekApi {
         @Query("stationId") stationId: String,
         @Query("fullDay") fullDay: Boolean = false,
     ): StationDeparturesDto
+
+    @GET
+    suspend fun getTrafficAlerts(@Url url: String): TrafficAlertsDto
 
     @POST
     suspend fun joinGame(@Url url: String, @Body body: JoinRequest): JoinDto
@@ -327,11 +331,13 @@ interface HideAndSeekApi {
 
     @Multipart
     @POST
+    @Suppress("LongParameterList")
     suspend fun uploadGtfsFile(
         @Url url: String,
         @Part file: MultipartBody.Part,
         @Part("name") name: RequestBody,
         @Part("realtimeUrl") realtimeUrl: RequestBody? = null,
+        @Part("realtimeAlertsUrl") realtimeAlertsUrl: RequestBody? = null,
         @Part("realtimeProvider") realtimeProvider: RequestBody? = null,
         @Part("realtimeProfile") realtimeProfile: RequestBody? = null,
     ): GtfsSourceDto

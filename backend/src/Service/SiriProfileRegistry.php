@@ -102,6 +102,11 @@ final readonly class SiriProfileRegistry
 
         [$authHeaders, $available] = $this->auth($key, $raw['auth'] ?? null);
 
+        $alertsEndpoint = $this->nullableText($raw['alerts_endpoint'] ?? null);
+        if ($alertsEndpoint !== null && !str_starts_with($alertsEndpoint, 'https://')) {
+            throw new \InvalidArgumentException("SIRI profile '{$key}' needs an HTTPS alerts endpoint.");
+        }
+
         return new SiriProfile(
             key: $key,
             label: $this->text($raw['label'] ?? null) ?: $key,
@@ -115,6 +120,7 @@ final readonly class SiriProfileRegistry
             aliases: $this->stringList($raw['aliases'] ?? null),
             cities: $this->stringList($raw['cities'] ?? null),
             cityOptional: ($raw['city_optional'] ?? false) === true,
+            alertsEndpoint: $alertsEndpoint,
         );
     }
 

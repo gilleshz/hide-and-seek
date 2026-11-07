@@ -41,6 +41,7 @@ parameters:
             query:
                 GetStopIdInsteadOfStopCode: 'true'
             line_ref: '{code}'
+            alerts_endpoint: 'https://api.cts-strasbourg.eu/v1/siri/2.0/general-message'
             aliases: ['CTS']
             cities: ['Strasbourg']
         tcl:
@@ -53,6 +54,7 @@ parameters:
                 password: '%env(default::SYTRAL_SIRI_PASSWORD)%'
                 password_required: true
             line_ref: '{code}'
+            alerts_endpoint: 'https://data.grandlyon.com/siri-lite/2.0/general-messages.json'
             aliases: ['SYTRAL']
             cities: ['Lyon']
     app.gtfs_storage_dir: '%env(GTFS_STORAGE_DIR)%'
@@ -82,6 +84,47 @@ when@test:
     parameters:
         app.transit_catalog_file: '%kernel.cache_dir%/transit-catalog/feeds.csv'
         app.transit_catalog_sizes_file: '%kernel.cache_dir%/transit-catalog/sizes.json'
+        # Literal IP endpoints so the egress guard needs no DNS and tests can mock the HTTP client.
+        app.siri_profiles:
+            idfm:
+                label: 'Île-de-France Mobilités'
+                service: stop_monitoring
+                endpoint: 'https://1.1.1.1/idfm'
+                auth:
+                    kind: header
+                    name: apiKey
+                    value: '%env(default::PRIM_API_KEY)%'
+                stop_ref: 'STIF:StopPoint:Q:{code}:'
+                aliases: ['IDFM', 'RATP', 'Transilien', 'Île-de-France']
+                cities: ['Paris', 'Île-de-France']
+                city_optional: true
+            cts:
+                label: 'CTS Strasbourg'
+                service: estimated_timetable
+                endpoint: 'https://1.1.1.1/cts'
+                auth:
+                    kind: basic
+                    user: '%env(default::CTS_API_TOKEN)%'
+                    password: ''
+                query:
+                    GetStopIdInsteadOfStopCode: 'true'
+                line_ref: '{code}'
+                alerts_endpoint: 'https://1.1.1.1/cts-alerts'
+                aliases: ['CTS']
+                cities: ['Strasbourg']
+            tcl:
+                label: 'TCL Lyon'
+                service: estimated_timetable
+                endpoint: 'https://1.1.1.1/tcl'
+                auth:
+                    kind: basic
+                    user: '%env(default::SYTRAL_SIRI_USER)%'
+                    password: '%env(default::SYTRAL_SIRI_PASSWORD)%'
+                    password_required: true
+                line_ref: '{code}'
+                alerts_endpoint: 'https://1.1.1.1/tcl-alerts'
+                aliases: ['SYTRAL']
+                cities: ['Lyon']
     services:
         App\Service\TransitCatalogService:
             autowire: true

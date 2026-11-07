@@ -10,6 +10,7 @@ data class TransitCatalogSuggestion(
     val downloadUrl: String,
     val fallbackUrl: String,
     val realtimeUrl: String,
+    val realtimeAlertsUrl: String = "",
     val live: Boolean,
     val scope: String,
     val sizeBytes: Long? = null,

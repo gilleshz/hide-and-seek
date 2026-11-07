@@ -27,6 +27,7 @@ final readonly class SiriProfile
         public array $aliases = [],
         public array $cities = [],
         public bool $cityOptional = false,
+        public ?string $alertsEndpoint = null,
     ) {
     }
 

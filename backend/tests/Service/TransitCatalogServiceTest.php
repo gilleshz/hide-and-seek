@@ -244,6 +244,65 @@ final class TransitCatalogServiceTest extends TestCase
     }
 
     #[Test]
+    public function itCollectsServiceAlertsRowsAsRealtimeAlertsUrl(): void
+    {
+        [$header] = explode("\n", $this->fixture(), 2);
+        $static = $this->csvRow([
+            'id' => 'feed-1',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Metz',
+            'provider' => 'LeMet',
+            'name' => 'LeMet',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://files.example.com/lemet.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '49.0',
+            'location.bounding_box.maximum_latitude' => '49.1',
+            'location.bounding_box.minimum_longitude' => '6.0',
+            'location.bounding_box.maximum_longitude' => '6.1',
+        ]);
+        $tripUpdates = $this->csvRow([
+            'id' => 'rt-tu',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => 'tu',
+            'static_reference' => 'feed-1',
+            'urls.direct_download' => 'https://rt.example.com/tu.pb',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        $serviceAlerts = $this->csvRow([
+            'id' => 'rt-sa',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => 'sa',
+            'static_reference' => 'feed-1',
+            'urls.direct_download' => 'https://rt.example.com/sa.pb',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        $otherEntityType = $this->csvRow([
+            'id' => 'rt-vp',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => 'vp',
+            'static_reference' => 'feed-1',
+            'urls.direct_download' => 'https://rt.example.com/vp.pb',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        file_put_contents(
+            $this->catalogFile,
+            $header . "\n" . $static . "\n" . $tripUpdates . "\n" . $serviceAlerts . "\n" . $otherEntityType . "\n",
+        );
+
+        $results = $this->service()->search(49.0, 6.0, 49.1, 6.1, '');
+
+        self::assertSame(['feed-1'], self::ids($results));
+        self::assertSame('https://rt.example.com/tu.pb', $results[0]->realtimeUrl);
+        self::assertSame('https://rt.example.com/sa.pb', $results[0]->realtimeAlertsUrl);
+        self::assertTrue($results[0]->live);
+    }
+
+    #[Test]
     public function itAcceptsAnUpstreamColumnAddedToTheSnapshotHeader(): void
     {
         [$header, $body] = explode("\n", $this->fixture(), 2);

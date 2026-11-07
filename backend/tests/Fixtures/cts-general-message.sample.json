@@ -1,0 +1,901 @@
+{
+  "ServiceDelivery": {
+    "ResponseTimestamp": "2026-11-07T17:40:05+01:00",
+    "RequestMessageRef": null,
+    "GeneralMessageDelivery": [
+      {
+        "version": "2.0",
+        "ResponseTimestamp": "2026-11-07T17:40:38+01:00",
+        "ShortestPossibleCycle": "PT30S",
+        "InfoMessage": [
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-07T13:31:29+01:00",
+            "ItemIdentifier": "1835212884566699749",
+            "InfoMessageIdentifier": "d5413093215860660458-2-d9211513175542684400-2-d7400072416941331552-2-d7867230741106521273-2-d1734785774310167011-2-d7630716914665063480-2-d515732006491339813-2-d9137946167512510724-2-d3991190105836096890-2-d8880436554830120033-2-d5312533280073675563-2-d4090958168682162125-3",
+            "InfoChannelRef": "PlannedDisruption",
+            "ValidUntilTime": "2100-01-01T01:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-07T13:30:00+01:00",
+              "ImpactEndDateTime": null,
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "10",
+                "30",
+                "72",
+                "G",
+                "75",
+                "15",
+                "C1",
+                "C8",
+                "C3",
+                "C6",
+                "C9"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Manifestation à Strasbourg",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Le 07/11/2026 à partir de 13h30",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison d'une manifestation, des perturbations sont en cours : </p><p><b>Ligne 30 :</b></p><p>➔ Du 07/11/2026</p><p>Déviation entre les arrêts Orangerie et Danube Le Vaisseau.</p><p>Les arrêts Dordogne, Clinique de l'Orangerie, Brant Université, Gallia, Saint-Guillaume, Krutenau, Cité Administrative, Palerme, Rome et Ankara ne sont pas desservis dans les deux directions.</p><br /><p><b>Ligne 72 :</b></p><p>Le terminus en direction de République est déplacé à Clinique de l'Orangerie.</p><p>En direction de La Wantzenau Le Golf : Les arrêts République, Liberté et Brant Université ne sont pas desservis.</p><p>En direction de République : Les arrêts Clinique de l'Orangerie, Brant Université, Liberté et République ne sont pas desservis.</p><ul>\t<li>Le départ en direction de La Wantzenau Le Golf s'effectue à l'arrêt <u><b>Clinique de l'Orangerie</b></u>, situé 20 allée de la Robertsau.</li></ul><br /><p><b>Ligne G :</b></p><p>Déviation entre les arrêts Winston Churchill et Laiterie en direction de Espace Européen de l'Entreprise et entre les arrêts Porte Blanche et Danube Le Vaisseau en direction de Rotterdam. </p><p>En direction de Espace Européen de l'Entreprise : Les arrêts Presqu'ile André Malraux, Etoile Bourse, Hôtel de Police, Hôpital Civil et Lycée Pasteur ne sont pas desservis.</p><p>En direction de Rotterdam : Les arrêts Laiterie, Lycée Pasteur, Hôpital Civil, Hôtel de Police, Etoile Bourse, Presqu'ile André Malraux et Winston Churchill ne sont pas desservis.</p><br /><p><b>Ligne C1 :</b></p><p>Déviation entre les arrêts Montagne Verte et Bruxelles dans les deux directions</p><p>En direction de Robertsau Lamproie : Les arrêts Laiterie / Saales, Lycée Pasteur, Hôpital Civil, Hôtel de Police, Etoile Bourse, Sécurité Sociale, Cité Administrative, Palerme, Rome, Esplanade, Observatoire et Marne ne sont pas desservis.</p><p>En direction de Lingolsheim Alouettes : Les arrêts Marne, Observatoire, Esplanade, Rome, Palerme, Cité Administrative, Sécurité Sociale, Etoile Bourse, Hôtel de Police, Hôpital Civil, Lycée Pasteur et Laiterie ne sont pas desservis.</p><br /><p>La ligne 10 ne circule pas.</p><br /><p><b>Ligne C3 :</b></p><p>Le terminus en direction des Halles est déplacé à l'arrêt Travail des lignes H - 2 et 10, situé 23 boulevard du Président Poincaré.</p><p>En direction de Hoenheim Gare : Les arrêts Les Halles Pont de Paris et Faubourg de Pierre ne sont pas desservis.</p><p>En direction des Halles : Les arrêts Travail, Les Halles Square et Les Halles Pont de Paris ne sont pas desservis.</p><ul>\t<li>Le départ en direction de Hoenheim Gare s'effectue à l'arrêt <u><b>Place de Pierre</b></u> (4 rue de Haguenau).</li></ul><br /><p><b>Ligne C6 :</b></p><p>Le terminus en direction des Halles est déplacé à l'arrêt Wissembourg.</p><p>Les arrêts Brant Université, Liberté, République, Tribunal - Fonderie et Les Halles Pont de Paris ne sont pas desservis dans les deux directions.</p><ul>\t<li>Le départ en direction de Pont Phario s'effectue à l'arrêt <u><b>Travail des lignes H - 2 et 10</b></u>, situé 23 boulevard du Président Poincaré.</li></ul><br /><p><b>Ligne C9 :</b></p><p>Le terminus en direction des Halles est déplacé à l'arrêt Travail des lignes H - 2 et 10.</p><p>En direction de Hoenheim Gare : Les arrêts Les Halles Pont de Paris et Wilson Les Halles ne sont pas desservis.</p><p>En direction des Halles : Les arrêts Wissembourg, Wilson Les Halles, Faubourg de Saverne Les Halles et Les Halles Pont de Paris ne sont pas desservis.</p><ul>\t<li>Le départ en direction de Hoenheim Gare / Vendenheim Gare s'effectue à l'arrêt <u><b>Wissembourg</b></u>, situé 4 rue de Wissembourg.</li></ul><br /><p><b>Ligne 75 :</b></p><p>Le terminus en direction des Halles est déplacé à l'arrêt provisoire Travail, situé 4 rue du travail.</p><p>En direction de Eckwersheim Hippodrome : Les arrêts Les Halles Marais Vert et Wissembourg ne sont pas desservis.</p><p>En direction des Halles : Les arrêts Place de Pierre, Les Halles Pont de Paris et Les Halles Marais Vert ne sont pas desservis.</p><ul>\t<li>Les départs en direction de Niederhausbergen, Mundolsheim, Lampertheim, Vendenheim et Eckwersheim s'effectuent à l'arrêt <u><b>provisoire Travail</b></u>, situé 4 rue du travail.</li></ul><br /><p><b>Ligne 15 :</b></p><p>Le terminus en direction de République est déplacé à Golbery.</p><p>En direction de Boecklin : Les arrêts République, Liberté et Brant Université ne sont pas desservis.</p><p>En direction de République : Les arrêts Golbery, Brant Université, Liberté et République ne sont pas desservis.</p><br /><p><b>Ligne C8 :</b></p><p>Le terminus en direction de Pont Saint-Nicolas est déplacé à Etoile Polygone.</p><p>En direction de Neuhof Stockfeld : Les arrêts Pont Saint-Nicolas, Porte de l'Hôpital et Etoile Bourse ne sont pas desservis.</p><p>En direction de Pont Saint-Nicolas : Les arrêts Etoile Polygone, Etoile Bourse, Porte de l'Hôpital et Pont Saint-Nicolas ne sont pas desservis.</p><ul>\t<li>Le départ en direction de Neuhof Stockfeld s'effectue à l'arrêt <u><b>Étoile Polygone</b></u>, situé rue de la Thumenau.</li></ul><br />Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-04T06:04:50+01:00",
+            "ItemIdentifier": "225057329934000978",
+            "InfoMessageIdentifier": "d4315738793520326618-2",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-11-19T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-09T04:00:00+01:00",
+              "ImpactEndDateTime": "2026-11-19T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "70"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux, déviation entre les arrêts Parc des Sports Zénith et Edmond Rostand en direction de Wolfisheim Stade. </p><p>Les arrêts Karine et Jacqueline ne seront pas desservis.</p><ul>\t<li>Arrêt Karine : Veuillez rejoindre l’arrêt Le Galet (des bus de remplacement du tram), situé avenue Racine.</li></ul><ul>\t<li>Arrêt Jacqueline : Veuillez rejoindre l’arrêt provisoire Jacqueline situé avenue Pierre-Corneille (à côté du Gymnase).</li></ul>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 09/11/2026 au 18/11/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Arrêt Karine non desservi et arrêt Jacqueline déplacé",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-10-22T15:01:24+02:00",
+            "ItemIdentifier": "245346494929190649",
+            "InfoMessageIdentifier": "d8945781977264155535-4",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-11-14T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-10-05T04:00:00+02:00",
+              "ImpactEndDateTime": "2026-11-14T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "70"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Terminus déplacé à Robertsau L'Escale",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux de chauffage urbain, le terminus de la ligne 70 est déplacé à Robertsau L'Escale.</p><p>En direction de Robertsau Renaissance : Les arrêts Robertsau L'Escale, Coehorn, Général Lejeune et Robertsau Renaissance ne sont pas desservis.</p><p>En direction de Wolfisheim Stade : Les arrêts Robertsau Renaissance, Général Lejeune et Coehorn ne sont pas desservis.</p><p>Pour continuer en direction de Wolfisheim Stade, veuillez rejoindre l’arrêt Robertsau L’Escale des bus de remplacement, situé à proximité immédiate de la station tram.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 05/10/2026 au 13/11/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-09-29T16:44:53+02:00",
+            "ItemIdentifier": "2793127528704147338",
+            "InfoMessageIdentifier": "d3443478132483247026-9-d370904766085932345-9-d8053927882282950401-9",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-15T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-07-06T04:00:00+02:00",
+              "ImpactEndDateTime": "2026-12-15T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "15",
+                "C1"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 06/07/2026 au 14/12/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux de chauffage urbain sous route barrée à la Robertsau, des perturbations sont en cours : </p><p><b>Ligne C1 :</b></p><p>Le terminus en direction de Robertsau Lamproie est déplacé à Carpe Haute.</p><ul>\t<li>En direction de Robertsau Lamproie : Les arrêts Carpe Haute, Brême et Robertsau Lamproie ne sont pas desservis.</li></ul><ul>\t<li>En direction de Lingolsheim Alouettes : Les arrêts Robertsau Lamproie et Brême ne sont pas desservis.</li></ul><p>-> Retrouvez toutes les informations et les solutions de report aux arrêts concernées.</p><br /><p><b>Ligne 15 :</b></p><p>➔ Du 07/09/2026 au 14/12/2026 </p><p>La ligne 15 est déviée de son itinéraire à partir de l'arrêt <b>Quartier des Quinze </b>et dessert uniquement son terminus Boecklin et l’arrêt Schott direction République</p><p>En direction de Boecklin : Les arrêts Carpe Haute, Brême, Robertsau Lamproie, Bois Fleuri, Saint-François, Mélanie, Robertsau Eglise et Schott ne sont pas desservis.</p><p>En direction de République : Les arrêts Robertsau Eglise, Mélanie, Saint-François, Bois Fleuri, Robertsau Lamproie, Brême et Carpe Haute ne sont pas desservis.</p><p><img alt=\"plan-impact-travaux-chauffage-urbain-phase-2\" src=\"https://www.cts-strasbourg.eu/permalink/ee1fa3ff-8061-11f1-bd7f-afe82077018c.png\"></p><p>➔ Retrouvez toutes les informations et les solutions de report aux arrêts concernées.</p><br />Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Travaux de chauffage urbain à la Robertsau.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-07T13:12:01+01:00",
+            "ItemIdentifier": "3009539020446533974",
+            "InfoMessageIdentifier": "d5467717212146716611-1-d3920715060547540948-1-d7502392038738230253-1-d7376850528617484458-1-d4522811057771475440-1-d3413574543867043121-1-d9005175673205095622-1",
+            "InfoChannelRef": "PlannedDisruption",
+            "ValidUntilTime": "2100-01-01T01:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-07T13:30:00+01:00",
+              "ImpactEndDateTime": "2026-11-08T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Lignes A, B, C, D, E, F - manifestation",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison d'une manifestation, des perturbations sont en cours : </p><p><b>Ligne C :</b></p><p>Le terminus en direction de Gare Centrale est déplacé à Landsberg.</p><p>En direction de Neuhof Rodolphe Reuss : Les stations Gare Centrale, Faubourg de Saverne Les Halles, Homme de Fer, Broglie, République, Gallia, Université, Observatoire, Esplanade et Winston Churchill ne sont pas desservies.</p><p>En direction de Gare Centrale : Les stations Landsberg, Winston Churchill, Esplanade, Observatoire, Université, Gallia, République, Broglie, Homme de Fer, Faubourg de Saverne Les Halles et Gare Centrale ne sont pas desservies.</p><br /><p><b>Ligne E : <span> </span></b></p><p>Ligne interrompue entre les stations Wacken et Landsberg.</p><p>Les stations Lycée Kléber, Parc du Contades, République, Gallia, Université, Observatoire, Esplanade et Winston Churchill ne sont pas desservies dans les deux directions.</p><br /><p><b>Ligne B : <span> </span></b></p><p>Ligne interrompue entre les stations Faubourg National Gare Centrale et Wacken.</p><p>Les stations Alt Winmärik-Vieux Marché aux Vins, Homme de Fer, Broglie, République, Parc du Contades et Lycée Kléber ne sont pas desservies dans les deux directions.</p><br /><p><b>Ligne F :</b></p><p>Le terminus en direction de Place d'Islande est déplacé à Faubourg National Gare Centrale.</p><p>Les stations Faubourg National Gare Centrale, Alt Winmärik-Vieux Marché aux Vins, Homme de Fer, Broglie, République, Gallia, Université, Observatoire et Place d'Islande ne sont pas desservies dans les deux directions.</p><br /><p><b>Ligne A : <span> </span></b></p><p>Ligne interrompue entre les stations Rotonde et Schluthfeld.</p><p>Les stations Gare Centrale, Ancienne Synagogue / Les Halles, Homme de Fer, Langstross/Grand Rue, Porte de l'Hôpital et Etoile Bourse ne sont pas desservies dans les deux directions.</p><p>Bus de remplacement de Rotonde à Gare Centrale toutes les 10 minutes</p><br /><p><b>Ligne D : <span> </span></b></p><p>Ligne interrompue entre les stations Rotonde et Etoile Polygone.</p><p>Les stations Gare Centrale, Ancienne Synagogue / Les Halles, Homme de Fer, Langstross/Grand Rue, Porte de l'Hôpital et Etoile Bourse ne sont pas desservies dans les deux directions.</p><p>Bus de remplacement de Rotonde à Gare Centrale toutes les 10 minutes</p><br />Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-09-23T12:15:32+02:00",
+            "ItemIdentifier": "3152833319921626270",
+            "InfoMessageIdentifier": "d3646655663964349206-6",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2027-01-01T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-09-23T04:00:00+02:00",
+              "ImpactEndDateTime": "2027-01-01T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "30"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Arrêt Fischacker déplacé",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux, l'arrêt Fischacker direction Robertsau Chasseurs est déplacé en face du 1 rue Fischacker jusqu’à fin d’année 2026.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Depuis le 06/07/2026.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-06T10:00:00+01:00",
+            "ItemIdentifier": "3939516387258610373",
+            "InfoMessageIdentifier": "d1727605849444417825-1",
+            "InfoChannelRef": "PlannedDisruption",
+            "ValidUntilTime": "2026-11-11T12:30:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-11T10:00:00+01:00",
+              "ImpactEndDateTime": "2026-11-11T12:30:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "67"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Cérémonie commémorative à Eschau, arrêt Schaal non desservi",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Le 11/11/2026 de 10h00 à 12h30",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison d'une cérémonie commémorative, l'arrêt Schaal en direction de Baggersee ne sera pas desservi.</p><p>Veuillez rejoindre l’arrêt Abbatiale ou l’arrêt Eschau Mairie.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-06T10:30:00+01:00",
+            "ItemIdentifier": "4419373685298253584",
+            "InfoMessageIdentifier": "d3460427833857909804-1",
+            "InfoChannelRef": "PlannedDisruption",
+            "ValidUntilTime": "2026-11-11T12:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-11T10:30:00+01:00",
+              "ImpactEndDateTime": "2026-11-11T12:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "67"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Cérémonie commémorative à Plobsheim - Arrêts Plobsheim Mairie et Saint-Paul non desservis",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Le 11/11/2026 entre 10h30 et 12h00",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison d'une cérémonie commémorative, les arrêts Plobsheim Mairie et Saint-Paul en direction de Plobsheim Est ne seront pas desservis. </p><p>Veuillez rejoindre l’arrêt Rhin, situé rue du Moulin ou terminer votre trajet à pied.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-08-20T16:45:10+02:00",
+            "ItemIdentifier": "510546530750684303",
+            "InfoMessageIdentifier": "d3843541909641928891-6",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-19T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-08-17T04:00:00+02:00",
+              "ImpactEndDateTime": "2026-12-19T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "62",
+                "64"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Temps de parcours rallongé",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux sur le pont du Péage, les bus de la ligne 62 sont déviés en direction de Lipsheim Centre entre les arrêts Elisa et Pont du Péage et ceux de la ligne 64 sont déviés dans les 2 sens entre les arrêts Geispolsheim Centre Commercial et Denis Papin.</p><p>Tous les arrêts restent desservis mais le temps de parcours est rallongé.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 17/08/2026 au 18/12/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-06T10:00:00+01:00",
+            "ItemIdentifier": "557786199971911594",
+            "InfoMessageIdentifier": "d5184440285933967238-1",
+            "InfoChannelRef": "PlannedDisruption",
+            "ValidUntilTime": "2026-11-11T12:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-11T10:00:00+01:00",
+              "ImpactEndDateTime": "2026-11-11T12:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "22"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Cérémonie commémorative à Holtzheim - Arrêts Holtzheim Centre et Holtzheim Église non desservis",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Le 11/11/2026 entre 10h00 et 12h00.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison d'une cérémonie commémorative, déviation entre les arrêts Peupliers et A l'Aigle.</p><p>Les arrêts Holtzheim Eglise et Holtzheim Centre ne seront pas desservis dans les deux directions.</p><p>Veuillez rejoindre les arrêts Peupliers situés rue d’Achenheim ou les arrêts Holtzheim Centre / Jours de marché situés rue de l’Ecole.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-04T05:54:52+01:00",
+            "ItemIdentifier": "6409544058880618961",
+            "InfoMessageIdentifier": "d4840665010974908796-2",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-12T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-02T04:00:00+01:00",
+              "ImpactEndDateTime": "2026-12-12T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "2"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Travaux de chauffage urbain - arrêts Marne et Observatoire non desservis et Place d’Islande déplacés",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux de chauffage urbain, à partir du lundi 2 novembre 2026 pour une durée de 6 semaines minimum, les bus de la ligne 2 effectuent une déviation entre les arrêts Saint-Maurice et Dunkerque dans les 2 sens.</p><p>De ce fait, les arrêts Marne, Marne (jours de marché) et Observatoire ne sont pas desservis dans les 2 sens et les arrêts Place d’Islande sont déplacés.</p><p>Retrouvez les bus de la ligne 2 aux arrêts :</p><ul>\t<li><u><b>Saint-Maurice</b></u> situés 27 et 30 boulevard d’Anvers.</li></ul><ul>\t<li><u><b>Provisoire Place d'Islande</b></u> vers Jardin des Deux Rives, situé 99 boulevard d’Anvers, en face de l’église de Saint-Matthieu.</li></ul><ul>\t<li><u><b>Provisoire Place d'Islande</b></u> vers Lingolsheim Gare, situé rue du Grand Pont, dans la descente du Pont d’Anvers.</li></ul>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 02/11/2026 au 11/12/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-03T10:47:05+01:00",
+            "ItemIdentifier": "6460696024344324540",
+            "InfoMessageIdentifier": "d648337500170647487-1",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-01T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-03T04:00:00+01:00",
+              "ImpactEndDateTime": "2026-12-01T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "B"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Travaux sur le P+R Rives de l'Aar",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux, une partie des places de parking est condamnée.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 03/11/2026 au 30/11/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-04T15:01:10+01:00",
+            "ItemIdentifier": "6970263427805773101",
+            "InfoMessageIdentifier": "d6862007539190817119-8-d3392686847693063215-8-d5333283326854555360-8-d2131682420424112844-8",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-11-27T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-09-28T04:00:00+02:00",
+              "ImpactEndDateTime": "2026-11-27T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "71",
+                "73",
+                "75",
+                "76",
+                "C3"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Travaux de chauffage urbain rue du Faubourg de Pierre.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux de chauffage urbain rue du Faubourg de Pierre, des perturbations sont en cours.</p><p>De ce fait, les lignes de bus C3 - 71 - 73 - 75 et 76 sont déviées au centre-ville.</p><p><b>Lignes 71, 73, 75 :</b></p><p>Les arrêts Place de Pierre et Les Halles Pont de Paris ne sont pas desservis.</p><p>➔ En provenance de Niederhausbergen / Mundolsheim / Lampertheim / Vendenheim et Eckwersheim : Les bus desservent les arrêts Travail et Les Halles Square situés rue du Travail.</p><p>➔ En direction de Niederhausbergen / Mundolsheim / Lampertheim / Vendenheim et Eckwersheim : Les départs des bus s'effectuent à l'arrêt habituel<b> Les Halles Marais Vert</b> situé rue du Marais Vert.</p><br /><p><b>Ligne C3 :</b></p><p>Les arrêts Les Halles Pont de Paris et Faubourg de Pierre ne sont pas desservis.</p><p>➔ En direction de Hoenheim Gare : Les départs des bus s'effectueront à l'arrêt provisoire <b>Ancienne Synagogue Les Halles</b> situé au début de la rue du Marais Vert (en face de Monceau Fleurs).</p><br /><p><b>Ligne 76 :</b></p><p>En direction des Halles : Les arrêts Wissembourg, Wilson Les Halles et Faubourg de Saverne Les Halles et Les Halles Pont de Paris ne sont pas desservis.</p><p>➔ En direction de Reichstett Rue de Paris : Les départs des bus s'effectuent à l'arrêt provisoire <b>Ancienne Synagogue Les Halles</b> situé au début de la rue du Marais Vert (en face de Monceau Fleurs).</p><p><img alt=\"\" src=\"https://www.cts-strasbourg.eu/permalink/0edbde6d-bb1a-11f1-8e52-afe82077018c.png\"></p><br />Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 28/09/2026 au 26/11/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-03-24T11:28:00+01:00",
+            "ItemIdentifier": "7048391590680660644",
+            "InfoMessageIdentifier": "d445306202631696268-1",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2100-01-01T01:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-03-24T04:00:00+01:00",
+              "ImpactEndDateTime": null,
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "N3"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p style=\"text-align:start\">En raison de travaux de voirie, l'arrêt Port du Rhin vers Mathieu Zell n'est pas desservi à partir du jeudi 8 janvier 2026 et pour une durée indéterminée.</p><p style=\"text-align:start\">Veuillez rejoindre le prochain arrêt desservi : Starcoop.</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Ligne N3 - Arrêt Port du Rhin vers Mathieu Zell non desservi.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-10-28T08:34:32+01:00",
+            "ItemIdentifier": "7372879400865711977",
+            "InfoMessageIdentifier": "d8446841321028621502-3-d1870166847286017324-3",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2100-01-01T01:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-09-07T07:51:00+02:00",
+              "ImpactEndDateTime": null,
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "G",
+                "C5"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Travaux de chauffage urbain rue Becquerel.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux, des perturbations sont en cours : </p><p><b>Ligne C5 :</b></p><p>Déviation entre les arrêts Haldenbourg et Saint-Junien.</p><p>Les arrêts Arago et Copenhague ne sont pas desservis dans les deux directions.</p><p>Direction Schiltigheim Le Marais, retrouvez les bus de la ligne C5 aux arrêts :</p><ul>\t<li>Lavoisier de la ligne G, situé rue Lavoisier.</li>\t<li>Provisoire Rieth, situé 98 rue de Hochfelden.</li>\t<li>Provisoire Kepler, situé rue Kepler.</li></ul><p>Direction Koenigshoffen Sud, retrouvez les bus de la ligne C5 aux arrêts :</p><ul>\t<li>Provisoire Kepler, situé rue Kepler.</li>\t<li>Provisoire Rieth, situé rue de Hochfelden.</li>\t<li>Lavoisier de la ligne G, situé rue Lavoisier.</li></ul><br />Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "À partir du 07/09/2026 et pour une durée minimum de 10 semaines minimum.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-11-04T04:00:00+01:00",
+            "ItemIdentifier": "8093902754512259315",
+            "InfoMessageIdentifier": "d1571512975658232208-1",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-12T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-11-09T04:00:00+01:00",
+              "ImpactEndDateTime": "2026-12-12T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "45"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": false,
+              "Message": [
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux de raccordement au réseau d’eau, l’arrêt Sports direction Lingolsheim Alouettes sera déplacé et l’arrêt Roethig Gare direction Lingolsheim Alouettes ne sera pas desservi à partir du lundi 9 novembre 2026, pour une durée d’environ 1 mois minimum.</p><ul>\t<li>Arrêt Sports : Veuillez rejoindre l’arrêt provisoire Sports, situé 1 rue des Sports.</li></ul><ul>\t<li>Arrêt Roethig Gare : Veuillez rejoindre l’arrêt provisoire Sports, situé 1 rue des Sports ou l’arrêt Tanneries, situé route de Schirmeck.</li></ul>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 09/11/2026 au 11/12/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Arrêt Sports déplacé et arrêt Roethig Gare non desservi.",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-08-21T13:21:42+02:00",
+            "ItemIdentifier": "8097636918121356355",
+            "InfoMessageIdentifier": "d2899201992824801813-7-d1789792423193246453-12",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-19T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-04-22T04:00:00+02:00",
+              "ImpactEndDateTime": "2026-12-19T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "40"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>Déviation entre les arrêts Elsau et Martin Schongauer en direction de Unterelsau et entre les arrêts Unterelsau et Doubs en direction de Neuhof Ganzau. </p><p>En direction de Unterelsau : L'arrêt Rembrandt n'est pas desservi</p><p>En direction de Neuhof Ganzau :</p><ul>\t<li>Les arrêts Michel Ange, Martin Schongauer et Rembrandt ne sont pas desservis.</li>\t<li>Les arrêts Titien et Elsau sont déplacés.</li></ul><p>Pour continuer direction Neuhof Ganzau, veuillez rejoindre les arrêts :</p><ul>\t<li>Provisoire Titien, situé 67 rue de l'Unterelsau.</li>\t<li>Provisoire Elsau, situé 41 rue de l'Unterelsau.</li></ul><p>En raison de travaux de chauffage urbain, des perturbations sont en cours : </p><br />Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 22/04/2026 au 18/12/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Travaux de chauffage urbain secteur Elsau",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "formatRef": "CTS",
+            "RecordedAtTime": "2026-10-19T04:00:00+02:00",
+            "ItemIdentifier": "8146751131685611706",
+            "InfoMessageIdentifier": "d3938112260307976860-1",
+            "InfoChannelRef": "Works",
+            "ValidUntilTime": "2026-12-19T02:00:00+01:00",
+            "Content": {
+              "ImpactStartDateTime": "2026-10-19T04:00:00+02:00",
+              "ImpactEndDateTime": "2026-12-19T02:00:00+01:00",
+              "ImpactedGroupOfLinesRef": null,
+              "ImpactedLineRef": [
+                "72"
+              ],
+              "TypeOfPassengerEquipmentRef": "WEB",
+              "Priority": "Normal",
+              "SendUpdatedNotificationsToCustomers": true,
+              "Message": [
+                {
+                  "MessageZoneRef": "title",
+                  "MessageText": [
+                    {
+                      "Value": "Arrêt Général Leclerc non desservi dans les 2 sens.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "details",
+                  "MessageText": [
+                    {
+                      "Value": "<p>En raison de travaux, l'arrêt Général Leclerc n'est pas desservi dans les deux directions.</p><p><u><b>Direction La Wantzenau Le Golf :</b></u> Veuillez rejoindre l’arrêt précédent Faubourg d’Alençon situé faubourg du Capitaine d’Alençon (280 m / 4 min) ou l’arrêt suivant Patronage situé rue du Général Leclerc (240 m / 3 min).</p><p><u><b>Direction République :</b></u> Veuillez rejoindre l’arrêt précédent La Wantzenau Mairie situé rue des Héros (300 m / 4 min) ou l’arrêt suivant Faubourg d’Alençon situé faubourg du Capitaine d’Alençon (400 m / 5 min).</p>Pour recevoir les informations en temps réel, activez les alertes trafic sur l'application CTS.",
+                      "Lang": "FR"
+                    }
+                  ]
+                },
+                {
+                  "MessageZoneRef": "period",
+                  "MessageText": [
+                    {
+                      "Value": "Du 19/10/2026 au 18/12/2026",
+                      "Lang": "FR"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -5,6 +5,7 @@ data class GtfsRealtimeSelection(
     val provider: String,
     val profile: String? = null,
     val url: String? = null,
+    val alertsUrl: String? = null,
 ) {
     val hasRealtime: Boolean get() = provider != PROVIDER_NONE
 

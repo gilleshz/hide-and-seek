@@ -20,4 +20,15 @@ final class SiriRef
     {
         return mb_strtolower(self::code($ref));
     }
+
+    /**
+     * Case- and accent-insensitive form, for matching operator line refs against GTFS short names.
+     */
+    public static function normalizedFolded(string $ref): string
+    {
+        $code = self::code($ref);
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $code);
+
+        return mb_strtolower($ascii === false ? $code : $ascii);
+    }
 }

@@ -385,7 +385,8 @@ final readonly class TransitCatalogService
      *         direct: string,
      *         bbox: array{minLat: float, maxLat: float, minLng: float, maxLng: float}
      *     }>,
-     *     realtime: array<string, string>
+     *     realtime: array<string, string>,
+     *     realtimeAlerts: array<string, string>
      * }|null
      */
     private function readCatalog(): ?array
@@ -406,11 +407,12 @@ final readonly class TransitCatalogService
             $map = $this->headerMap($header);
             $static = [];
             $realtime = [];
+            $realtimeAlerts = [];
             while (($fields = fgetcsv($handle, escape: '')) !== false) {
-                $this->collectRow($map, $fields, $static, $realtime);
+                $this->collectRow($map, $fields, $static, $realtime, $realtimeAlerts);
             }
 
-            return ['static' => $static, 'realtime' => $realtime];
+            return ['static' => $static, 'realtime' => $realtime, 'realtimeAlerts' => $realtimeAlerts];
         } finally {
             fclose($handle);
         }
@@ -448,12 +450,18 @@ final readonly class TransitCatalogService
      *     bbox: array{minLat: float, maxLat: float, minLng: float, maxLng: float}
      * }> $static
      * @param array<string, string> $realtime
+     * @param array<string, string> $realtimeAlerts
      */
-    private function collectRow(array $map, array $fields, array &$static, array &$realtime): void
-    {
+    private function collectRow(
+        array $map,
+        array $fields,
+        array &$static,
+        array &$realtime,
+        array &$realtimeAlerts,
+    ): void {
         $dataType = strtolower($this->value($map, $fields, 'data_type'));
         if ($dataType === 'gtfs_rt') {
-            $this->collectRealtime($map, $fields, $realtime);
+            $this->collectRealtime($map, $fields, $realtime, $realtimeAlerts);
 
             return;
         }
@@ -471,10 +479,13 @@ final readonly class TransitCatalogService
      * @param array<string, int> $map
      * @param array<int, string|null> $fields
      * @param array<string, string> $realtime
+     * @param array<string, string> $realtimeAlerts
      */
-    private function collectRealtime(array $map, array $fields, array &$realtime): void
+    private function collectRealtime(array $map, array $fields, array &$realtime, array &$realtimeAlerts): void
     {
         $entityType = strtolower($this->value($map, $fields, 'entity_type'));
+        $isTripUpdates = str_contains($entityType, 'tu');
+        $isServiceAlerts = str_contains($entityType, 'sa');
         $authentication = $this->value($map, $fields, 'urls.authentication_type');
         $url = $this->value($map, $fields, 'urls.direct_download');
         if ($url === '') {
@@ -483,7 +494,7 @@ final readonly class TransitCatalogService
         $url = $this->secureUrl($url);
 
         if (
-            !str_contains($entityType, 'tu')
+            (!$isTripUpdates && !$isServiceAlerts)
             || ($authentication !== '' && $authentication !== '0')
             || strtolower($this->value($map, $fields, 'status')) !== 'active'
             || $url === ''
@@ -493,8 +504,14 @@ final readonly class TransitCatalogService
 
         foreach (explode('|', $this->value($map, $fields, 'static_reference')) as $reference) {
             $staticId = trim($reference);
-            if ($staticId !== '' && !isset($realtime[$staticId])) {
+            if ($staticId === '') {
+                continue;
+            }
+            if ($isTripUpdates && !isset($realtime[$staticId])) {
                 $realtime[$staticId] = $url;
+            }
+            if ($isServiceAlerts && !isset($realtimeAlerts[$staticId])) {
+                $realtimeAlerts[$staticId] = $url;
             }
         }
     }
@@ -630,7 +647,8 @@ final readonly class TransitCatalogService
      *         direct: string,
      *         bbox: array{minLat: float, maxLat: float, minLng: float, maxLng: float}
      *     }>,
-     *     realtime: array<string, string>
+     *     realtime: array<string, string>,
+     *     realtimeAlerts: array<string, string>
      * } $catalog
      * @param array{minLat: float, maxLat: float, minLng: float, maxLng: float} $queryBox
      *
@@ -647,6 +665,7 @@ final readonly class TransitCatalogService
             $spatial = $this->spatialScore($row['bbox'], $queryBox);
             $text = $this->textScore($query, [$row['provider'], $row['name'], $row['municipality']]);
             $realtimeUrl = $catalog['realtime'][$row['id']] ?? null;
+            $realtimeAlertsUrl = $catalog['realtimeAlerts'][$row['id']] ?? null;
             $profile = $this->siriProfiles->match($row['provider'], $row['name'], $row['municipality']);
             $score = 0.7 * $spatial + 0.3 * $text;
             if ($score <= 0.0) {
@@ -664,6 +683,7 @@ final readonly class TransitCatalogService
                 downloadUrl: $latest !== '' ? $latest : $direct,
                 fallbackUrl: $latest !== '' && $direct !== '' && $latest !== $direct ? $direct : null,
                 realtimeUrl: $profile !== null ? null : $realtimeUrl,
+                realtimeAlertsUrl: $profile !== null ? null : $realtimeAlertsUrl,
                 live: $profile !== null || $realtimeUrl !== null,
                 scope: $this->scope($row['bbox'], $queryBox, $spatial),
                 siriProfile: $profile?->key,
