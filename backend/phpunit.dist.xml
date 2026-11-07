@@ -20,6 +20,11 @@
         <!-- Mirrors .env.test's MERCURE_JWT_SECRET: the subscriber token key is autowired under its own name (D13). -->
         <server name="MERCURE_SUBSCRIBER_JWT_KEY" value="test-mercure-secret-at-least-32-bytes-long!!" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
+        <!-- Test-only operator credentials so the SIRI profiles are available in CI where no real env is set; tests exercising the blank-credential path unset them in a separate process. -->
+        <env name="PRIM_API_KEY" value="test-prim-key" />
+        <env name="CTS_API_TOKEN" value="test-cts-token" />
+        <env name="SYTRAL_SIRI_USER" value="test-sytral-user" />
+        <env name="SYTRAL_SIRI_PASSWORD" value="test-sytral-pass" />
     </php>
 
     <testsuites>
