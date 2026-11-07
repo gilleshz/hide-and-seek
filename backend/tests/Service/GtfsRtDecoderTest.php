@@ -65,6 +65,72 @@ final class GtfsRtDecoderTest extends TestCase
         self::assertSame(456, $stop['time']);
     }
 
+    #[Test]
+    public function itAggregatesAllActivePeriodsIntoMinStartAndMaxEnd(): void
+    {
+        $decoded = $this->decodeFeed(<<<'PY'
+            import sys
+            from google.transit import gtfs_realtime_pb2 as pb
+            feed = pb.FeedMessage()
+            feed.header.gtfs_realtime_version = "2.0"
+            feed.header.timestamp = 123
+            entity = feed.entity.add()
+            entity.id = "alert-1"
+            alert = entity.alert
+            alert.cause = pb.Alert.Cause.Value("STRIKE")
+            alert.effect = pb.Alert.Effect.Value("NO_SERVICE")
+            first = alert.active_period.add()
+            first.start = 200
+            first.end = 300
+            second = alert.active_period.add()
+            second.start = 100
+            third = alert.active_period.add()
+            third.end = 500
+            open(sys.argv[1], "wb").write(feed.SerializeToString())
+            PY);
+
+        self::assertSame('alert', $decoded['type']);
+        $alerts = $decoded['alerts'] ?? null;
+        self::assertIsArray($alerts);
+        self::assertCount(1, $alerts);
+        $alert = $alerts[0];
+        self::assertIsArray($alert);
+        self::assertSame('alert-1', $alert['id']);
+        self::assertSame(100, $alert['validFrom']);
+        self::assertSame(500, $alert['validUntil']);
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private function decodeFeed(string $generatorCode): array
+    {
+        $decoder = dirname(__DIR__, 2) . '/bin/gtfs_rt_decode.py';
+        if (!is_file(self::PYTHON) || !is_file($decoder)) {
+            self::markTestSkipped('The GTFS-RT Python runtime is not available.');
+        }
+        $probe = new Process([self::PYTHON, '-c', 'import google.transit.gtfs_realtime_pb2']);
+        $probe->run();
+        if (!$probe->isSuccessful()) {
+            self::markTestSkipped('gtfs-realtime-bindings is not installed.');
+        }
+
+        $path = $this->workDir . '/feed.pb';
+        $generator = new Process([self::PYTHON, '-c', $generatorCode, $path]);
+        $generator->run();
+        self::assertTrue($generator->isSuccessful(), $generator->getErrorOutput());
+        $bytes = (string) file_get_contents($path);
+
+        $process = new Process([self::PYTHON, $decoder], null, null, $bytes, 5);
+        $process->run();
+        self::assertTrue($process->isSuccessful(), $process->getErrorOutput());
+
+        $decoded = json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($decoded);
+
+        return $decoded;
+    }
+
     private function feedBytes(Process $probe): string
     {
         $path = $this->workDir . '/feed.pb';

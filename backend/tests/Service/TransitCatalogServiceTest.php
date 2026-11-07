@@ -303,6 +303,95 @@ final class TransitCatalogServiceTest extends TestCase
     }
 
     #[Test]
+    public function itInfersTheFeedTypeFromTheUrlWhenEntityTypeIsBlank(): void
+    {
+        [$header] = explode("\n", $this->fixture(), 2);
+        $proxy = 'https://proxy.transport.data.gouv.fr/resource/lemet-metz-gtfs-rt-';
+        $static = $this->csvRow([
+            'id' => 'lemet-blank',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Metz',
+            'provider' => 'LeMet',
+            'name' => 'LeMet',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://files.example.com/lemet.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '49.0',
+            'location.bounding_box.maximum_latitude' => '49.1',
+            'location.bounding_box.minimum_longitude' => '6.0',
+            'location.bounding_box.maximum_longitude' => '6.1',
+        ]);
+        $serviceAlerts = $this->csvRow([
+            'id' => 'tdg-81513',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => '',
+            'static_reference' => 'lemet-blank',
+            'urls.direct_download' => $proxy . 'service-alert?token=abc123',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        $tripUpdates = $this->csvRow([
+            'id' => 'tdg-81511',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => '',
+            'static_reference' => 'lemet-blank',
+            'urls.direct_download' => $proxy . 'trip-updates?token=abc123',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        file_put_contents(
+            $this->catalogFile,
+            $header . "\n" . $static . "\n" . $serviceAlerts . "\n" . $tripUpdates . "\n",
+        );
+
+        $results = $this->service()->search(49.0, 6.0, 49.1, 6.1, '');
+
+        self::assertSame(['lemet-blank'], self::ids($results));
+        self::assertSame($proxy . 'trip-updates?token=abc123', $results[0]->realtimeUrl);
+        self::assertSame($proxy . 'service-alert?token=abc123', $results[0]->realtimeAlertsUrl);
+        self::assertTrue($results[0]->live);
+    }
+
+    #[Test]
+    public function itIgnoresABlankEntityTypeVehiclePositionUrl(): void
+    {
+        [$header] = explode("\n", $this->fixture(), 2);
+        $static = $this->csvRow([
+            'id' => 'vp-blank',
+            'data_type' => 'gtfs',
+            'location.country_code' => 'FR',
+            'location.municipality' => 'Metz',
+            'provider' => 'LeMet',
+            'name' => 'LeMet',
+            'is_official' => 'True',
+            'urls.direct_download' => 'https://files.example.com/lemet.zip',
+            'status' => 'active',
+            'location.bounding_box.minimum_latitude' => '49.0',
+            'location.bounding_box.maximum_latitude' => '49.1',
+            'location.bounding_box.minimum_longitude' => '6.0',
+            'location.bounding_box.maximum_longitude' => '6.1',
+        ]);
+        $vehiclePositions = $this->csvRow([
+            'id' => 'tdg-81512',
+            'data_type' => 'gtfs_rt',
+            'entity_type' => '',
+            'static_reference' => 'vp-blank',
+            'urls.direct_download' => 'https://rt.example.com/lemet-metz-gtfs-rt-vehicle-positions.pb',
+            'urls.authentication_type' => '0',
+            'status' => 'active',
+        ]);
+        file_put_contents($this->catalogFile, $header . "\n" . $static . "\n" . $vehiclePositions . "\n");
+
+        $results = $this->service()->search(49.0, 6.0, 49.1, 6.1, '');
+
+        self::assertSame(['vp-blank'], self::ids($results));
+        self::assertNull($results[0]->realtimeUrl);
+        self::assertNull($results[0]->realtimeAlertsUrl);
+        self::assertFalse($results[0]->live);
+    }
+
+    #[Test]
     public function itAcceptsAnUpstreamColumnAddedToTheSnapshotHeader(): void
     {
         [$header, $body] = explode("\n", $this->fixture(), 2);

@@ -484,13 +484,16 @@ final readonly class TransitCatalogService
     private function collectRealtime(array $map, array $fields, array &$realtime, array &$realtimeAlerts): void
     {
         $entityType = strtolower($this->value($map, $fields, 'entity_type'));
-        $isTripUpdates = str_contains($entityType, 'tu');
-        $isServiceAlerts = str_contains($entityType, 'sa');
         $authentication = $this->value($map, $fields, 'urls.authentication_type');
         $url = $this->value($map, $fields, 'urls.direct_download');
         if ($url === '') {
             $url = $this->value($map, $fields, 'urls.latest');
         }
+        if ($entityType === '') {
+            $entityType = $this->inferEntityType($url);
+        }
+        $isTripUpdates = str_contains($entityType, 'tu');
+        $isServiceAlerts = str_contains($entityType, 'sa');
         $url = $this->secureUrl($url);
 
         if (
@@ -514,6 +517,21 @@ final readonly class TransitCatalogService
                 $realtimeAlerts[$staticId] = $url;
             }
         }
+    }
+
+    /**
+     * Some catalog rows leave entity_type blank; the feed URL path still names the feed kind.
+     */
+    private function inferEntityType(string $url): string
+    {
+        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
+
+        return match (true) {
+            str_contains($path, 'alert') => 'sa',
+            str_contains($path, 'vehicle') => 'vp',
+            str_contains($path, 'trip') => 'tu',
+            default => '',
+        };
     }
 
     /**

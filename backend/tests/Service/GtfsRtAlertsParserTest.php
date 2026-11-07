@@ -65,6 +65,40 @@ final class GtfsRtAlertsParserTest extends TestCase
     }
 
     #[Test]
+    public function itAggregatesMultipleActivePeriodsIntoMinStartAndMaxEnd(): void
+    {
+        $decoded = $this->decodeFeed(<<<'PY'
+            import sys
+            from google.transit import gtfs_realtime_pb2 as pb
+            feed = pb.FeedMessage()
+            feed.header.gtfs_realtime_version = "2.0"
+            feed.header.timestamp = 1800000000
+            entity = feed.entity.add()
+            entity.id = "alert-multi"
+            alert = entity.alert
+            alert.cause = pb.Alert.Cause.Value("STRIKE")
+            alert.effect = pb.Alert.Effect.Value("NO_SERVICE")
+            alert.header_text.translation.add(language="en", text="Title")
+            alert.description_text.translation.add(language="en", text="Body")
+            first = alert.active_period.add()
+            first.start = 1800000100
+            first.end = 1800000200
+            second = alert.active_period.add()
+            second.start = 1800000050
+            third = alert.active_period.add()
+            third.end = 1800000900
+            open(sys.argv[1], "wb").write(feed.SerializeToString())
+            PY);
+
+        $alerts = GtfsRtAlertsParser::parse($decoded);
+
+        self::assertCount(1, $alerts);
+        self::assertSame('alert-multi', $alerts[0]->id);
+        self::assertSame(1_800_000_050, $alerts[0]->validFrom);
+        self::assertSame(1_800_000_900, $alerts[0]->validUntil);
+    }
+
+    #[Test]
     public function itReturnsAnEmptyListWhenTheFeedCarriesNoAlerts(): void
     {
         self::assertSame([], GtfsRtAlertsParser::parse([]));

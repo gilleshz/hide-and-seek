@@ -39,14 +39,10 @@ def alert_entry(entity):
             route_ids.append(informed.route_id)
         if informed.stop_id:
             stop_ids.append(informed.stop_id)
-    valid_from = None
-    valid_until = None
-    if alert.active_period:
-        period = alert.active_period[0]
-        if period.HasField("start"):
-            valid_from = period.start
-        if period.HasField("end"):
-            valid_until = period.end
+    starts = [period.start for period in alert.active_period if period.HasField("start")]
+    ends = [period.end for period in alert.active_period if period.HasField("end")]
+    valid_from = min(starts) if starts else None
+    valid_until = max(ends) if ends else None
     return {
         "id": entity.id,
         "cause": gtfs_realtime_pb2.Alert.Cause.Name(alert.cause).lower(),
