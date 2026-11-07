@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -104,6 +105,46 @@ class MapSessionViewModelTrafficAlertsTest {
     }
 
     @Test
+    fun `initial poll counts every alert as unseen and marking seen clears the count`() = runTest(testDispatcher) {
+        fixture.trafficAlertsRepository.result =
+            Result.success(TrafficAlerts(serverNow = 0, alerts = listOf(alert("a1"), alert("a2"))))
+        val viewModel = fixture.createSessionViewModel()
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        runCurrent()
+
+        assertEquals(2, awaitUnseenCount(viewModel, 2).trafficAlerts.unseenCount)
+
+        viewModel.markTrafficAlertsSeen()
+        runCurrent()
+
+        val state = awaitUnseenCount(viewModel, 0)
+        assertEquals(0, state.trafficAlerts.unseenCount)
+        assertEquals(listOf("a1", "a2"), state.trafficAlerts.alerts.map { it.id })
+    }
+
+    @Test
+    fun `a later poll with a new alert counts only the new one as unseen`() = runTest(testDispatcher) {
+        fixture.trafficAlertsRepository.result =
+            Result.success(TrafficAlerts(serverNow = 0, alerts = listOf(alert("a1"), alert("a2"))))
+        val viewModel = fixture.createSessionViewModel()
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        runCurrent()
+        awaitUnseenCount(viewModel, 2)
+        viewModel.markTrafficAlertsSeen()
+        runCurrent()
+        awaitUnseenCount(viewModel, 0)
+
+        fixture.trafficAlertsRepository.result =
+            Result.success(TrafficAlerts(serverNow = 0, alerts = listOf(alert("a1"), alert("a2"), alert("a3"))))
+        advanceTimeBy(POLL_INTERVAL_MS + 1)
+        runCurrent()
+
+        val state = awaitUnseenCount(viewModel, 1)
+        assertEquals(3, state.trafficAlerts.alerts.size)
+        assertEquals(1, state.trafficAlerts.unseenCount)
+    }
+
+    @Test
     fun `selecting an alert toggles and clearing resets the selection`() = runTest(testDispatcher) {
         fixture.trafficAlertsRepository.result =
             Result.success(TrafficAlerts(serverNow = 0, alerts = listOf(alert("a1"))))
@@ -128,6 +169,16 @@ class MapSessionViewModelTrafficAlertsTest {
             assertNull(state.selectedAlertId)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    private fun TestScope.awaitUnseenCount(viewModel: MapSessionViewModel, expected: Int): MapSessionUiState {
+        var state = viewModel.uiState.value
+        var guard = 0
+        while (state.trafficAlerts.unseenCount != expected && guard++ < 100) {
+            runCurrent()
+            state = viewModel.uiState.value
+        }
+        return state
     }
 
     private fun alert(id: String) = TrafficAlert(

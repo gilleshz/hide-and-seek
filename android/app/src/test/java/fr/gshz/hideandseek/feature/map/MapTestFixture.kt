@@ -1,9 +1,11 @@
 package fr.gshz.hideandseek.feature.map
 
 import android.net.Uri
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
 import fr.gshz.hideandseek.core.data.ConnectionStore
 import fr.gshz.hideandseek.core.data.GameStateCache
+import fr.gshz.hideandseek.core.data.SettingsStore
 import fr.gshz.hideandseek.core.navigation.HideAndSeekDestinations
 import fr.gshz.hideandseek.core.navigation.NavigationRequestStore
 import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
@@ -27,7 +29,9 @@ import fr.gshz.hideandseek.fake.FakeZoneRepository
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 
 /** One wiring for every map ViewModel under test, mirroring what Hilt provides on the map route. */
@@ -45,6 +49,11 @@ class MapTestFixture(
     val roundRepository = FakeRoundRepository()
     val timeTrapRepository = FakeTimeTrapRepository()
     val trafficAlertsRepository = FakeTrafficAlertsRepository()
+    val settingsStore: SettingsStore = SettingsStore(
+        PreferenceDataStoreFactory.create(
+            scope = CoroutineScope(UnconfinedTestDispatcher()),
+        ) { File.createTempFile("map-test-settings", ".preferences_pb") },
+    )
     val possibleAreaRepository = FakePossibleAreaRepository()
     val gameEventRepository = FakeGameEventRepository()
     val chatVisibilityTracker = ChatVisibilityTracker()
@@ -82,7 +91,7 @@ class MapTestFixture(
 
     fun createSessionViewModel() = MapSessionViewModel(
         locationRepository, roundRepository, trafficAlertsRepository, sessionEvents, gameInfoSource,
-        roundRefreshFlow, chatVisibilityTracker,
+        roundRefreshFlow, chatVisibilityTracker, settingsStore,
     )
 
     fun createZoneViewModel() = ZoneViewModel(

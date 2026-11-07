@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import fr.gshz.hideandseek.di.SettingsDataStore
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,7 @@ class SettingsStore @Inject constructor(
         val APP_LOCALE = stringPreferencesKey("app_locale")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val LOCATION_DISCLOSURE_ACCEPTED = booleanPreferencesKey("location_disclosure_accepted")
+        val TRAFFIC_ALERTS_SEEN = stringSetPreferencesKey("traffic_alerts_seen")
     }
 
     val locale: Flow<String?> = dataStore.data.map { prefs ->
@@ -30,6 +32,10 @@ class SettingsStore @Inject constructor(
 
     val locationDisclosureAccepted: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[Keys.LOCATION_DISCLOSURE_ACCEPTED] ?: false
+    }
+
+    val seenTrafficAlertKeys: Flow<Set<String>> = dataStore.data.map { prefs ->
+        prefs[Keys.TRAFFIC_ALERTS_SEEN] ?: emptySet()
     }
 
     suspend fun currentLocale(): String? = locale.first()
@@ -57,6 +63,23 @@ class SettingsStore @Inject constructor(
     suspend fun saveLocationDisclosureAccepted() {
         dataStore.edit { prefs ->
             prefs[Keys.LOCATION_DISCLOSURE_ACCEPTED] = true
+        }
+    }
+
+    suspend fun markTrafficAlertsSeen(gameUuid: String, alertIds: List<String>) {
+        dataStore.edit { prefs ->
+            val current = prefs[Keys.TRAFFIC_ALERTS_SEEN] ?: emptySet()
+            prefs[Keys.TRAFFIC_ALERTS_SEEN] = current + alertIds.map { "$gameUuid:$it" }
+        }
+    }
+
+    suspend fun pruneTrafficAlertKeys(gameUuid: String, activeAlertIds: List<String>) {
+        val prefix = "$gameUuid:"
+        val activeKeys = activeAlertIds.mapTo(HashSet()) { "$prefix$it" }
+        dataStore.edit { prefs ->
+            val current = prefs[Keys.TRAFFIC_ALERTS_SEEN] ?: return@edit
+            prefs[Keys.TRAFFIC_ALERTS_SEEN] =
+                current.filterTo(HashSet()) { key -> !key.startsWith(prefix) || key in activeKeys }
         }
     }
 }

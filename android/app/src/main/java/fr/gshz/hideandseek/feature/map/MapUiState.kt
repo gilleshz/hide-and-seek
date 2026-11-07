@@ -26,10 +26,11 @@ import kotlin.math.sqrt
 
 enum class QuestionSheetMode { Ask, Preview }
 
-/** The polled traffic alerts plus the server clock they were sampled against. */
+/** The polled traffic alerts, the server clock they were sampled against, and how many are still unseen. */
 data class TrafficAlertsState(
     val alerts: List<TrafficAlert> = emptyList(),
     val serverNow: Long = 0,
+    val unseenCount: Int = 0,
 )
 
 // Server-derived: a thermometer without a reveal deadline is still traveling (survives restarts).

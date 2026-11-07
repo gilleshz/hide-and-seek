@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import fr.gshz.hideandseek.core.data.SettingsStore
 import fr.gshz.hideandseek.core.model.ErrorType
 import fr.gshz.hideandseek.core.model.PlayerSession
 import fr.gshz.hideandseek.core.notification.ChatVisibilityTracker
@@ -66,6 +67,7 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
     private val gameInfoSource: MapGameInfoSource,
     private val roundRefreshFlow: RoundRefreshFlow,
     private val chatVisibilityTracker: ChatVisibilityTracker,
+    private val settingsStore: SettingsStore,
 ) : ViewModel() {
 
     private val gameUuid: String = sessionEvents.gameUuid
@@ -176,10 +178,11 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
      * The map polls the alerts with the departure board's cadence while the screen collects the
      * state. A failed poll emits nothing, so the last good list stays on screen.
      */
-    private val trafficAlerts: StateFlow<TrafficAlertsState> = flow {
+    private val polledTrafficAlerts: StateFlow<TrafficAlertsState> = flow {
         while (currentCoroutineContext().isActive) {
             try {
                 val result = trafficAlertsRepository.getTrafficAlerts(gameUuid)
+                settingsStore.pruneTrafficAlertKeys(gameUuid, result.alerts.map { it.id })
                 emit(TrafficAlertsState(alerts = result.alerts, serverNow = result.serverNow))
             } catch (e: IOException) {
                 Log.w(TAG, "Failed to poll traffic alerts", e)
@@ -189,6 +192,17 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
             }
             delay(TRAFFIC_ALERTS_POLL_INTERVAL_MS)
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), TrafficAlertsState())
+
+    /**
+     * The badge counts only alerts the player has not opened yet, so re-joining the map does not
+     * re-announce a stale disruption; the sheet still lists every active alert.
+     */
+    private val trafficAlerts: StateFlow<TrafficAlertsState> = combine(
+        polledTrafficAlerts,
+        settingsStore.seenTrafficAlertKeys,
+    ) { polled, seenKeys ->
+        polled.copy(unseenCount = polled.alerts.count { alert -> "$gameUuid:${alert.id}" !in seenKeys })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), TrafficAlertsState())
 
     val uiState: StateFlow<MapSessionUiState> = combine(
@@ -267,6 +281,12 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
 
     fun clearTrafficAlertSelection() {
         selectedAlertId.value = null
+    }
+
+    fun markTrafficAlertsSeen() {
+        viewModelScope.launch {
+            settingsStore.markTrafficAlertsSeen(gameUuid, trafficAlerts.value.alerts.map { it.id })
+        }
     }
 
     private fun loadGameInfo(refresh: Boolean = false) {

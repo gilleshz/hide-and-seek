@@ -137,11 +137,11 @@ internal fun TrafficAlertFab(
     modifier: Modifier = Modifier,
 ) {
     val badgeDescription = pluralStringResource(R.plurals.traffic_alert_count, count, count)
-    FloatingActionButton(
-        onClick = onClick,
-        modifier = modifier.semantics { contentDescription = badgeDescription },
-    ) {
-        BadgedBox(badge = { if (count > 0) Badge { Text(count.toString()) } }) {
+    BadgedBox(badge = { if (count > 0) Badge { Text(count.toString()) } }) {
+        FloatingActionButton(
+            onClick = onClick,
+            modifier = modifier.semantics { contentDescription = badgeDescription },
+        ) {
             Icon(Icons.Filled.Tram, contentDescription = null)
         }
     }

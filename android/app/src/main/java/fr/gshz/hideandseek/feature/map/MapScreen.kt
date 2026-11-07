@@ -250,6 +250,7 @@ fun MapScreen(
         onTransitLineTapped = sessionViewModel::toggleTransitFocus,
         onSelectTrafficAlert = sessionViewModel::toggleTrafficAlertSelection,
         onClearTrafficAlertSelection = sessionViewModel::clearTrafficAlertSelection,
+        onTrafficAlertsOpened = sessionViewModel::markTrafficAlertsSeen,
         timetableState = timetableState,
         onTimetableTapped = { station ->
             station.stationId?.let { stationId -> timetableViewModel.open(stationId, station.label) }
@@ -487,6 +488,7 @@ internal fun MapContent(
     onTransitLineTapped: (String) -> Unit = {},
     onSelectTrafficAlert: (String) -> Unit = {},
     onClearTrafficAlertSelection: () -> Unit = {},
+    onTrafficAlertsOpened: () -> Unit = {},
     timetableState: TimetableUiState = TimetableUiState(),
     onTimetableTapped: (StationTooltipData) -> Unit = {},
     onTimetableRetry: () -> Unit = {},
@@ -499,6 +501,9 @@ internal fun MapContent(
     val frozenHidingSeconds = remember { mutableStateOf<Long?>(null) }
     // Null when closed; a non-null line filter means the sheet opened from the departure board.
     var trafficSheet by remember { mutableStateOf<TrafficSheetRequest?>(null) }
+    LaunchedEffect(trafficSheet) {
+        if (trafficSheet != null) onTrafficAlertsOpened()
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -1048,15 +1053,15 @@ private fun MapFabColumn(
         FloatingActionButton(onClick = fabActions.onBrowsePois) {
             Icon(Icons.Filled.TravelExplore, contentDescription = stringResource(R.string.map_browse_pois))
         }
-        FloatingActionButton(onClick = { navigation.onOpenChatClick(uiState.gameUuid) }) {
-            BadgedBox(badge = { if (uiState.hasUnreadChat) Badge() }) {
+        BadgedBox(badge = { if (uiState.hasUnreadChat) Badge() }) {
+            FloatingActionButton(onClick = { navigation.onOpenChatClick(uiState.gameUuid) }) {
                 Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = stringResource(R.string.map_open_chat))
             }
         }
         if (styles.size > 1) {
             MapStyleSwitcher(styles = styles, onStyleSelected = fabActions.onStyleSelected)
         }
-        TrafficAlertFab(count = uiState.trafficAlerts.alerts.size, onClick = onOpenTrafficAlerts)
+        TrafficAlertFab(count = uiState.trafficAlerts.unseenCount, onClick = onOpenTrafficAlerts)
         FloatingActionButton(onClick = fabActions.onRecenter) {
             Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.map_recenter_button))
         }
