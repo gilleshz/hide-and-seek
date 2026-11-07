@@ -10,6 +10,7 @@ use App\Service\OutboundHttpFetcher;
 use App\Service\OutboundUrlGuard;
 use App\Service\SiriLiteClient;
 use App\Service\SiriProfileRegistry;
+use App\Tests\Support\RecordingLogger;
 use App\Tests\Support\TestSiriProfiles;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -217,7 +218,7 @@ final class SiriLiteClientTest extends TestCase
     }
 
     #[Test]
-    public function itFetchesCtsEstimatedTimetableOnceAndFiltersByStop(): void
+    public function itFetchesCtsEstimatedTimetablePerLineAndFiltersByStop(): void
     {
         $captured = null;
         $http = new MockHttpClient(
@@ -237,13 +238,57 @@ final class SiriLiteClientTest extends TestCase
 
         self::assertIsArray($captured);
         self::assertStringContainsString('GetStopIdInsteadOfStopCode=true', $captured['url']);
-        self::assertStringNotContainsString('LineRef', $captured['url']);
+        self::assertStringContainsString('LineRef=A', $captured['url']);
         self::assertContains('Authorization: Basic ' . base64_encode('test-cts-token:'), $captured['headers']);
         self::assertCount(1, $visits);
         self::assertSame('CTS:Stop:777', $visits[0]->stopCode);
         self::assertSame('cts-journey-1', $visits[0]->tripRef);
         self::assertSame(2, $visits[0]->stopSequence);
         self::assertSame('Lingolsheim', $visits[0]->destination);
+    }
+
+    #[Test]
+    public function itKeepsExpectedOnlyCallsTheWayCtsSendsThem(): void
+    {
+        // CTS estimated-timetable calls carry expected times only: no aimed times and no order.
+        $body = json_encode([
+            'ServiceDelivery' => [
+                'EstimatedTimetableDelivery' => [[
+                    'EstimatedJourneyVersionFrame' => [[
+                        'EstimatedVehicleJourney' => [[
+                            'LineRef' => 'A',
+                            'FramedVehicleJourneyRef' => ['DatedVehicleJourneySAERef' => '22406908-26SEPW-A-D-Samedi-00'],
+                            'EstimatedCalls' => [
+                                [
+                                    'StopPointRef' => 'PASPO_01',
+                                    'DestinationName' => 'Illkirch Graffenstaden',
+                                    'ExpectedDepartureTime' => '2026-11-07T14:24:05+01:00',
+                                    'ExpectedArrivalTime' => '2026-11-07T14:16:05+01:00',
+                                ],
+                            ],
+                        ]],
+                    ]],
+                ]],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $client = $this->client(new MockHttpClient(new MockResponse($body)));
+
+        $visits = $client->visits(
+            new RealtimeSelection(RealtimeProvider::SiriLite->value, 'cts'),
+            ['PASPO_01'],
+            ['A'],
+        );
+
+        self::assertCount(1, $visits);
+        $visit = $visits[0];
+        self::assertSame('A', $visit->lineCode);
+        self::assertSame('PASPO_01', $visit->stopCode);
+        self::assertSame('22406908-26SEPW-A-D-Samedi-00', $visit->tripRef);
+        $expected = (new \DateTimeImmutable('2026-11-07T14:24:05+01:00'))->getTimestamp();
+        self::assertSame($expected, $visit->expectedAt);
+        self::assertSame($expected, $visit->aimedAt);
+        self::assertNull($visit->stopSequence);
+        self::assertSame('Illkirch Graffenstaden', $visit->destination);
     }
 
     #[Test]
@@ -331,6 +376,37 @@ final class SiriLiteClientTest extends TestCase
             ['555'],
             [],
         ));
+        self::assertSame(0, $http->getRequestsCount());
+    }
+
+    #[Test]
+    public function itLogsWhenTheRequestedProfileIsUnknownOrHasMissingCredentials(): void
+    {
+        $records = new RecordingLogger();
+        $http = new MockHttpClient(fn (): MockResponse => new MockResponse($this->idfmBody()));
+        $unavailable = TestSiriProfiles::registry(TestSiriProfiles::withUnavailableProfile());
+        $client = new SiriLiteClient(
+            new OutboundHttpFetcher($http, new OutboundUrlGuard(), $records),
+            $unavailable,
+            new ArrayAdapter(),
+            $records,
+        );
+
+        self::assertSame([], $client->visits(
+            new RealtimeSelection(RealtimeProvider::SiriLite->value, 'unknown'),
+            ['555'],
+            [],
+        ));
+        self::assertSame([], $client->visits(
+            new RealtimeSelection(RealtimeProvider::SiriLite->value, 'offline'),
+            ['555'],
+            [],
+        ));
+
+        self::assertSame([
+            'SIRI visits skipped: no usable profile "unknown" (unknown profile key).',
+            'SIRI visits skipped: no usable profile "offline" (credentials missing or incomplete).',
+        ], $records->messages());
         self::assertSame(0, $http->getRequestsCount());
     }
 

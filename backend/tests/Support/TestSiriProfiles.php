@@ -33,6 +33,7 @@ final class TestSiriProfiles
                 'endpoint' => 'https://1.1.1.1/cts',
                 'auth' => ['kind' => 'basic', 'user' => 'test-cts-token', 'password' => ''],
                 'query' => ['GetStopIdInsteadOfStopCode' => 'true'],
+                'line_ref' => '{code}',
                 'aliases' => ['CTS'],
                 'cities' => ['Strasbourg'],
             ],

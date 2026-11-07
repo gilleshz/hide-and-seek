@@ -48,6 +48,16 @@ final readonly class SiriLiteClient
             ? $this->profiles->find((string) $selection->profile)
             : null;
         if ($profile === null || !$profile->available) {
+            $this->logger->warning(
+                'SIRI visits skipped: no usable profile "{profile}" ({reason}).',
+                [
+                    'profile' => $selection->profile ?? '',
+                    'reason' => $profile === null
+                        ? 'unknown profile key'
+                        : 'credentials missing or incomplete',
+                ],
+            );
+
             return [];
         }
 
@@ -149,11 +159,24 @@ final readonly class SiriLiteClient
                 }
 
                 try {
-                    $visits = $this->parse(
-                        $this->fetchBody($profile, $url, min(self::TIMEOUT_SECONDS, $remaining)),
-                        $stopMonitoring,
-                    );
+                    $body = $this->fetchBody($profile, $url, min(self::TIMEOUT_SECONDS, $remaining));
+                    $visits = $this->parse($body, $stopMonitoring);
+                    if ($visits === [] && json_decode($body, true) === null) {
+                        $this->logger->warning(
+                            'SIRI response for profile {profile} at {host} is not parsable JSON.',
+                            [
+                                'profile' => $profile->key,
+                                'host' => $this->hostOf($profile->endpoint),
+                                'bytes' => strlen($body),
+                            ],
+                        );
+                    }
                     $item->expiresAfter($ttl);
+                    $this->logger->debug('SIRI fetch for profile {profile} at {host} returned {count} visits.', [
+                        'profile' => $profile->key,
+                        'host' => $this->hostOf($profile->endpoint),
+                        'count' => count($visits),
+                    ]);
 
                     return $visits;
                 } catch (\Throwable $e) {
@@ -280,8 +303,13 @@ final readonly class SiriLiteClient
         if ($stopCode === '') {
             $stopCode = $this->ref($fallbackStopRef);
         }
+        $expectedAt = $this->timestamp($call['ExpectedDepartureTime'] ?? null)
+            ?? $this->timestamp($call['ExpectedArrivalTime'] ?? null);
+        // Operators such as CTS only publish expected times in estimated-timetable calls; without
+        // an aimed time the visit would be dropped, so the expected time stands in for it.
         $aimedAt = $this->timestamp($call['AimedDepartureTime'] ?? null)
-            ?? $this->timestamp($call['AimedArrivalTime'] ?? null);
+            ?? $this->timestamp($call['AimedArrivalTime'] ?? null)
+            ?? $expectedAt;
         if ($lineCode === '' || $stopCode === '' || $aimedAt === null) {
             return null;
         }
@@ -291,8 +319,7 @@ final readonly class SiriLiteClient
             stopCode: $stopCode,
             tripRef: $this->tripRef($journey),
             aimedAt: $aimedAt,
-            expectedAt: $this->timestamp($call['ExpectedDepartureTime'] ?? null)
-                ?? $this->timestamp($call['ExpectedArrivalTime'] ?? null),
+            expectedAt: $expectedAt,
             cancelled: $this->cancelled($journey, $call),
             stopSequence: $this->sequence($call['Order'] ?? $call['StopSequence'] ?? null),
             destination: $this->destination($journey, $call),

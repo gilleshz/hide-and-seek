@@ -49,12 +49,14 @@ final readonly class SiriDepartureMatcher
             if (!isset($stopCodes[SiriRef::normalized($visit->stopCode)])) {
                 continue;
             }
-            $delta = abs($visit->aimedAt - $candidate['scheduledAt']);
-            if ($delta > self::AIM_TOLERANCE_SECONDS) {
-                continue;
-            }
+            // An exact trip ref is conclusive even when the aimed time drifted beyond the window
+            // (a delayed trip, or an expected-only feed such as CTS where aimed stands in for it).
             $exact = $tripRef !== '' && $visit->tripRef !== null
                 && SiriRef::normalized($visit->tripRef) === $tripRef;
+            $delta = abs($visit->aimedAt - $candidate['scheduledAt']);
+            if (!$exact && $delta > self::AIM_TOLERANCE_SECONDS) {
+                continue;
+            }
             if ($best === null || ($exact && !$bestExact) || ($exact === $bestExact && $delta < $bestDelta)) {
                 $best = $expected;
                 $bestDelta = $delta;

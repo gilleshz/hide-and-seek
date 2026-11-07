@@ -52,6 +52,17 @@ final class SiriDepartureMatcherTest extends TestCase
     }
 
     #[Test]
+    public function itTrustsAnExactTripRefBeyondTheAimWindow(): void
+    {
+        $match = new SiriDepartureMatcher()->match(
+            $this->candidate(),
+            [new SiriVisit('L1', 'orig-1', 'T1', self::SCHEDULED + 900, self::SCHEDULED + 960)],
+        );
+
+        self::assertSame(self::SCHEDULED + 960, $match);
+    }
+
+    #[Test]
     public function itBreaksTiesWithTheNearestAimedTime(): void
     {
         $match = new SiriDepartureMatcher()->match(
