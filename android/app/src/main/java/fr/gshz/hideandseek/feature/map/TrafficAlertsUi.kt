@@ -1,7 +1,6 @@
 @file:Suppress("TooManyFunctions")
 package fr.gshz.hideandseek.feature.map
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,10 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Traffic
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -127,34 +127,22 @@ internal fun alertValidityLabel(alert: TrafficAlert): String {
 }
 
 /**
- * The top-bar chip is always visible; the badge only appears once an alert is active, so a quiet
- * network does not draw attention to itself.
+ * The FAB is always visible; the badge only appears once an alert is active, so a quiet network
+ * does not draw attention to itself.
  */
 @Composable
-internal fun TrafficAlertChip(
+internal fun TrafficAlertFab(
     count: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val badgeDescription = pluralStringResource(R.plurals.traffic_alert_count, count, count)
-    Surface(
+    FloatingActionButton(
         onClick = onClick,
         modifier = modifier.semantics { contentDescription = badgeDescription },
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 2.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        ) {
-            BadgedBox(badge = { if (count > 0) Badge { Text(count.toString()) } }) {
-                Icon(Icons.Filled.Traffic, contentDescription = null, modifier = Modifier.size(16.dp))
-            }
-            Text(stringResource(R.string.traffic_chip_label), style = MaterialTheme.typography.labelMedium)
+        BadgedBox(badge = { if (count > 0) Badge { Text(count.toString()) } }) {
+            Icon(Icons.Filled.Tram, contentDescription = null)
         }
     }
 }
@@ -316,8 +304,8 @@ private fun SeverityDot(severity: TrafficAlertSeverity) {
 
 @Preview(showBackground = true)
 @Composable
-private fun TrafficAlertChipPreview() {
+private fun TrafficAlertFabPreview() {
     MaterialTheme {
-        TrafficAlertChip(count = 3, onClick = {})
+        TrafficAlertFab(count = 3, onClick = {})
     }
 }

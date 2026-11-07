@@ -179,7 +179,6 @@
     <string name="timetable_delay_early">early <xliff:g>%1$d</xliff:g> min</string>
     <string name="timetable_direction">Direction <xliff:g>%1$d</xliff:g></string>
 
-    <string name="traffic_chip_label">Traffic</string>
     <plurals name="traffic_alert_count">
         <item quantity="one"><xliff:g>%1$d</xliff:g> active alert</item>
         <item quantity="other"><xliff:g>%1$d</xliff:g> active alerts</item>

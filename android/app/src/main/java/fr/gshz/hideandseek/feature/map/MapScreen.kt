@@ -508,17 +508,6 @@ internal fun MapContent(
                     uiState.roundTimerSeconds,
                     spectator = uiState.isSpectator,
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.sm),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TrafficAlertChip(
-                        count = uiState.trafficAlerts.alerts.size,
-                        onClick = { trafficSheet = TrafficSheetRequest() },
-                    )
-                }
                 if (frozenHidingSeconds.value == null) {
                     ErrorText(uiState.roundError, errorKey = uiState.roundErrorKey, errorArgs = uiState.roundErrorArgs)
                 }
@@ -544,6 +533,7 @@ internal fun MapContent(
                     navigation = navigation,
                     onEndRoundClick = { frozenHidingSeconds.value = uiState.roundTimerSeconds ?: 0L },
                     onEnterDrawing = drawingActions.onEnterDrawing,
+                    onOpenTrafficAlerts = { trafficSheet = TrafficSheetRequest() },
                     fabActions = MapFabActions(
                         onRecenter = { recenterCounter.value++ },
                         onEnterSimulation = onEnterSimulation,
@@ -1030,6 +1020,7 @@ private fun HiderFabs(uiState: MapUiState, actions: ZoneActions, onEnterTimeTrap
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun MapFabColumn(
     uiState: MapUiState,
@@ -1037,6 +1028,7 @@ private fun MapFabColumn(
     navigation: MapNavigation,
     onEndRoundClick: () -> Unit,
     onEnterDrawing: () -> Unit = {},
+    onOpenTrafficAlerts: () -> Unit = {},
     fabActions: MapFabActions = MapFabActions(),
 ) {
     val showingDeletePrompt = uiState.side == Side.Seeker && uiState.selectedManualConstraintUuid != null
@@ -1064,6 +1056,7 @@ private fun MapFabColumn(
         if (styles.size > 1) {
             MapStyleSwitcher(styles = styles, onStyleSelected = fabActions.onStyleSelected)
         }
+        TrafficAlertFab(count = uiState.trafficAlerts.alerts.size, onClick = onOpenTrafficAlerts)
         FloatingActionButton(onClick = fabActions.onRecenter) {
             Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.map_recenter_button))
         }
