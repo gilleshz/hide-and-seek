@@ -51,12 +51,9 @@ internal fun Style.ensureTransitOverlayLayer(overlayGeoJson: String, highlighted
         stationLayer(STATION_FILL_LAYER_ID),
         stationBorderLayer(STATION_BORDER_LAYER_ID),
     )
-    // Fixed order: transit under every overlay, so the dim and the band both cover it.
-    val insertBelow = if (getLayer(EXCLUSION_FILL_LAYER_ID) != null) {
-        EXCLUSION_FILL_LAYER_ID
-    } else {
-        firstSymbolLayerId()
-    }
+    // Fixed order: transit under the base style's first symbol layer, so city names and other
+    // texts stay on top of the lines; the dim and the band sit above the labels and still cover them.
+    val insertBelow = firstSymbolLayerId()
     ordered.forEach { if (insertBelow != null) addLayerBelow(it, insertBelow) else addLayer(it) }
 
     val haloWidth = CASING_WIDTH_Z14 * FOCUS_HALO_FACTOR
