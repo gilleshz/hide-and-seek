@@ -2,7 +2,6 @@ package fr.gshz.hideandseek.feature.map
 
 import fr.gshz.hideandseek.domain.model.TrafficAlert
 import fr.gshz.hideandseek.domain.model.TrafficAlertSeverity
-import fr.gshz.hideandseek.domain.model.TransitLine
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -28,35 +27,6 @@ class TrafficAlertsUiTest {
         assertEquals(listOf("a1"), alerts.alertsForLine("rer a").map { it.id })
         assertTrue(alerts.alertsForLine("9").isEmpty())
     }
-
-    @Test
-    fun `computeAlertHighlightRefs maps the alert line refs onto the selected lines`() {
-        val lines = listOf(line(ref = "14"), line(ref = "RER A"), line(ref = "9"))
-        val alerts = listOf(alert(id = "a1", lineRefs = listOf("rer à"), routeIds = listOf("9")))
-
-        assertEquals(setOf("RER A", "9"), computeAlertHighlightRefs(lines, alerts, "a1"))
-    }
-
-    @Test
-    fun `computeAlertHighlightRefs is empty without a selected alert or with a network wide alert`() {
-        val lines = listOf(line(ref = "14"))
-        val alerts = listOf(alert(id = "a1", lineRefs = emptyList(), routeIds = emptyList()))
-
-        assertTrue(computeAlertHighlightRefs(lines, alerts, null).isEmpty())
-        assertTrue(computeAlertHighlightRefs(lines, alerts, "missing").isEmpty())
-        assertTrue(computeAlertHighlightRefs(lines, alerts, "a1").isEmpty())
-    }
-
-    private fun line(ref: String) = TransitLine(
-        osmId = "1",
-        osmType = "relation",
-        ref = ref,
-        name = ref,
-        colour = "B22E75",
-        routeType = "subway",
-        network = "",
-        operator = "",
-    )
 
     private fun alert(
         id: String,

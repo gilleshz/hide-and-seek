@@ -1,6 +1,5 @@
 package fr.gshz.hideandseek.feature.map
 
-import app.cash.turbine.test
 import fr.gshz.hideandseek.domain.model.TrafficAlert
 import fr.gshz.hideandseek.domain.model.TrafficAlertSeverity
 import fr.gshz.hideandseek.domain.model.TrafficAlerts
@@ -18,7 +17,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -142,33 +140,6 @@ class MapSessionViewModelTrafficAlertsTest {
         val state = awaitUnseenCount(viewModel, 1)
         assertEquals(3, state.trafficAlerts.alerts.size)
         assertEquals(1, state.trafficAlerts.unseenCount)
-    }
-
-    @Test
-    fun `selecting an alert toggles and clearing resets the selection`() = runTest(testDispatcher) {
-        fixture.trafficAlertsRepository.result =
-            Result.success(TrafficAlerts(serverNow = 0, alerts = listOf(alert("a1"))))
-        val viewModel = fixture.createSessionViewModel()
-
-        viewModel.uiState.test {
-            var state = awaitItem()
-            while (state.trafficAlerts.alerts.isEmpty()) state = awaitItem()
-
-            viewModel.toggleTrafficAlertSelection("a1")
-            while (state.selectedAlertId == null) state = awaitItem()
-            assertEquals("a1", state.selectedAlertId)
-
-            viewModel.toggleTrafficAlertSelection("a1")
-            while (state.selectedAlertId != null) state = awaitItem()
-            assertNull(state.selectedAlertId)
-
-            viewModel.toggleTrafficAlertSelection("a1")
-            while (state.selectedAlertId == null) state = awaitItem()
-            viewModel.clearTrafficAlertSelection()
-            while (state.selectedAlertId != null) state = awaitItem()
-            assertNull(state.selectedAlertId)
-            cancelAndIgnoreRemainingEvents()
-        }
     }
 
     private fun TestScope.awaitUnseenCount(viewModel: MapSessionViewModel, expected: Int): MapSessionUiState {

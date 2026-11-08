@@ -132,8 +132,6 @@ data class MapUiState(
     val transitOverlayGeoJson: String? = null,
     val focusedTransitRef: String? = null,
     val trafficAlerts: TrafficAlertsState = TrafficAlertsState(),
-    val selectedAlertId: String? = null,
-    val highlightedTransitRefs: Set<String> = emptySet(),
     val transitLineColors: Map<String, String> = emptyMap(),
     val boundaryGeoJson: String? = null,
     val outsideZone: Boolean = false,
@@ -363,11 +361,6 @@ internal fun assembleMapUiState(
     val base = sessionAndZoneUiState(session, zone)
     return base.copy(
         markers = session.markers,
-        highlightedTransitRefs = computeAlertHighlightRefs(
-            session.selectedTransitLines,
-            session.trafficAlerts.alerts,
-            session.selectedAlertId,
-        ),
         transitLineColors = session.selectedTransitLines.associate { line -> line.ref to line.colour },
         outsideZone = computeOutsideZone(session.selfPlayerUuid, session.locations, zone.submittedZone),
         halfZoneExcludesSelf = computeHalfZoneExcludesSelf(
@@ -431,7 +424,6 @@ private fun sessionAndZoneUiState(session: MapSessionUiState, zone: MapZoneUiSta
         transitOverlayGeoJson = session.transitOverlayGeoJson,
         focusedTransitRef = session.focusedTransitRef,
         trafficAlerts = session.trafficAlerts,
-        selectedAlertId = session.selectedAlertId,
         boundaryGeoJson = session.boundaryGeoJson,
         inMovePeriod = session.inMovePeriod,
         mapStyleAvailable = session.mapStyleAvailable,

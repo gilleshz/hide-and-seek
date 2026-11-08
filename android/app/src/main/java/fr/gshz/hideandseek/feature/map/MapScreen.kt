@@ -248,8 +248,6 @@ fun MapScreen(
             drawingViewModel.addSearchAreaConstraint(lat, lng, radius)
         },
         onTransitLineTapped = sessionViewModel::toggleTransitFocus,
-        onSelectTrafficAlert = sessionViewModel::toggleTrafficAlertSelection,
-        onClearTrafficAlertSelection = sessionViewModel::clearTrafficAlertSelection,
         onTrafficAlertsOpened = sessionViewModel::markTrafficAlertsSeen,
         timetableState = timetableState,
         onTimetableTapped = { station ->
@@ -486,8 +484,6 @@ internal fun MapContent(
     onUnmarkStation: (String) -> Unit = {},
     onConstrainSearchArea: (Double, Double, Double) -> Unit = { _, _, _ -> },
     onTransitLineTapped: (String) -> Unit = {},
-    onSelectTrafficAlert: (String) -> Unit = {},
-    onClearTrafficAlertSelection: () -> Unit = {},
     onTrafficAlertsOpened: () -> Unit = {},
     timetableState: TimetableUiState = TimetableUiState(),
     onTimetableTapped: (StationTooltipData) -> Unit = {},
@@ -563,7 +559,6 @@ internal fun MapContent(
                 styleSource = uiState.currentStyleSource,
                 navigation = navigation,
                 onTransitLineTapped = onTransitLineTapped,
-                onClearTrafficAlertSelection = onClearTrafficAlertSelection,
                 onLineAlertsTapped = { lineRef -> trafficSheet = TrafficSheetRequest(lineRef) },
                 timetableState = timetableState,
                 onTimetableTapped = onTimetableTapped,
@@ -587,9 +582,7 @@ internal fun MapContent(
         TrafficAlertsSheet(
             state = uiState.trafficAlerts,
             lineFilter = request.lineFilter,
-            selectedAlertId = uiState.selectedAlertId,
             lineColors = uiState.transitLineColors,
-            onSelectAlert = onSelectTrafficAlert,
             onDismissRequest = { trafficSheet = null },
         )
     }
@@ -634,7 +627,6 @@ private fun BoxScope.MapContentLayout(
     navigation: MapNavigation,
     seekerOverlay: SeekerMarkerOverlay = SeekerMarkerOverlay(),
     onTransitLineTapped: (String) -> Unit = {},
-    onClearTrafficAlertSelection: () -> Unit = {},
     onLineAlertsTapped: (String) -> Unit = {},
     timetableState: TimetableUiState = TimetableUiState(),
     onTimetableTapped: (StationTooltipData) -> Unit = {},
@@ -643,11 +635,7 @@ private fun BoxScope.MapContentLayout(
     onTimetableToggleFullDay: () -> Unit = {},
 ) {
     val isPreviewMode = uiState.simulation?.mode == QuestionSheetMode.Preview
-    // An alert selection wins over the single-line focus; both dim the rest of the network.
-    val highlightRefs: Set<String>? = when {
-        uiState.highlightedTransitRefs.isNotEmpty() -> uiState.highlightedTransitRefs
-        else -> uiState.focusedTransitRef?.let { setOf(it) }
-    }
+    val highlightRefs: Set<String>? = uiState.focusedTransitRef?.let { setOf(it) }
     MapLibreMapView(
         markers = uiState.markers,
         possibleAreaGeoJson = uiState.possibleAreaGeoJson,
@@ -657,7 +645,6 @@ private fun BoxScope.MapContentLayout(
         transitOverlayGeoJson = uiState.transitOverlayGeoJson,
         highlightedTransitRefs = highlightRefs,
         onTransitLineTapped = onTransitLineTapped,
-        onMapTap = onClearTrafficAlertSelection,
         boundaryGeoJson = uiState.boundaryGeoJson,
         recenterCounter = recenterCounter,
         simulationGeoJson = uiState.simulation?.previewGeoJson,
@@ -1061,7 +1048,9 @@ private fun MapFabColumn(
         if (styles.size > 1) {
             MapStyleSwitcher(styles = styles, onStyleSelected = fabActions.onStyleSelected)
         }
-        TrafficAlertFab(count = uiState.trafficAlerts.unseenCount, onClick = onOpenTrafficAlerts)
+        if (uiState.trafficAlerts.alerts.isNotEmpty()) {
+            TrafficAlertFab(count = uiState.trafficAlerts.unseenCount, onClick = onOpenTrafficAlerts)
+        }
         FloatingActionButton(onClick = fabActions.onRecenter) {
             Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.map_recenter_button))
         }
@@ -1333,7 +1322,6 @@ private fun MapLibreMapView(
     transitOverlayGeoJson: String? = null,
     highlightedTransitRefs: Set<String>? = null,
     onTransitLineTapped: (String) -> Unit = {},
-    onMapTap: () -> Unit = {},
     boundaryGeoJson: String? = null,
     simulationGeoJson: String? = null,
     candidatePoiGeoJson: String? = null,
@@ -1374,7 +1362,6 @@ private fun MapLibreMapView(
                 canPlacePin = zoneOverlay.canPlacePin,
                 onPinPlaced = zoneOverlay.onPinPlaced,
                 onCandidateTapped = zoneOverlay.onCandidatePoiTapped,
-                onMapTap = onMapTap,
             ),
             tooltip = TooltipHost(
                 data = stationTooltip.value,
@@ -1694,7 +1681,6 @@ private data class MapTapCallbacks(
     val canPlacePin: Boolean,
     val onPinPlaced: (Double, Double, String?) -> Unit,
     val onCandidateTapped: (String) -> Unit,
-    val onMapTap: () -> Unit = {},
 )
 
 @Composable
@@ -1714,7 +1700,6 @@ private fun MapWithTooltipOverlay(
 ) {
     // Listeners register once; callbacks are read live so entering simulation enables pin taps.
     val currentTap by rememberUpdatedState(tapCallbacks)
-    val currentOnMapTap by rememberUpdatedState(tapCallbacks.onMapTap)
     val currentTooltip by rememberUpdatedState(tooltip)
     val currentSeekerHost by rememberUpdatedState(seekerHost)
     val currentDrawing by rememberUpdatedState(drawingOverlay)
@@ -1740,8 +1725,6 @@ private fun MapWithTooltipOverlay(
                     state.stationClickListenerRegistered = true
                     map.addOnMapClickListener { latLng ->
                         seekerAction.value = null
-                        // Any map tap clears an alert's line highlight, per MAP-12.
-                        currentOnMapTap()
                         handleMapTap(map, latLng, currentTap, currentTooltip, currentDrawing, density)
                     }
                 }

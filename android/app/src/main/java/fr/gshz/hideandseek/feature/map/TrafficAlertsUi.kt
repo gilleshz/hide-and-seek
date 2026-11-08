@@ -44,7 +44,6 @@ import fr.gshz.hideandseek.R
 import fr.gshz.hideandseek.core.ui.theme.Spacing
 import fr.gshz.hideandseek.domain.model.TrafficAlert
 import fr.gshz.hideandseek.domain.model.TrafficAlertSeverity
-import fr.gshz.hideandseek.domain.model.TransitLine
 import java.text.Normalizer
 import java.time.Instant
 import java.time.ZoneId
@@ -63,26 +62,6 @@ internal fun normalizeLineRef(value: String): String =
 internal fun List<TrafficAlert>.alertsForLine(lineRef: String): List<TrafficAlert> {
     val wanted = normalizeLineRef(lineRef)
     return filter { alert -> alert.lineRefs.any { normalizeLineRef(it) == wanted } }
-}
-
-/**
- * The overlay refs an alert highlights: the game's selected lines whose ref matches one of the
- * alert's line refs or route ids. An alert naming no line is network-wide and highlights nothing.
- */
-internal fun computeAlertHighlightRefs(
-    selectedLines: List<TransitLine>,
-    alerts: List<TrafficAlert>,
-    selectedAlertId: String?,
-): Set<String> {
-    val alert = alerts.firstOrNull { it.id == selectedAlertId }
-    val wanted = alert
-        ?.let { (it.lineRefs + it.routeIds).mapTo(HashSet()) { ref -> normalizeLineRef(ref) } }
-        .orEmpty()
-    return if (wanted.isEmpty()) {
-        emptySet()
-    } else {
-        selectedLines.mapTo(HashSet()) { it.ref }.filterTo(HashSet()) { normalizeLineRef(it) in wanted }
-    }
 }
 
 private val INFO_COLOR = Color(0xFF1E88E5)
@@ -152,9 +131,7 @@ internal fun TrafficAlertFab(
 internal fun TrafficAlertsSheet(
     state: TrafficAlertsState,
     lineFilter: String? = null,
-    selectedAlertId: String? = null,
     lineColors: Map<String, String> = emptyMap(),
-    onSelectAlert: (String) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -189,9 +166,7 @@ internal fun TrafficAlertsSheet(
             } else {
                 AlertsList(
                     alerts = visible,
-                    selectedAlertId = selectedAlertId,
                     colorsByRef = colorsByRef,
-                    onSelectAlert = onSelectAlert,
                 )
             }
         }
@@ -201,9 +176,7 @@ internal fun TrafficAlertsSheet(
 @Composable
 private fun AlertsList(
     alerts: List<TrafficAlert>,
-    selectedAlertId: String?,
     colorsByRef: Map<String, String>,
-    onSelectAlert: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.heightIn(
@@ -214,9 +187,7 @@ private fun AlertsList(
         items(alerts, key = { it.id }) { alert ->
             TrafficAlertRow(
                 alert = alert,
-                selected = alert.id == selectedAlertId,
                 colorsByRef = colorsByRef,
-                onClick = { onSelectAlert(alert.id) },
             )
         }
     }
@@ -225,23 +196,12 @@ private fun AlertsList(
 @Composable
 private fun TrafficAlertRow(
     alert: TrafficAlert,
-    selected: Boolean,
     colorsByRef: Map<String, String>,
-    onClick: () -> Unit,
 ) {
     Surface(
-        onClick = onClick,
         shape = MaterialTheme.shapes.small,
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
-        contentColor = if (selected) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Column(
             modifier = Modifier

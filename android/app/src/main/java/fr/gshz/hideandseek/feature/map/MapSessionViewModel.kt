@@ -87,7 +87,6 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
     private val roundInteraction = MutableStateFlow(RoundInteraction())
     private val selectedMapStyle = MutableStateFlow(MapStyle.Standard)
     private val focusedTransitRef = MutableStateFlow<String?>(null)
-    private val selectedAlertId = MutableStateFlow<String?>(null)
 
     private var loadGameInfoJob: Job? = null
     private var lobbySignaledRoundUuid: String? = null
@@ -171,7 +170,6 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
         val style: MapStyle,
         val focusedRef: String?,
         val alerts: TrafficAlertsState,
-        val alertId: String?,
     )
 
     /**
@@ -212,8 +210,8 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
         combine(round, ticker, roundInteraction) { round, nowMillis, interaction ->
             RoundPart(round, nowMillis, interaction)
         },
-        combine(selectedMapStyle, focusedTransitRef, trafficAlerts, selectedAlertId) { style, ref, alerts, alertId ->
-            ChromePart(style, ref, alerts, alertId)
+        combine(selectedMapStyle, focusedTransitRef, trafficAlerts) { style, ref, alerts ->
+            ChromePart(style, ref, alerts)
         },
         chatVisibilityTracker.hasUnread,
     ) { players, roundPart, chrome, hasUnreadChat ->
@@ -240,7 +238,6 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
             transitOverlayGeoJson = info.transitOverlayGeoJson,
             focusedTransitRef = chrome.focusedRef,
             trafficAlerts = chrome.alerts,
-            selectedAlertId = chrome.alertId,
             stadiaApiKey = info.stadiaApiKey,
             thunderforestApiKey = info.thunderforestApiKey,
             maptilerApiKey = info.maptilerApiKey,
@@ -273,14 +270,6 @@ class MapSessionViewModel @Suppress("LongParameterList") @Inject constructor(
         observeSessionChanges()
         observeTimerEvents()
         observeMapStyle()
-    }
-
-    fun toggleTrafficAlertSelection(alertId: String) {
-        selectedAlertId.value = alertId.takeIf { it != selectedAlertId.value }
-    }
-
-    fun clearTrafficAlertSelection() {
-        selectedAlertId.value = null
     }
 
     fun markTrafficAlertsSeen() {
@@ -588,7 +577,6 @@ data class MapSessionUiState(
     val transitOverlayGeoJson: String? = null,
     val focusedTransitRef: String? = null,
     val trafficAlerts: TrafficAlertsState = TrafficAlertsState(),
-    val selectedAlertId: String? = null,
     val stadiaApiKey: String? = null,
     val thunderforestApiKey: String? = null,
     val maptilerApiKey: String? = null,
