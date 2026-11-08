@@ -63,6 +63,7 @@ import kotlin.math.abs
 private const val NEXT_MAX_HEIGHT_FRACTION = 0.5f
 private const val FULL_DAY_MAX_HEIGHT_FRACTION = 0.9f
 private const val SECONDS_PER_MINUTE = 60
+private const val SECONDS_PER_HOUR = 3600
 private const val PAST_ALPHA = 0.5f
 
 private val stationTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
@@ -488,13 +489,23 @@ private fun LiveDot() {
     )
 }
 
+/** Pure mapping from seconds-until-departure to (string res, args), so it stays unit-testable. */
+internal fun relativeLabelSpec(inSeconds: Int): Pair<Int, List<Int>> = when {
+    inSeconds < SECONDS_PER_MINUTE -> R.string.timetable_due to emptyList()
+    inSeconds < SECONDS_PER_HOUR -> R.string.timetable_in_minutes to listOf(inSeconds / SECONDS_PER_MINUTE)
+    else -> R.string.timetable_in_hours_minutes to
+        listOf(inSeconds / SECONDS_PER_HOUR, inSeconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE)
+}
+
 @Composable
-private fun relativeLabel(inSeconds: Int): String =
-    if (inSeconds < SECONDS_PER_MINUTE) {
-        stringResource(R.string.timetable_due)
-    } else {
-        stringResource(R.string.timetable_in_minutes, inSeconds / SECONDS_PER_MINUTE)
+private fun relativeLabel(inSeconds: Int): String {
+    val (res, args) = relativeLabelSpec(inSeconds)
+    return when (args.size) {
+        0 -> stringResource(res)
+        1 -> stringResource(res, args[0])
+        else -> stringResource(res, args[0], args[1])
     }
+}
 
 @Composable
 private fun delayLabel(delaySeconds: Int): String {

@@ -174,6 +174,7 @@
     <string name="timetable_full_day">Full day</string>
     <string name="timetable_now">Now</string>
     <string name="timetable_in_minutes">in <xliff:g>%1$d</xliff:g> min</string>
+    <string name="timetable_in_hours_minutes">in <xliff:g>%1$d</xliff:g> h <xliff:g>%2$d</xliff:g> min</string>
     <string name="timetable_due">due</string>
     <string name="timetable_delay_late">late <xliff:g>%1$d</xliff:g> min</string>
     <string name="timetable_delay_early">early <xliff:g>%1$d</xliff:g> min</string>
