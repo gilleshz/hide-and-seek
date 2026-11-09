@@ -48,7 +48,7 @@ final class TestSiriProfiles
                     'password' => 'test-sytral-pass',
                     'password_required' => true,
                 ],
-                'line_ref' => '{code}',
+                'line_ref' => 'ActIV:Line::{code}:SYTRAL',
                 'alerts_endpoint' => 'https://1.1.1.1/tcl-alerts',
                 'aliases' => ['SYTRAL'],
                 'cities' => ['Lyon'],

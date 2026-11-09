@@ -42,12 +42,16 @@ final class TrafficAlertsServiceTest extends TestCase
             $this->alert('a2', lineRefs: ['c1']),
             $this->alert('a3', lineRefs: ['TÉtoile']),
             $this->alert('a4', routeIds: ['R9'], lineRefs: ['99']),
+            $this->alert('a6', lineRefs: ['ActIV:Line::C1:SYTRAL']),
             $this->alert('a5'),
         ];
 
         $kept = $service->filter($alerts, ['R1'], ['C1', 'tÉtoile'], self::NOW);
 
-        self::assertSame(['a1', 'a2', 'a3', 'a5'], array_map(static fn (TrafficAlert $a): string => $a->id, $kept));
+        self::assertSame(
+            ['a1', 'a2', 'a3', 'a5', 'a6'],
+            array_map(static fn (TrafficAlert $a): string => $a->id, $kept),
+        );
     }
 
     #[Test]

@@ -205,7 +205,7 @@ final class SiriLiteClientTest extends TestCase
         );
 
         self::assertIsArray($captured);
-        self::assertStringContainsString('LineRef=102', $captured['url']);
+        self::assertStringContainsString('LineRef=ActIV%3ALine%3A%3A102%3ASYTRAL', $captured['url']);
         self::assertContains(
             'Authorization: Basic ' . base64_encode('test-sytral-user:test-sytral-pass'),
             $captured['headers'],

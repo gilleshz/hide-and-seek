@@ -53,8 +53,8 @@ parameters:
                 user: '%env(default::SYTRAL_SIRI_USER)%'
                 password: '%env(default::SYTRAL_SIRI_PASSWORD)%'
                 password_required: true
-            line_ref: '{code}'
-            alerts_endpoint: 'https://data.grandlyon.com/siri-lite/2.0/general-messages.json'
+            line_ref: 'ActIV:Line::{code}:SYTRAL'
+            alerts_endpoint: 'https://data.grandlyon.com/siri-lite/2.0/situation-exchange.json'
             aliases: ['SYTRAL']
             cities: ['Lyon']
     app.gtfs_storage_dir: '%env(GTFS_STORAGE_DIR)%'

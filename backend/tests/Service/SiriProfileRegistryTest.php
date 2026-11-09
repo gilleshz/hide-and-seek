@@ -53,12 +53,13 @@ final class SiriProfileRegistryTest extends TestCase
 
         self::assertSame('STIF:StopPoint:Q:12345:', $idfm->stopRef('12345'));
         self::assertSame('STIF:StopPoint:Q:12345:', $idfm->stopRef('STIF:StopPoint:Q:12345:'));
-        self::assertSame('C3', $tcl->lineRef('TCL:Line::C3:'));
+        self::assertSame('ActIV:Line::C3:SYTRAL', $tcl->lineRef('ActIV:Line::C3:SYTRAL'));
+        self::assertSame('ActIV:Line::C3:SYTRAL', $tcl->lineRef('C3'));
         self::assertNull($idfm->lineRef('C3'));
     }
 
     #[Test]
-    public function itNormalizesRefsToTheLastNonEmptyColonSegment(): void
+    public function itNormalizesRefsToTheirIdentifyingSegment(): void
     {
         self::assertSame('C3', SiriRef::code('STIF:Line::C3:'));
         self::assertSame('C3', SiriRef::code('  C3  '));

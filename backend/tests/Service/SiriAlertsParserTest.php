@@ -131,6 +131,70 @@ final class SiriAlertsParserTest extends TestCase
     }
 
     #[Test]
+    public function itParsesSituationExchangeDelivery(): void
+    {
+        $body = (string) json_encode([
+            'Siri' => [
+                'ServiceDelivery' => [
+                    'SituationExchangeDelivery' => [[
+                        'Situations' => [
+                            'PtSituationElement' => [
+                                [
+                                    'SituationNumber' => ['value' => 'MDL-123'],
+                                    'Severity' => 'severe',
+                                    'Summary' => [['Lang' => 'fr', 'Value' => 'Travaux ligne C1']],
+                                    'Description' => [['Lang' => 'fr', 'Value' => '<b>Déviation importante</b>']],
+                                    'ValidityPeriod' => [[
+                                        'StartTime' => '2026-09-03T08:10:01+02:00',
+                                        'EndTime' => '2026-12-31T20:00:00+01:00',
+                                    ]],
+                                    'Affects' => [
+                                        'Networks' => [
+                                            'AffectedNetwork' => [[
+                                                'AffectedLine' => [
+                                                    ['LineRef' => ['value' => 'SYTRAL:Line::C1:']],
+                                                    ['LineRef' => ['value' => 'SYTRAL:Line::C2:']],
+                                                ],
+                                            ]],
+                                        ],
+                                        'StopPoints' => [
+                                            'AffectedStopPoint' => [
+                                                ['StopPointRef' => ['value' => 'SYTRAL:StopPoint:Q:1:']],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                                ['Summary' => [['Lang' => 'fr', 'Value' => 'no id, skipped']]],
+                            ],
+                        ],
+                    ]],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $alerts = SiriAlertsParser::parse($body, 'siri_lite:tcl');
+
+        self::assertCount(2, $alerts);
+        $alert = $alerts[0];
+        self::assertSame('MDL-123', $alert->id);
+        self::assertSame(AlertSeverity::Severe, $alert->severity);
+        self::assertSame('Travaux ligne C1', $alert->title);
+        self::assertSame('Déviation importante', $alert->body);
+        self::assertSame(['SYTRAL:Line::C1:', 'SYTRAL:Line::C2:'], $alert->lineRefs);
+        self::assertSame(['SYTRAL:StopPoint:Q:1:'], $alert->stopIds);
+        self::assertSame(
+            (new \DateTimeImmutable('2026-09-03T08:10:01+02:00'))->getTimestamp(),
+            $alert->validFrom,
+        );
+        self::assertSame((new \DateTimeImmutable('2026-12-31T20:00:00+01:00'))->getTimestamp(), $alert->validUntil);
+        self::assertSame('siri_lite:tcl', $alert->source);
+
+        $withoutId = $alerts[1];
+        self::assertStringStartsWith('sx-', $withoutId->id);
+        self::assertSame('no id, skipped', $withoutId->title);
+    }
+
+    #[Test]
     public function itReturnsAnEmptyListForUnparsableBodies(): void
     {
         self::assertSame([], SiriAlertsParser::parse('not json', 'siri_lite:cts'));
